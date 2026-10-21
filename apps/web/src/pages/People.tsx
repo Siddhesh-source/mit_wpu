@@ -2,7 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import type { Classroom, Connection, InviteResult, Person } from '@plc/shared';
 import { PersonBlock } from '../components/PersonBlock';
-import { Empty, Page, SectionHead, toast } from '../components/ui';
+import { Empty, Page, PageHeader, SectionHead, toast } from '../components/ui';
 import { api } from '../lib/api';
 import { fmtDate, useLive } from '../lib/hooks';
 import { useSession } from '../lib/session';
@@ -167,17 +167,14 @@ export default function People() {
 
   return (
     <Page wide>
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold md:text-3xl">People</h1>
-        <p className="text-sm text-muted">Your classes, the students connected to you and your colleagues. Connected students' requests come to you first.</p>
-      </div>
+      <PageHeader title="People" subtitle="Your classes, the students connected to you and your colleagues. Connected students' requests come to you first." />
 
       <div className="mb-6 flex gap-1 overflow-x-auto rounded-xl bg-panel p-1 md:w-fit">
         {TABS.map((t) => (
           <button
             key={t.key}
             onClick={() => setParams({ tab: t.key }, { replace: true })}
-            className={`whitespace-nowrap rounded-lg px-4 py-1.5 text-sm font-semibold ${tab === t.key ? 'bg-bg text-ink shadow-sm' : 'text-muted'}`}
+            className={`min-h-[40px] whitespace-nowrap rounded-lg px-4 text-sm font-semibold ${tab === t.key ? 'bg-bg text-ink shadow-sm' : 'text-muted hover:text-ink'}`}
           >
             {t.label}
             {!!t.n && <span className="ml-1 text-xs text-faint">{t.n}</span>}
