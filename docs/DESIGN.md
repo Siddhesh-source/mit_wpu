@@ -105,3 +105,12 @@ Camera note: browsers allow live camera only on https or localhost. On plain htt
 
 - A sun/moon switch sits in every header (signed-in pages, sign-up, verify, gate) (`components/ThemeToggle.tsx`). The choice is saved on the device (`plc.theme`) and applied before the first paint by a small script in `index.html`, so pages never flash. Until someone chooses, the device's light/dark setting decides.
 - Tokens are CSS variables (`src/index.css`), used through the same Tailwind names (`bg`, `panel`, `ink`, `accent`, `ok`, `bad`, `warn`, …). Dark keeps the roles: solid fills stay deep enough for white text; inverse elements (toast, tooltip, "Check v2") use `bg-ink text-bg`; the gate result card uses the theme surface; form fields take the theme surface.
+
+## Visual system (after the 2026-10-21 audit, `docs/DESIGN_AUDIT.md`)
+
+- **Icons:** `components/Icon.tsx`, one line set (24 px grid, 1.75 stroke, currentColor). No emoji or text glyphs as icons. Icons label nav items, choices, upload zones, empty states and list rows; never decoration in coloured circles.
+- **Numbers:** `StatStrip` (one bordered row, hairline dividers, sentence-case labels, tabular numbers). Colour a number only when it asks for action and is non-zero.
+- **Headings:** `PageHeader` (title, one-line subtitle, optional action) and `SectionHead` (body size, ink). Sections 32 px apart.
+- **Surfaces:** sections divided by hairlines, lists as divided rows in one bordered box; no cards inside cards. Dashed borders only for drop zones. Empty states are a quiet panel with an icon.
+- **States:** global `:focus-visible` ring in the accent; no permanently disabled primary buttons (hide them, or label what is missing); 44 px targets on phones.
+- **People:** staff avatars are rounded squares (accent), students circles (green).

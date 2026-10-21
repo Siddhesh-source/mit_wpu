@@ -116,3 +116,20 @@ Surface type: **app UI (operate)**. People come to finish a task: sign, submit, 
 - Idle dashboard has no disabled button; each screen has exactly one filled CTA.
 - No card inside a card; stat numbers are coloured only when they call for action.
 - Phone: product name visible, no target under 44 px in the top bar.
+
+## Result (after the fixes)
+
+| Category | Before | After |
+| --- | --- | --- |
+| Visual hierarchy | C | B+ (one filled CTA per screen; idle dashboard is a quiet line, busy dashboard leads with Review next) |
+| Typography | B− | B+ (sentence-case labels, section headings in ink at body size, tabular numbers) |
+| Spacing and layout | C | B+ (stat strip and hairline-divided sections instead of card mosaics; no nested cards; shared page header) |
+| Color and contrast | B | A− (numbers coloured only when they ask for action) |
+| Interaction states | C− | B+ (global focus ring; no dead buttons; send button names what is missing; 44 px targets in the bar) |
+| Responsive | B− | B+ (product name and profile on phones; nav row fades at the edge) |
+| Content | C+ | B (Quick links and duplicate stat cards removed; visible labels; shorter helper lines) |
+| AI slop | C | B+ (no emoji or glyph icons; one hand-drawn line icon set; no identical card grids) |
+
+**Design score: C+ → B+ · AI slop: C → B+.** Fixes landed as one commit per finding (`style(design): FINDING-…`).
+
+Left for later: the request page still opens with a "← Back" link that duplicates the top bar on desktop; the approver review card and gate screen were not restyled in this pass.
