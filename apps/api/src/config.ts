@@ -23,6 +23,8 @@ export const config = {
     redirectAll: process.env.EMAIL_REDIRECT_ALL || '',
   },
   maxUploadMb: Number(process.env.MAX_UPLOAD_MB || 5),
+  /** Demo-profile id + PIN log in. Off in production unless ALLOW_PIN_LOGIN=1. */
+  allowPinLogin: process.env.ALLOW_PIN_LOGIN ? process.env.ALLOW_PIN_LOGIN === '1' : process.env.NODE_ENV !== 'production',
   chainMode: (process.env.CHAIN_MODE || 'local') as 'local' | 'amoy' | 'off',
   localRpcUrl: process.env.CHAIN_RPC_URL || 'http://127.0.0.1:8545',
   amoyRpcUrl: process.env.AMOY_RPC_URL || 'https://rpc-amoy.polygon.technology',

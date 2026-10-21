@@ -51,6 +51,16 @@ export const CATALOG: {
     ],
   },
   {
+    // Sent straight to one person the student picks (staff or student): they sign it, then it is sealed.
+    code: 'document_signature',
+    name: 'Document for signature',
+    fields: [
+      { key: 'title', label: 'What is it?', type: 'text', required: true },
+      { key: 'purpose', label: 'Note for the recipient', type: 'textarea', required: false },
+    ],
+    steps: [{ stepNo: 1, role: 'recipient', affectedBy: ['title', 'purpose', 'attachments'] }],
+  },
+  {
     code: 'no_dues',
     name: 'No-dues clearance',
     fields: [

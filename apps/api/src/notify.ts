@@ -41,7 +41,8 @@ export type Kind =
   | 'sla_escalated'
   | 'delegated'
   | 'reopened'
-  | 'comment';
+  | 'comment'
+  | 'connection';
 
 /** Queue an email to each user (skips users without an address). */
 export function notify(db: DB, userIds: string | string[], kind: Kind, subject: string, text: string, requestId: string | null = null) {

@@ -19,18 +19,18 @@ export function StatusPill({ status }: { status: RequestStatus }) {
 }
 
 /**
- * Page frame. Phone: one column with name/back on the left and Switch profile on the right.
- * Desktop: a header bar with the product name, the signed-in person and Switch profile; content is
+ * Page frame. Phone: one column with name/back on the left and Log out on the right.
+ * Desktop: a header bar with the product name, the signed-in person (links to the profile) and Log out; content is
  * `narrow` (forms, single CTA) or `wide` (two-column layouts).
  */
 export function Page({ children, back, wide = false }: { children: ReactNode; back?: string; wide?: boolean }) {
   const { me, logout } = useSession();
   const nav = useNavigate();
   const who = (
-    <div className="md:text-right">
+    <Link to="/profile" className="block md:text-right" title="Your profile">
       <p className="font-semibold">{me?.name}</p>
       <p className="text-xs text-muted">{me?.roles.map((r) => ROLE_LABEL[r]).join(' · ')}</p>
-    </div>
+    </Link>
   );
   return (
     <div className="flex min-h-screen flex-col">
@@ -51,7 +51,7 @@ export function Page({ children, back, wide = false }: { children: ReactNode; ba
           <div className="flex items-center gap-5">
             <div className="hidden md:block">{who}</div>
             <button className="link" onClick={() => (logout(), nav('/login'))}>
-              Switch profile
+              Log out
             </button>
           </div>
         </div>

@@ -10,11 +10,20 @@ About 8 minutes. Shows the original workflow (submit → route by role → sign 
 4. Phones: the gate needs **https** for the live camera and offline mode. Use the deployed site, or on a LAN run `npm run dev:https -w apps/web` (accept the certificate warning) next to `npm run dev`. Set `PUBLIC_BASE_URL` to the address phones use **before** sealing, because it is printed into each QR.
 5. Open the gate once on the guard's phone **online** (Mr. Pawar, PIN 1234) so it installs, caches the issuer key and syncs the list.
 
-Every profile's PIN is **1234**. Two browser windows (or a laptop + a phone) make switching profiles quick.
+Demo accounts (all password **demo1234**, signing PIN **1234**): `riya@campus.example` (student), `mehta@`, `kulkarni@` (HoD), `rao@` (Dean), `security@`, `registrar@` (admin), all `@campus.example`. Two browser windows (or a laptop + a phone) make switching quick.
+
+## 0. Live sign-up with the audience (2 min)
+
+1. Hand a phone to a volunteer: **I'm staff / administrator → Sign up** → name, email, password, a 4-digit PIN, department, designation (e.g. **Faculty**; "More details" is optional) → they land on their inbox.
+2. On the laptop: **I'm a student → Sign up** → you land on the student workspace.
+3. **Add a teacher** → type the volunteer's name → **+ Add**. On their phone: **Accept** under "Students who want to add you". Their block appears on your dashboard.
+4. **Drag a PDF** onto "My documents" → on their block, **Send document** → "Letter of recommendation" → **Send**.
+5. On their phone: **Review next** → the card shows the file and your note → **Approve** + their PIN. Your request turns **Sealed**; Download the PDF and verify it on /verify.
+6. Variations: send to **another student** (Students tab) who signs from "waiting for your signature"; a volunteer who signs up as **HoD** immediately receives the next bonafide/event request in their department.
 
 ## A. The original workflow (1 min)
 
-1. **Riya** → Robotics fest → the chain shows Faculty coordinator → HoD ‖ Security (in parallel) → Dean SA, all green, "Approved and sealed". *"Routed by role, signed with a PIN, sealed on chain."*
+1. **Riya** (`riya@campus.example`) → Robotics fest → the chain shows Faculty coordinator → HoD ‖ Security (in parallel) → Dean SA, all green, "Approved and sealed". *"Routed by role, signed with a PIN, sealed on chain."*
 2. **Download PDF** → open **/verify** → **Upload PDF** → **Verified**, with each role and time. *"Only the SHA-256 is on chain; no personal data."*
 3. Optional, live: Riya → New request → Bonafide → Prof. Kulkarni approves → Dr. Rao approves → Sealed in seconds.
 

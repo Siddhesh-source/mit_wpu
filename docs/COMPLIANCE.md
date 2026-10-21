@@ -1,6 +1,6 @@
 # Requirements check
 
-Audit of the build against `prompts.md`, the product context (`docs/CONTEXT.md`, the deck and overview) and the "Plan Changed" requirements. Evidence = where it is implemented and the test that proves it. Last full run: **93 API tests + 8 contract tests, all green**; web build clean; type checks clean in every workspace; offline gate verified in a headless browser against the production build.
+Audit of the build against `prompts.md`, the product context (`docs/CONTEXT.md`, the deck and overview) and the "Plan Changed" requirements. Evidence = where it is implemented and the test that proves it. Last full run: **102 API tests + 8 contract tests, all green**; web build clean; type checks clean in every workspace; offline gate verified in a headless browser against the production build.
 
 ## "The Plan Changed" requirements
 
@@ -86,11 +86,17 @@ Audit of the build against `prompts.md`, the product context (`docs/CONTEXT.md`,
 | Reopen a rejected request | Done | `reopenRequest`, `POST /api/requests/:id/reopen`, reopen sheet | `feedback.test.ts` (2) |
 | Discussion between student and approvers | Done | `comments` table, `Discussion` component, emails | `feedback.test.ts` |
 
+| Open sign-up / log in (student, staff / administrator), profile | Done | `accounts.ts`, `pages/Login.tsx`, `pages/Profile.tsx` | `accounts.test.ts` (4) |
+| Live routing to new and connected staff | Done | `resolveRole` | `accounts.test.ts` (2) |
+| Teachers: search, connect, accept; blocks on the dashboard | Done | connections API, `StudentHome`, inbox panel | `accounts.test.ts` |
+| Documents sidebar with drag and drop (reusable library) | Done | `DocumentLibrary`, `/api/documents` | `accounts.test.ts`, `operations.test.ts` |
+| Send to anyone (staff or student) to sign | Done | `document_signature` type, `pages/SendDocument.tsx` | `accounts.test.ts` (2) |
+
 Not done here because they need the account owner: deploying to AWS and funding an Amoy wallet (`docs/DEPLOY_AWS.md`), verifying an SES sender and attaching the IAM role (`docs/EMAIL_SES.md`).
 
 ## Open items (outside v1 scope, by design)
 
-- Real sign-in (college SSO/OTP), personal PINs, and staff import by CSV.
+- College SSO / OTP sign-in, email verification, admin approval of senior designations, password reset, and staff import by CSV.
 - The AI helpers and the no-code form builder from the deck; WhatsApp notifications.
 - Data-protection pages (consent notice, retention, grievance contact).
 - A batched Merkle-root anchoring mode for very high volume.

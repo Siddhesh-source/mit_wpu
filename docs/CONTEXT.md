@@ -24,6 +24,8 @@ submit → route by role → sign → seal → verify
 | u_rao | Dr. Rao | dean_sa |
 | u_pawar | Mr. Pawar | security |
 | u_admin | Admin, Registrar office | admin |
+
+All demo accounts log in with their email (`riya@campus.example`, `kulkarni@campus.example`, `security@campus.example`, `registrar@campus.example`, …) and password `demo1234`; signing PIN 1234.
 | u_joshi | Prof. Joshi, Associate Professor | faculty (a delegate) |
 | u_iyer / u_shaikh / u_patil / u_desai | Ms. Iyer / Mr. Shaikh / Mr. Patil / Mrs. Desai | librarian / lab_incharge / warden / accounts |
 
@@ -39,6 +41,14 @@ Every demo profile has a placeholder email (`…@campus.example`).
 | No-dues clearance | (Librarian ‖ Lab in-charge ‖ Hostel warden ‖ Accounts) → HoD |
 
 Event permission fields: title, date, venue, headcount, purpose. Demo request: Robotics fest, Hall B, 5 Nov, 120 students.
+
+## Accounts and the student workspace (Prompt 11)
+
+- **Open sign-up / log in**, one page with two choices: **Student** (name, email, password, signing PIN, department; optional roll number, year) or **Staff / administrator** (same plus designation: Faculty, Faculty coordinator, HoD, Dean SA, Security, Librarian, Lab in-charge, Hostel warden, Accounts office, Registrar / Admin; optional title, employee ID, phone, bio). Log in with email + password. The designation is the role and decides the home (approvers → inbox, Security → gate, Registrar → admin, students → workspace). Profile page edits the optional details.
+- **Routing with live accounts:** a role resolves to the holder the student is **connected** with; otherwise the **most recently joined** holder in the student's department. Demo accounts are dated a day earlier, so live sign-ups take over in front of an audience.
+- **Student workspace:** documents sidebar (drag and drop, reusable library), **My teachers** as blocks with "Send document", **Add a teacher** search (connection request → staff Accept / Decline in their inbox), "Waiting for your signature", New request, My requests.
+- **Send a document to anyone:** staff or another student, picked from everyone (All · Staff · Students, search); no connection needed. It is a **Document for signature** request: one step held by the recipient (role "Recipient"), signed with their PIN, sealed, anchored and verifiable like everything else.
+- Demo accounts keep working with email + password `demo1234` (e.g. `riya@campus.example`); the id + PIN shortcut is for tests and is off in production.
 
 ## Return, reject, reopen, discuss
 

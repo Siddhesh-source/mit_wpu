@@ -18,18 +18,15 @@ beforeEach(() => {
 
 const login = (userId: string, pin = DEMO_PIN) => request(app).post('/api/auth/login').send({ userId, pin });
 
-describe('profiles', () => {
-  it('lists every seeded profile with a role and initials', async () => {
-    const res = await request(app).get('/api/profiles');
-    expect(res.status).toBe(200);
-    expect(res.body).toHaveLength(PEOPLE.length);
-    expect(res.body[0]).toEqual({ id: 'u_riya', name: 'Riya', title: 'CSE, 2nd year', role: 'student', initials: 'R' });
-    expect(res.body.find((p: any) => p.id === 'u_kulkarni').initials).toBe('K');
-  });
-
-  it('never leaks PIN hashes', async () => {
-    const res = await request(app).get('/api/profiles');
-    expect(JSON.stringify(res.body)).not.toMatch(/pin|\$2[aby]\$/i);
+describe('directory', () => {
+  it('lists departments publicly and people only to signed-in users, without contact details or secrets', async () => {
+    expect((await request(app).get('/api/departments')).body.map((d: any) => d.id)).toContain('cse');
+    expect((await request(app).get('/api/people')).status).toBe(401);
+    const token = (await login('u_riya')).body.token;
+    const people = (await request(app).get('/api/people').set('Authorization', `Bearer ${token}`)).body;
+    expect(people.length).toBe(PEOPLE.length - 1); // everyone but me
+    expect(people.find((p: any) => p.id === 'u_kulkarni')).toMatchObject({ name: 'Prof. Kulkarni', kind: 'staff', role: 'hod', roleLabel: 'HoD', initials: 'K' });
+    expect(JSON.stringify(people)).not.toMatch(/pin|password|\$2[aby]\$|@campus/i);
   });
 });
 

@@ -24,8 +24,10 @@ Mobile-first and responsive. `Page` takes `wide`: phone = one `max-w-md` column;
 
 | Screen | Route | Central CTA | File |
 | --- | --- | --- | --- |
-| Login | /login | Profile card → PIN pad | `pages/Login.tsx` |
-| Student home | /student | New request (+ my requests list with "With: role (since)") | `pages/StudentHome.tsx` |
+| Sign up / log in | /login | Two big choices (Student · Staff / administrator) → Sign up / Log in tabs; optional staff details folded under "More details" | `pages/Login.tsx` |
+| Profile | /profile (click your name) | Save profile | `pages/Profile.tsx` |
+| Send a document | /student/send | Recipient (blocks; All · Staff · Students; search; your teachers first) · documents (library + drop zone) · what is it (suggestion chips) → **Send to <name>** | `pages/SendDocument.tsx` |
+| Student workspace | /student | **New request** + **Send a document**; sidebar My documents (drag and drop, select, "Send n to…"); My teachers as blocks with **Send document**; Add a teacher (search as you type, results as blocks with + Add); "n waiting for your signature"; My requests. On phones: actions, teachers, documents, search, requests | `pages/StudentHome.tsx` |
 | New request | /student/new | Type tile → form → Submit for approval | `pages/NewRequest.tsx` |
 | Request page | /requests/:id | Returned: Edit and resubmit · Approved: Download PDF (enabled in prompt 4) | `pages/RequestPage.tsx` |
 | Amend | /requests/:id/amend | Prefilled form, changed fields tagged, reason, live "Goes back to: … · Kept: …" preview → Send amendment | `pages/AmendPage.tsx` |
@@ -88,3 +90,10 @@ Camera note: browsers allow live camera only on https or localhost. On plain htt
 - Rejected: red box with the reason. For the rejecting approver, HoD or Dean: **Reopen for changes** (outlined) → sheet with the reason and PIN. The student sees "Disagree? Ask in the discussion below".
 - **Discussion** (`components/Discussion.tsx`) under the request details on every request page: chat-style bubbles (own messages right, in the accent), author and role, time, a one-line box with **Send**. Refreshes every 6 s. The approver card links to it ("Discussion (n)" / "Ask the student").
 - Timeline: approvals kept across a return read "Approved before the changes · still valid".
+
+## Accounts and workspace components
+
+- `components/PersonBlock.tsx`: avatar (accent for staff, green for students), name, designation · title, department, action slot. Used for teachers, search results, recipients and connection requests.
+- `components/DocumentLibrary.tsx`: drop zone (drag over highlights), click to pick, list with select checkbox, size, "sent n×", remove.
+- Header: your name links to the profile; "Log out" replaces "Switch profile".
+- Inbox (staff): "Students who want to add you" blocks with Accept / Decline under the central CTA. Students reach the inbox from "waiting for your signature".

@@ -5,7 +5,10 @@ import { api, ApiError, auth } from './api';
 interface Session {
   me: Me | null;
   loading: boolean;
-  login: (userId: string, pin: string) => Promise<Me>;
+  /** Email + password. */
+  login: (email: string, password: string) => Promise<Me>;
+  signup: (body: Record<string, string>) => Promise<Me>;
+  refresh: () => Promise<void>;
   logout: () => void;
 }
 
@@ -47,13 +50,26 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       .finally(() => setLoading(false));
   }, []);
 
-  const login = useCallback(async (userId: string, pin: string) => {
-    const { token } = await api<{ token: string }>('/api/auth/login', { method: 'POST', json: { userId, pin } });
+  const start = useCallback(async (token: string) => {
     auth.set(token);
     const m = await api<Me>('/api/me');
     setMe(m);
     keepMe(m);
     return m;
+  }, []);
+
+  const login = useCallback(
+    async (email: string, password: string) => start((await api<{ token: string }>('/api/auth/login', { method: 'POST', json: { email, password } })).token),
+    [start],
+  );
+  const signup = useCallback(
+    async (body: Record<string, string>) => start((await api<{ token: string }>('/api/auth/signup', { method: 'POST', json: body })).token),
+    [start],
+  );
+  const refresh = useCallback(async () => {
+    const m = await api<Me>('/api/me');
+    setMe(m);
+    keepMe(m);
   }, []);
 
   const logout = useCallback(() => {
@@ -62,5 +78,5 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     setMe(null);
   }, []);
 
-  return <Ctx.Provider value={{ me, loading, login, logout }}>{children}</Ctx.Provider>;
+  return <Ctx.Provider value={{ me, loading, login, signup, refresh, logout }}>{children}</Ctx.Provider>;
 }

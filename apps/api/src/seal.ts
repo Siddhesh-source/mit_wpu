@@ -23,6 +23,8 @@ export interface Services {
   maxUploadMb?: number;
   /** Demo: every SLA counts as this many minutes. */
   slaMinutes?: number | null;
+  /** Allow the old demo-profile id + PIN log in (dev/tests). */
+  allowPinLogin?: boolean;
   /** Public verify calls per IP per minute (default 60). */
   verifyRateLimit?: number;
   /** PIN attempts (login, sign, revoke) per IP per minute (default 20): a 4-digit PIN must not be brute-forced. */

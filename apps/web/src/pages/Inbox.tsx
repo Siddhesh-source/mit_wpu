@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ROLE_LABEL, type Delegation, type InboxItem } from '@plc/shared';
+import { ROLE_LABEL, type Connection, type Delegation, type InboxItem } from '@plc/shared';
+import { PersonBlock } from '../components/PersonBlock';
 import { Page, PinPad, Sheet, Tick, toast } from '../components/ui';
 import { FieldList } from '../components/FormFields';
 import { Timeline } from '../components/Timeline';
@@ -99,6 +100,32 @@ export default function Inbox() {
   const [busy, setBusy] = useState(false);
   const [resetPin, setResetPin] = useState(0);
 
+  const isStudent = !!me?.roles.includes('student');
+  const { data: conns, reload: reloadConns } = useLive<Connection[]>(isStudent ? null : '/api/connections', 8000);
+  const requests = conns?.filter((c) => c.status === 'pending') ?? [];
+  async function answer(c: Connection, how: 'accept' | 'decline') {
+    await api(`/api/connections/${c.id}/${how}`, { method: 'POST' }).catch((e) => toast(e.message));
+    toast(how === 'accept' ? `${c.person.name} can now send you documents from their dashboard` : 'Declined');
+    reloadConns();
+  }
+  const connectionPanel = requests.length > 0 && (
+    <section className="mt-8 w-full text-left">
+      <h2 className="mb-3 text-sm font-semibold text-muted">Students who want to add you ({requests.length})</h2>
+      <div className="grid gap-3 sm:grid-cols-2">
+        {requests.map((c) => (
+          <PersonBlock key={c.id} p={c.person}>
+            <button className="flex-1 rounded-xl bg-ok px-4 py-2 text-sm font-semibold text-white" onClick={() => answer(c, 'accept')}>
+              Accept
+            </button>
+            <button className="rounded-xl border border-rule px-4 py-2 text-sm font-semibold" onClick={() => answer(c, 'decline')}>
+              Decline
+            </button>
+          </PersonBlock>
+        ))}
+      </div>
+    </section>
+  );
+
   const item = items?.[0];
   const count = items?.length ?? 0;
   const mine = item?.timeline.find((s) => s.approvalId === item.approvalId);
@@ -150,9 +177,16 @@ export default function Inbox() {
           Approve several
         </button>
       )}
-      <button className="link text-base" onClick={() => setDelegating(true)}>
-        Away? Set a delegate
-      </button>
+      {!isStudent && (
+        <button className="link text-base" onClick={() => setDelegating(true)}>
+          Away? Set a delegate
+        </button>
+      )}
+      {isStudent && (
+        <Link to="/student" className="link text-base">
+          Back to my dashboard
+        </Link>
+      )}
       {me?.roles.includes('security') && (
         <Link to="/gate" className="link text-base">
           Back to gate
@@ -233,6 +267,7 @@ export default function Inbox() {
           )}
           {error && <p className="text-sm text-bad">{error}</p>}
           {tools}
+          {connectionPanel}
         </section>
         <DelegateSheet open={delegating} onClose={() => setDelegating(false)} onChanged={reload} />
       </Page>
@@ -251,7 +286,10 @@ export default function Inbox() {
       <div className="lg:grid lg:grid-cols-[1fr_1fr] lg:items-start lg:gap-12">
         <article className="rounded-3xl border-2 border-ink p-5 md:p-7">
           <div className="flex items-center justify-between gap-2">
-            <p className="font-mono text-xs uppercase tracking-wide text-accent">{item.typeName}</p>
+            <p className="font-mono text-xs uppercase tracking-wide text-accent">
+              {item.typeName}
+              {item.type === 'document_signature' && ` · from ${item.student.name}`}
+            </p>
             {mine?.escalated ? (
               <span className="rounded-full bg-bad-bg px-2 py-0.5 text-[11px] font-semibold text-bad">Escalated</span>
             ) : (
@@ -281,7 +319,7 @@ export default function Inbox() {
             </div>
           )}
           <p className="mb-4 text-xs text-faint">
-            You sign as {ROLE_LABEL[item.myRole]} ·{' '}
+            {item.myRole === 'recipient' ? 'Sent to you to sign' : `You sign as ${ROLE_LABEL[item.myRole]}`} ·{' '}
             <Link to={`/requests/${item.id}`} className="link text-xs">
               See full chain{item.commentCount ? ` · Discussion (${item.commentCount})` : ' · Ask the student'}
             </Link>

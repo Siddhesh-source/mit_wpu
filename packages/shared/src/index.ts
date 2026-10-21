@@ -6,6 +6,7 @@ export * from './gate';
 export const ROLES = [
   'student', 'faculty_coordinator', 'hod', 'dean_sa', 'security', 'admin',
   'faculty', 'librarian', 'lab_incharge', 'warden', 'accounts',
+  'recipient',
 ] as const;
 export type Role = (typeof ROLES)[number];
 
@@ -21,7 +22,48 @@ export const ROLE_LABEL: Record<Role, string> = {
   lab_incharge: 'Lab in-charge',
   warden: 'Hostel warden',
   accounts: 'Accounts office',
+  recipient: 'Recipient',
 };
+
+/** Designations a staff member can pick at sign-up (each maps to one role). */
+export const DESIGNATIONS: Role[] = ['faculty', 'faculty_coordinator', 'hod', 'dean_sa', 'security', 'librarian', 'lab_incharge', 'warden', 'accounts', 'admin'];
+export const DESIGNATION_LABEL: Partial<Record<Role, string>> = { admin: 'Registrar / Admin' };
+
+export interface Department {
+  id: string;
+  name: string;
+}
+
+/** A person as others see them (directory, search, teacher blocks). No email or phone. */
+export interface Person {
+  id: string;
+  name: string;
+  kind: 'student' | 'staff';
+  role: Role;
+  roleLabel: string;
+  title: string;
+  department: string;
+  initials: string;
+}
+
+export interface Connection {
+  id: number;
+  status: 'pending' | 'accepted' | 'declined';
+  createdAt: string;
+  /** The other side: the staff member for a student, the student for staff. */
+  person: Person;
+}
+
+export interface LibraryDocument {
+  id: string;
+  name: string;
+  mime: string;
+  size: number;
+  sha256: string;
+  createdAt: string;
+  /** How many requests use it. */
+  usedIn: number;
+}
 
 /** Everyone who can be asked to approve something (and so has an inbox). */
 export const APPROVER_ROLES: Role[] = ['faculty_coordinator', 'hod', 'dean_sa', 'security', 'faculty', 'librarian', 'lab_incharge', 'warden', 'accounts'];
@@ -38,6 +80,14 @@ export interface Profile {
 export interface Me extends Omit<Profile, 'role'> {
   roles: Role[];
   department: string;
+  departmentId: string;
+  kind: 'student' | 'staff';
+  email: string | null;
+  phone: string | null;
+  employeeId: string | null;
+  rollNo: string | null;
+  year: string | null;
+  bio: string | null;
 }
 
 /** Home route for a user, by their primary role. */

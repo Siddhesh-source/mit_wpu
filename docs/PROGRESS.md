@@ -12,6 +12,7 @@
 | 8 | Twist: revocation | Done | 2026-10-21 |
 | 9 | Twist: offline gate check | Done | 2026-10-21 |
 | 10 | Demo hardening and release | Done | 2026-10-21 |
+| 11 | Open sign-up, student workspace, collaborators, send to anyone | Done | 2026-10-21 |
 
 ## Notes
 
@@ -28,3 +29,4 @@
 - Wrap-up: PIN rate limit, AWS free-tier deployment (`deploy/` + `docs/DEPLOY_AWS.md`), requirements audit (`docs/COMPLIANCE.md`). Final: 73 API tests + 8 contract tests green, all workspaces type-check, production build verified (single port, demo seed, queued anchoring, offline gate).
 - High-priority additions: attachments, no-dues (parallel), SLA reminders + escalation, delegation, batch approve, college ID on chain, impact dashboard, audit log viewer, email outbox with AWS SES ready (`docs/EMAIL_SES.md`). 88 API tests + 8 contract tests.
 - Return / reopen / discuss: selective resubmission, reopen of rejected requests, discussion thread with emails. 93 API tests + 8 contract tests.
+- Prompt 11: open sign-up / log in (student, staff / administrator), profile, live routing, teachers (search, connect, accept), document library with drag and drop, send to anyone (staff or student). 102 API tests + 8 contract tests. Live flow (sign up both sides → connect → accept → drop file → send → sign → sealed) verified headlessly on the production build.

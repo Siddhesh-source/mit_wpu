@@ -4,6 +4,15 @@ import type { DB } from './db.js';
 import { CATALOG } from './catalog.js';
 
 export const DEMO_PIN = '1234';
+export const DEMO_PASSWORD = 'demo1234';
+export const DEPARTMENTS = [
+  ['cse', 'Computer Science and Engineering'],
+  ['it', 'Information Technology'],
+  ['entc', 'Electronics and Telecommunication'],
+  ['mech', 'Mechanical Engineering'],
+  ['civil', 'Civil Engineering'],
+  ['mgmt', 'Management Studies'],
+] as const;
 
 export const PEOPLE: { id: string; name: string; title: string; role: Role; email: string }[] = [
   { id: 'u_riya', name: 'Riya', title: 'CSE, 2nd year', role: 'student', email: 'riya@campus.example' },
@@ -22,15 +31,19 @@ export const PEOPLE: { id: string; name: string; title: string; role: Role; emai
 /** Reset everything to the demo set: people, roles, catalogue, no requests. Keeps the issuer key. */
 export function seed(db: DB) {
   const pinHash = bcrypt.hashSync(DEMO_PIN, 8);
+  const passwordHash = bcrypt.hashSync(DEMO_PASSWORD, 8);
+  const t = new Date(Date.now() - 86400_000).toISOString(); // demo people joined "yesterday": live sign-ups are newer
   db.transaction(() => {
-    db.exec(`DELETE FROM comments; DELETE FROM outbox; DELETE FROM delegations; DELETE FROM attachments; DELETE FROM revocations; DELETE FROM seals; DELETE FROM audit_log; DELETE FROM approvals; DELETE FROM request_versions; DELETE FROM requests;
+    db.exec(`DELETE FROM connections; DELETE FROM comments; DELETE FROM outbox; DELETE FROM delegations; DELETE FROM attachments; DELETE FROM revocations; DELETE FROM seals; DELETE FROM audit_log; DELETE FROM approvals; DELETE FROM request_versions; DELETE FROM requests;
              DELETE FROM route_steps; DELETE FROM request_types;
              DELETE FROM user_roles; DELETE FROM users; DELETE FROM departments;`);
-    db.prepare('INSERT INTO departments (id, name) VALUES (?, ?)').run('cse', 'Computer Science and Engineering');
-    const user = db.prepare('INSERT INTO users (id, name, title, department_id, pin_hash, email) VALUES (?, ?, ?, ?, ?, ?)');
+    for (const [id, name] of DEPARTMENTS) db.prepare('INSERT INTO departments (id, name) VALUES (?, ?)').run(id, name);
+    const user = db.prepare(
+      'INSERT INTO users (id, name, title, department_id, pin_hash, email, password_hash, kind, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    );
     const role = db.prepare('INSERT INTO user_roles (user_id, role, department_id) VALUES (?, ?, ?)');
     for (const p of PEOPLE) {
-      user.run(p.id, p.name, p.title, 'cse', pinHash, p.email);
+      user.run(p.id, p.name, p.title, 'cse', pinHash, p.email, passwordHash, p.role === 'student' ? 'student' : 'staff', t);
       role.run(p.id, p.role, 'cse');
     }
     const type = db.prepare('INSERT INTO request_types (code, name, fields_json) VALUES (?, ?, ?)');
@@ -46,5 +59,5 @@ if (process.argv[1]?.endsWith('seed.ts')) {
   const { config } = await import('./config.js');
   const { openDb } = await import('./db.js');
   seed(openDb(config.dbPath));
-  console.log(`Seeded ${PEOPLE.length} profiles into ${config.dbPath} (PIN ${DEMO_PIN})`);
+  console.log(`Seeded ${PEOPLE.length} demo accounts into ${config.dbPath} (password ${DEMO_PASSWORD}, PIN ${DEMO_PIN})`);
 }

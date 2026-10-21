@@ -62,3 +62,9 @@
 60. **Resubmission after a return is selective** (same `affectedBy` rule as amendments): the returner, anyone not yet approved, and affected earlier approvers review again; others are carried from their pre-return signature. Previously the whole chain restarted.
 61. **Reject stays final unless reopened** by the rejecting approver, the HoD or the Dean SA; reopening turns it into a return (no new request, full history kept).
 62. **Discussion is separate from decisions**: messages never approve, return or reject anything; they are audited ("commented") and emailed to the people who can act.
+63. **Open sign-up with email + password; the signing PIN is chosen at sign-up.** Designation = role. Demo accounts keep working with `demo1234`; the id + PIN log in is test-only (`ALLOW_PIN_LOGIN`, off in production).
+64. **Anyone may sign up as any designation, including Registrar / Admin**, because the live demo needs it. For a real deployment, senior designations should require approval by an existing admin (open item).
+65. **Routing prefers the connected holder, then the newest holder** of the role in the student's department, so people who sign up live receive requests immediately without any setup.
+66. **Documents are a reusable library**; attaching copies a reference (same stored file and hash) to the request. Deleting a library item never breaks a sent request.
+67. **"Document for signature" is a normal request type with a `recipient` step**, so direct sends get the same signing, sealing, verification, discussion, deadlines and audit as every other request. Sending does not require a connection; connections only put teachers on the dashboard and steer routing.
+68. **The people directory exposes name, designation, title and department only** (no email or phone).

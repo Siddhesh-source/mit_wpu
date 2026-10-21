@@ -29,7 +29,7 @@ export function workflowRoutes(db: DB, svc: Services) {
   r.get('/issuer-public-key', wrap(async (_req, res) => res.json({ publicKey: (await issuerKey(db)).publicKey })));
 
   r.post('/requests', requireAuth, requireRole('student'), wrap((req, res) => {
-    const id = submitRequest(db, req.user!.sub, req.body?.type, req.body?.form, req.body?.attachments);
+    const id = submitRequest(db, req.user!.sub, req.body?.type, req.body?.form, req.body?.attachments, req.body?.recipientId);
     res.status(201).json(detail(id));
   }));
 
@@ -100,7 +100,7 @@ export function workflowRoutes(db: DB, svc: Services) {
   }));
 
   // Approver tools: batch approve, delegation
-  r.post('/approvals/batch', requireAuth, requireRole(...APPROVER_ROLES), wrap(async (req, res) => {
+  r.post('/approvals/batch', requireAuth, wrap(async (req, res) => {
     const results = await batchApprove(db, req.user!.sub, req.body?.ids, req.body?.pin);
     for (const done of results.filter((x) => x.completed)) await sealRequest(db, svc, done.completed!);
     res.json(results);
@@ -117,7 +117,26 @@ export function workflowRoutes(db: DB, svc: Services) {
   r.get('/admin/requests', requireAuth, requireRole('admin'), (_req, res) => res.json(listAll(db)));
   r.post('/admin/reset-demo', requireAuth, requireRole('admin'), wrap(async (_req, res) => res.json({ id: await resetDemo(db, svc) })));
 
-  r.get('/inbox', requireAuth, requireRole(...APPROVER_ROLES), (req, res) => res.json(inbox(db, req.user!.sub)));
+  // Anyone can hold an approval (a student can be sent a document to sign), so the inbox is open to every user.
+  r.get('/inbox', requireAuth, (req, res) => res.json(inbox(db, req.user!.sub)));
+
+  // Document library: everything the student uploaded (not the per-request copies).
+  r.get('/documents', requireAuth, (req, res) =>
+    res.json(
+      db
+        .prepare(
+          `SELECT a.id, a.name, a.mime, a.size, a.sha256, a.created_at AS createdAt,
+                  (SELECT COUNT(DISTINCT c.request_id) FROM attachments c WHERE c.owner_id = a.owner_id AND c.sha256 = a.sha256 AND c.request_id IS NOT NULL) AS usedIn
+             FROM attachments a WHERE a.owner_id = ? AND a.request_id IS NULL ORDER BY a.created_at DESC`,
+        )
+        .all(req.user!.sub),
+    ),
+  );
+  r.delete('/documents/:id', requireAuth, wrap((req, res) => {
+    const n = db.prepare('DELETE FROM attachments WHERE id = ? AND owner_id = ? AND request_id IS NULL').run(req.params.id, req.user!.sub).changes;
+    if (!n) throw new HttpError(404, 'Not found');
+    res.json({ ok: true }); // the stored file stays: requests that used it still reference it
+  }));
 
   r.post('/approvals/:id/decide', requireAuth, wrap(async (req, res) => {
     const done = await decide(db, req.user!.sub, Number(req.params.id), req.body?.decision, req.body?.comment, req.body?.pin);

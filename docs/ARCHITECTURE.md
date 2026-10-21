@@ -24,7 +24,7 @@ Production: the API serves `apps/web/dist` (hashed assets cached for a year, `in
 
 ## Auth
 
-`GET /api/profiles` (public, no PIN data) → `POST /api/auth/login {userId, pin}` → JWT `{sub, roles}` → `Authorization: Bearer`. Middleware: `requireAuth`, `requireRole(...roles)` in `apps/api/src/auth.ts`. Home route by role: `homeFor()` in `packages/shared`.
+`POST /api/auth/signup` or `POST /api/auth/login {email, password}` → JWT `{sub, roles}` → `Authorization: Bearer` (code: `apps/api/src/accounts.ts`). `{userId, pin}` log in remains for tests (`ALLOW_PIN_LOGIN`, off in production). Middleware: `requireAuth`, `requireRole(...roles)` in `apps/api/src/auth.ts`. Home route by role: `homeFor()` in `packages/shared`.
 
 ## Tables
 
@@ -39,6 +39,9 @@ Production: the API serves `apps/web/dist` (hashed assets cached for a year, `in
 | `approvals (request_id, version, round, step_no, role, assignee_id, decision, comment, opened_at, signed_at, signature, carried_from)` | One row per role per round |
 | `audit_log (request_id, actor_id, action, version, details_json, at)` | Every state change |
 | `comments (request_id, author_id, version, body, created_at)` | Discussion thread per request |
+| `users (+ password_hash, kind, phone, employee_id, roll_no, year, bio, created_at)`, unique `lower(email)` | Open sign-up accounts |
+| `connections (student_id, staff_id, status pending/accepted/declined)` | "My teachers"; accepted connections steer routing |
+| `requests.recipient_id` | The person a "Document for signature" was sent to |
 | `attachments (id, owner_id, request_id, version, name, mime, size, sha256, path)` | Uploaded files; unlinked until claimed by submit / resubmit / amend |
 | `delegations (user_id, delegate_id, starts_on, ends_on)` | Away periods; `approvals.on_behalf_of` records who a delegate signs for |
 | `outbox (to_user, to_addr, subject, body_text, kind, request_id, status, attempts, last_error)` | Email notifications, written in the same transaction as the event |
@@ -63,7 +66,11 @@ Approve/Return/Reject require the approver's PIN. The server signs canonical JSO
 
 | Method | Path | Who |
 | --- | --- | --- |
-| GET | /api/profiles · POST /api/auth/login · GET /api/me | Public / any |
+| GET | /api/departments · POST /api/auth/signup · POST /api/auth/login `{email, password}` | Public (rate limited) |
+| GET / PUT | /api/me | Signed in |
+| GET | /api/people `?q=&kind=student|staff` (directory, no contact details) | Signed in |
+| GET / POST | /api/connections `{staffId}` · POST /api/connections/:id/accept · /decline · DELETE /api/connections/:id | Student requests, staff answer |
+| GET / DELETE | /api/documents · /api/documents/:id (library) | Owner |
 | GET | /api/request-types · /api/issuer-public-key | Public |
 | POST | /api/requests `{type, form}` | Student |
 | GET | /api/requests/mine | Student |

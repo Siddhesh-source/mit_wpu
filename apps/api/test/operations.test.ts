@@ -40,7 +40,10 @@ describe('attachments', () => {
 
     const card = (await ctx.as('u_mehta').get('/api/inbox')).body[0];
     expect(card.attachments).toHaveLength(1);
-    const dl = await ctx.as('u_mehta').get(`/api/attachments/${up.body.id}`).buffer(true).parse((r: any, cb: any) => {
+    expect(card.attachments[0]).toMatchObject({ name: 'Hall booking.pdf', sha256: sha256Hex(PDF) });
+    // approvers download the request's copy; the student's library item stays private
+    expect((await ctx.as('u_mehta').get(`/api/attachments/${up.body.id}`)).status).toBe(403);
+    const dl = await ctx.as('u_mehta').get(`/api/attachments/${card.attachments[0].id}`).buffer(true).parse((r: any, cb: any) => {
       const c: Buffer[] = [];
       r.on('data', (d: Buffer) => c.push(d));
       r.on('end', () => cb(null, Buffer.concat(c)));
@@ -56,7 +59,7 @@ describe('attachments', () => {
     expect((await ctx.as('u_riya').get(`/api/requests/${id}`)).body.status).toBe('sealed');
   });
 
-  it('rejects wrong types, fake content, other people, reuse and more than five', async () => {
+  it('rejects wrong types, fake content, other people, unknown ids and more than five; library files are reusable', async () => {
     const ctx = await setup();
     expect((await upload(ctx, 'u_riya', Buffer.from('hello'), 'text/plain', 'a.txt')).status).toBe(415);
     expect((await upload(ctx, 'u_riya', Buffer.from('not really a pdf'), 'application/pdf')).status).toBe(415);
@@ -65,8 +68,9 @@ describe('attachments', () => {
     expect(png.status).toBe(201);
     const first = (await ctx.as('u_riya').post('/api/requests', { type: 'bonafide', form: { title: 'Visa' }, attachments: [png.body.id] })).body.id;
     expect(first).toBeTruthy();
-    // the same file cannot be attached twice; unknown ids are refused
-    expect((await ctx.as('u_riya').post('/api/requests', { type: 'bonafide', form: { title: 'Visa 2' }, attachments: [png.body.id] })).status).toBe(400);
+    // library documents are reusable across requests; unknown ids are refused
+    expect((await ctx.as('u_riya').post('/api/requests', { type: 'bonafide', form: { title: 'Visa 2' }, attachments: [png.body.id] })).status).toBe(201);
+    expect((await ctx.as('u_riya').get('/api/documents')).body.find((d: any) => d.id === png.body.id).usedIn).toBe(2);
     expect((await ctx.as('u_riya').post('/api/requests', { type: 'bonafide', form: { title: 'Visa 3' }, attachments: ['nope'] })).status).toBe(400);
     const six = [];
     for (let i = 0; i < 6; i++) six.push((await upload(ctx, 'u_riya', PDF)).body.id);

@@ -6,7 +6,8 @@ Role-routed digital approvals for Indian universities: a student submits once, t
 
 ## What it does
 
-- **Profile login** (pick a profile, enter a PIN) with role-based homes: student, faculty coordinator, HoD, Dean Student Affairs, Security, Admin.
+- **Open sign-up and log in** as a student or as staff / administrator (designation decides the home), with a profile page.
+- **Student workspace**: documents with drag and drop, teachers as blocks (search, connect, accept), and **send a document to anyone** (staff or student) to sign.
 - **Submit → route by role → sign → seal → verify** for event permission (coordinator → HoD ‖ Security → Dean SA), on-duty and bonafide requests.
 - **Amend a sealed approval**: only the approvers affected by the change sign again (a date or venue change goes back to the coordinator and HoD; Security and the Dean are carried).
 - **Versioned sealing**: v2 is linked on chain to v1; v1 then verifies as "Superseded by v2". Full history of who approved which version.
@@ -22,14 +23,14 @@ npm install
 npm run dev            # local chain :8545 + API :4000 + web :5173
 ```
 
-Open http://localhost:5173, pick a profile, PIN **1234**.
+Open http://localhost:5173 and sign up, or use a demo account (e.g. `riya@campus.example`, password `demo1234`, signing PIN 1234).
 
 Production on one port: `npm run build && npm run start:local` (or `npm start` with `CHAIN_MODE=amoy`), then http://localhost:4000. Demo starting point: `npm run seed:demo`. Settings: copy `.env.example` to `.env`.
 
 ## Test
 
 ```bash
-npm test               # API (93 tests on a real local chain) + contract (8 tests)
+npm test               # API (102 tests on a real local chain) + contract (8 tests)
 ```
 
 ## Layout

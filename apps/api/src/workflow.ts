@@ -1,4 +1,5 @@
 import bcrypt from 'bcryptjs';
+import { randomUUID } from 'node:crypto';
 import { ROLE_LABEL, sha256Hex, canonicalJson, signJson } from '@plc/shared';
 import type { Decision, FieldDef, RequestComment, RequestDetail, RequestStatus, RequestSummary, Role, TimelineStep } from '@plc/shared';
 import type { DB } from './db.js';
@@ -11,6 +12,7 @@ type Form = Record<string, string | number>;
 interface RequestRow {
   id: string;
   student_id: string;
+  recipient_id?: string | null;
   department_id: string;
   type: string;
   status: RequestStatus;
@@ -107,17 +109,32 @@ export function activeDelegate(db: DB, userId: string, day = todayIST()): string
 }
 
 /** Role → person, then → their delegate if they are away today. */
-export function resolveAssignee(db: DB, role: Role, departmentId: string) {
-  const holder = resolveRole(db, role, departmentId);
+export function resolveAssignee(db: DB, role: Role, departmentId: string, studentId?: string) {
+  const holder = resolveRole(db, role, departmentId, studentId);
   const delegate = activeDelegate(db, holder);
   return delegate ? { assignee: delegate, onBehalfOf: holder } : { assignee: holder, onBehalfOf: null };
 }
 
-/** Resolve a role to the person holding it in a department (role, not name). */
-export function resolveRole(db: DB, role: Role, departmentId: string): string {
-  const id = db.prepare('SELECT user_id FROM user_roles WHERE role = ? AND department_id = ? ORDER BY rowid LIMIT 1').pluck().get(role, departmentId) as
-    | string
-    | undefined;
+/**
+ * Resolve a role to the person holding it in a department (role, not name). If the student has connected with a
+ * holder of that role, that person; otherwise the most recently joined holder (so new staff sign-ups take over).
+ */
+export function resolveRole(db: DB, role: Role, departmentId: string, studentId?: string): string {
+  const connected = studentId
+    ? (db
+        .prepare(
+          `SELECT r.user_id FROM user_roles r JOIN connections c ON c.staff_id = r.user_id AND c.student_id = ? AND c.status = 'accepted'
+            WHERE r.role = ? AND r.department_id = ? ORDER BY c.responded_at DESC LIMIT 1`,
+        )
+        .pluck()
+        .get(studentId, role, departmentId) as string | undefined)
+    : undefined;
+  const id =
+    connected ??
+    (db
+      .prepare('SELECT r.user_id FROM user_roles r JOIN users u ON u.id = r.user_id WHERE r.role = ? AND r.department_id = ? ORDER BY u.created_at DESC, r.rowid DESC LIMIT 1')
+      .pluck()
+      .get(role, departmentId) as string | undefined);
   if (!id) throw new HttpError(422, `No ${ROLE_LABEL[role]} is set up for this department`);
   return id;
 }
@@ -140,19 +157,25 @@ export const versionAttachments = (db: DB, requestId: string, version: number) =
 
 const MAX_ATTACHMENTS = 5;
 
-/** Link a student's uploaded files to a request version. */
+/**
+ * Attach documents from the student's library to a request version. The library keeps its copy (documents are
+ * reusable); the request gets its own row pointing at the same stored file and hash.
+ */
 function claimAttachments(db: DB, ownerId: string, ids: unknown, requestId: string, version: number) {
   if (ids === undefined || ids === null) return 0;
-  if (!Array.isArray(ids) || ids.some((i) => typeof i !== 'string')) throw new HttpError(400, 'Attachments must be a list of upload ids');
+  if (!Array.isArray(ids) || ids.some((i) => typeof i !== 'string')) throw new HttpError(400, 'Attachments must be a list of document ids');
+  const unique = [...new Set(ids as string[])];
   const already = db.prepare('SELECT COUNT(*) FROM attachments WHERE request_id = ?').pluck().get(requestId) as number;
-  if (already + ids.length > MAX_ATTACHMENTS) throw new HttpError(400, `At most ${MAX_ATTACHMENTS} attachments per request`);
-  for (const id of ids) {
+  if (already + unique.length > MAX_ATTACHMENTS) throw new HttpError(400, `At most ${MAX_ATTACHMENTS} attachments per request`);
+  const copy = db.prepare(
+    'INSERT INTO attachments (id, owner_id, request_id, version, name, mime, size, sha256, path, created_at) SELECT ?, owner_id, ?, ?, name, mime, size, sha256, path, ? FROM attachments WHERE id = ?',
+  );
+  for (const id of unique) {
     const a = db.prepare('SELECT owner_id, request_id FROM attachments WHERE id = ?').get(id) as { owner_id: string; request_id: string | null } | undefined;
-    if (!a || a.owner_id !== ownerId) throw new HttpError(400, 'Unknown attachment');
-    if (a.request_id) throw new HttpError(400, 'That file is already attached to a request');
-    db.prepare('UPDATE attachments SET request_id = ?, version = ? WHERE id = ?').run(requestId, version, id);
+    if (!a || a.owner_id !== ownerId || a.request_id) throw new HttpError(400, 'Unknown document');
+    copy.run(randomUUID(), requestId, version, now(), id);
   }
-  return ids.length;
+  return unique.length;
 }
 
 /**
@@ -168,7 +191,14 @@ function createRound(db: DB, req: RequestRow, steps: { stepNo: number; role: Rol
   const openNow: string[] = [];
   for (const s of steps) {
     const open = s.stepNo === first;
-    const { assignee, onBehalfOf } = resolveAssignee(db, s.role, req.department_id);
+    const { assignee, onBehalfOf } =
+      s.role === 'recipient'
+        ? (() => {
+            if (!req.recipient_id) throw new HttpError(400, 'Pick who to send it to');
+            const away = activeDelegate(db, req.recipient_id);
+            return away ? { assignee: away, onBehalfOf: req.recipient_id } : { assignee: req.recipient_id, onBehalfOf: null };
+          })()
+        : resolveAssignee(db, s.role, req.department_id, req.student_id);
     ins.run(req.id, req.current_version, req.round, s.stepNo, s.role, assignee, onBehalfOf, open ? 'pending' : 'waiting', open ? t : null);
     if (open) openNow.push(assignee);
   }
@@ -192,9 +222,15 @@ function askToApprove(db: DB, people: string[], requestId: string, version: numb
   );
 }
 
-export function submitRequest(db: DB, studentId: string, typeCode: string, input: unknown, attachmentIds?: unknown) {
+export function submitRequest(db: DB, studentId: string, typeCode: string, input: unknown, attachmentIds?: unknown, recipientId?: unknown) {
   const type = getType(db, typeCode);
   const form = cleanForm(type.fields, input);
+  const direct = type.steps.some((s) => s.role === 'recipient');
+  if (direct) {
+    if (typeof recipientId !== 'string' || recipientId === studentId || !db.prepare('SELECT 1 FROM users WHERE id = ?').get(recipientId))
+      throw new HttpError(400, 'Pick who to send it to');
+    if (!Array.isArray(attachmentIds) || !attachmentIds.length) throw new HttpError(400, 'Attach at least one document');
+  }
   const student = db.prepare('SELECT department_id FROM users WHERE id = ?').get(studentId) as { department_id: string };
   return db.transaction(() => {
     const t = now();
@@ -208,9 +244,10 @@ export function submitRequest(db: DB, studentId: string, typeCode: string, input
       round: 1,
       created_at: t,
       updated_at: t,
+      recipient_id: direct ? (recipientId as string) : null,
     };
     db.prepare(
-      'INSERT INTO requests (id, student_id, department_id, type, status, current_version, round, created_at, updated_at) VALUES (@id, @student_id, @department_id, @type, @status, @current_version, @round, @created_at, @updated_at)',
+      'INSERT INTO requests (id, student_id, department_id, type, status, current_version, round, created_at, updated_at, recipient_id) VALUES (@id, @student_id, @department_id, @type, @status, @current_version, @round, @created_at, @updated_at, @recipient_id)',
     ).run(req);
     const files = claimAttachments(db, studentId, attachmentIds, req.id, 1);
     db.prepare('INSERT INTO request_versions (request_id, version, form_json, form_hash, created_at) VALUES (?, 1, ?, ?, ?)').run(

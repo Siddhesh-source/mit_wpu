@@ -11,6 +11,7 @@ const BLURB: Record<string, string> = {
   on_duty: 'Miss class for a college activity',
   bonafide: 'Proof you study here',
   no_dues: 'Library, labs, hostel, accounts at once',
+  document_signature: 'Send files to anyone to sign',
 };
 
 export default function NewRequest() {
@@ -45,7 +46,7 @@ export default function NewRequest() {
         <h1 className="mb-4 text-2xl font-bold md:mb-8 md:text-3xl">What do you need?</h1>
         <div className="flex flex-col gap-3 md:grid md:grid-cols-2 md:gap-4 lg:grid-cols-4">
           {types.map((t) => (
-            <button key={t.code} onClick={() => (setType(t), setValues({}), setFiles([]))} className="rounded-2xl border border-rule bg-panel p-5 text-left hover:border-accent/40 active:bg-rule md:p-8">
+            <button key={t.code} onClick={() => (t.code === 'document_signature' ? nav('/student/send') : (setType(t), setValues({}), setFiles([])))} className="rounded-2xl border border-rule bg-panel p-5 text-left hover:border-accent/40 active:bg-rule md:p-8">
               <p className="text-lg font-semibold">{t.name}</p>
               <p className="text-sm text-muted">{BLURB[t.code] ?? ''}</p>
             </button>

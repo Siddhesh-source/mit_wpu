@@ -280,3 +280,48 @@ Read CLAUDE.md and all of docs/. Make the whole product demo-ready and prove the
 4. docs/DEMO.md: the exact click-by-click live script for steps a to g with which profile to use, what to say in one line per step, and the fallback if the network drops (local chain, offline gate). README.md: what it is, how to run, how to test, links into docs/.
 5. Final pass: remove dead code and unused dependencies, check no personal data is passed to the contract, check product copy never says "Verified" for a non-active record. Update docs/PROGRESS.md to all done. Commit "Demo-ready: full regression, demo script, docs" and push.
 ```
+
+---
+
+## Prompt 11 · Open sign-up, student workspace, collaborators, send to anyone
+
+```
+Read CLAUDE.md and docs/. The live demo starts from zero: people sign up on the spot, then use the product. Make identity
+dynamic and give students a workspace. Keep every existing flow (submit → route → sign → seal → verify, the twist, operations)
+working and tested.
+
+1. Sign up / log in (one page, two choices: "Student" or "Staff / Administrator")
+   - Student sign-up: name, email, password, 4-digit signing PIN, department. Optional: roll number, year.
+   - Staff sign-up: name, email, password, 4-digit signing PIN, department, designation (Faculty, Faculty coordinator,
+     HoD, Dean Student Affairs, Security, Librarian, Lab in-charge, Hostel warden, Accounts office, Registrar / Admin).
+     Optional: title (e.g. Associate Professor), employee ID, phone, short bio.
+   - Log in: email + password. Designation decides the home: approvers → inbox, Security → gate, Registrar → admin,
+     students → their workspace. Unique emails; bcrypt passwords; sign-up and log-in rate limited.
+   - Profile page to edit the optional details later. Demo accounts stay (email + password demo1234); the old
+     profile picker is removed from the page. Departments are a seeded list (public endpoint).
+   - Routing must work for brand-new accounts: a role resolves to the holder the student is connected with, else the
+     most recently joined holder in the student's department.
+
+2. Student workspace (dashboard)
+   - Sidebar "My documents": drag-and-drop zone (and click to pick) for PDF/PNG/JPG, list with select and delete.
+     Documents are a reusable library: attaching one to a request copies a reference, the library keeps it.
+   - "My teachers": a block per connected staff member (name, designation, department) with a clear "Send document"
+     CTA; pending connection requests show as "Waiting for <name>".
+   - "Add a teacher": search staff by name, designation or department; results as blocks with "Add" (sends a
+     connection request). Staff see connection requests in their inbox and Accept / Decline; the student is emailed.
+   - "Waiting for your signature": documents other students sent me, with a Review CTA.
+   - The existing "New request" (forms) and "My requests" stay.
+
+3. Send a document to anyone
+   - From a teacher block, from selected sidebar documents, or a "Send document" button: pick the recipient from
+     everyone (tabs All · Staff · Students, search), pick documents from the library (at least one), a title
+     (e.g. "Letter of recommendation") and an optional note. Sending does not require a connection.
+   - New request type "Document for signature": a single step held by the chosen recipient (role "Recipient"),
+     signed with their PIN, then sealed, anchored and verifiable like every other request. Students who receive
+     documents get an inbox entry and sign the same way.
+
+4. Tests in bulk: sign-up validation, duplicate email, login, profile edit, routing to new/connected holders,
+   connections (request, accept, decline, permissions, search), document library (upload, reuse, delete), direct send to
+   staff and to a student through seal and verify. Update docs (CONTEXT, ARCHITECTURE, DESIGN, DECISIONS, PROGRESS, DEMO,
+   COMPLIANCE). Commit and push.
+```
