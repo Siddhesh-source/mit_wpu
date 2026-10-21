@@ -55,6 +55,8 @@ Every profile's PIN is **1234**. Two browser windows (or a laptop + a phone) mak
 21. **Deadlines:** start with `SLA_MINUTES=1`; leave a request untouched for a minute → **Overdue**, two minutes → **Escalated** (or Admin → Run deadline check).
 22. **Admin:** Impact (approvals sealed, paper and CO2e saved, where approvals wait), Audit log (every action), Emails (every notification; "sent" once SES is on).
 
+23. **Return and discuss:** Prof. Kulkarni returns a request ("Which hall exactly?"). Riya replies in **Discussion**, edits and sees "Goes back to: HoD · Kept: Faculty coordinator, Security" before resubmitting. A rejected request can be **reopened** by the approver, HoD or Dean.
+
 ## If something goes wrong
 
 - **No network in the room:** run everything on the laptop with `npm run start:local`; the local chain needs no internet. Use "Scan from photo" if the camera is blocked.

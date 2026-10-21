@@ -128,7 +128,11 @@ export async function buildApprovalPdf(p: PdfInput): Promise<Uint8Array> {
     page.drawCircle({ x: L + 6, y: y + 4, size: 5, color: C.ok });
     text(s.roleLabel, L + 20, y, bold, 11);
     text(s.onBehalfOf ? `${s.name} (for ${s.onBehalfOf})` : s.name, L + 170, y, reg, 11);
-    const note = s.carried ? `approved v${s.version}, carried to v${p.version}` : `approved v${s.version}`;
+    const note = !s.carried
+      ? `approved v${s.version}`
+      : s.version === p.version
+        ? `approved v${s.version} before the student's changes (not affected)`
+        : `approved v${s.version}, carried to v${p.version}`;
     text(`${note}  -  ${ist(s.signedAt)} IST`, L + 20, y - 14, reg, 9.5, C.muted);
     text(`sig ${s.fingerprint}`, R - mono.widthOfTextAtSize(`sig ${s.fingerprint}`, 8.5), y, mono, 8.5, C.faint);
     y -= 36;

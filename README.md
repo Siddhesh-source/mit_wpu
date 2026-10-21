@@ -12,6 +12,7 @@ Role-routed digital approvals for Indian universities: a student submits once, t
 - **Versioned sealing**: v2 is linked on chain to v1; v1 then verifies as "Superseded by v2". Full history of who approved which version.
 - **Revocation** by the HoD or Dean: every copy then verifies as "Revoked".
 - **Offline gate check**: signed QR checked on the guard's phone, valid only on the event date, plus a signed revocation list synced at shift start.
+- **Return, reopen, discuss**: returned requests go back only to the people affected, rejected ones can be reopened, and every request has a discussion thread.
 - **Operations**: attachments (hashed into what approvers sign), no-dues clearance with parallel approvers, deadlines with reminders and escalation, delegation while away, batch approve, an impact dashboard (paper and CO2e saved, bottlenecks), an audit log and email notifications (AWS SES ready).
 
 ## Run it
@@ -28,7 +29,7 @@ Production on one port: `npm run build && npm run start:local` (or `npm start` w
 ## Test
 
 ```bash
-npm test               # API (88 tests on a real local chain) + contract (8 tests)
+npm test               # API (93 tests on a real local chain) + contract (8 tests)
 ```
 
 ## Layout

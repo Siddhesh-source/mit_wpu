@@ -38,6 +38,7 @@ Production: the API serves `apps/web/dist` (hashed assets cached for a year, `in
 | `request_versions (request_id, version, form_json, form_hash, reason)` | Form per version; `form_hash` = SHA-256 of canonical JSON |
 | `approvals (request_id, version, round, step_no, role, assignee_id, decision, comment, opened_at, signed_at, signature, carried_from)` | One row per role per round |
 | `audit_log (request_id, actor_id, action, version, details_json, at)` | Every state change |
+| `comments (request_id, author_id, version, body, created_at)` | Discussion thread per request |
 | `attachments (id, owner_id, request_id, version, name, mime, size, sha256, path)` | Uploaded files; unlinked until claimed by submit / resubmit / amend |
 | `delegations (user_id, delegate_id, starts_on, ends_on)` | Away periods; `approvals.on_behalf_of` records who a delegate signs for |
 | `outbox (to_user, to_addr, subject, body_text, kind, request_id, status, attempts, last_error)` | Email notifications, written in the same transaction as the event |
@@ -79,6 +80,8 @@ Approve/Return/Reject require the approver's PIN. The server signs canonical JSO
 | GET | /api/admin/stats · /api/admin/audit `?request=&limit=` · /api/admin/emails · POST /api/admin/run-sla | Admin |
 | POST | /api/attachments (raw body; `Content-Type` = file type, `X-Filename`) → `{id, name, sha256, …}` · GET /api/attachments/:id | Student uploads; owner / request viewers download |
 | POST | /api/approvals/batch `{ids, pin}` | Approvers |
+| POST | /api/requests/:id/reopen `{reason, pin}` | The rejecting approver, HoD or Dean SA (rejected requests only) |
+| GET / POST | /api/requests/:id/comments `{body}` | Anyone who can view the request |
 | GET / POST / DELETE | /api/delegations · /api/delegations/:id | Approvers |
 | POST | /api/requests/:id/revoke `{reason, pin}` | HoD / Dean SA of the department |
 | GET | /api/revocations (signed list) | Public |
@@ -95,4 +98,4 @@ Every 5 s: anchor pending seals and revocations (`processQueue`), deliver pendin
 
 ## Request state machine
 
-in_review → approved | rejected | returned; returned → (resubmit) in_review; approved → sealing (PDF built, anchor pending) → sealed (on chain); sealed → (amend) amending → approved → sealing → sealed as v(n+1), or amending → (return/reject) sealed at v(n); sealed | amending → (revoke) revoked. Later: superseded | revoked (prompts 7, 8). There is no draft state: a request is created on submit. `GET /api/requests/:id` includes `seal` (latest version's hash, anchor state, tx, validity).
+in_review → approved | rejected | returned; returned → (resubmit, selective) in_review; rejected → (reopen) returned; approved → sealing (PDF built, anchor pending) → sealed (on chain); sealed → (amend) amending → approved → sealing → sealed as v(n+1), or amending → (return/reject) sealed at v(n); sealed | amending → (revoke) revoked. Later: superseded | revoked (prompts 7, 8). There is no draft state: a request is created on submit. `GET /api/requests/:id` includes `seal` (latest version's hash, anchor state, tx, validity).

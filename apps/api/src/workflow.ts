@@ -1,6 +1,6 @@
 import bcrypt from 'bcryptjs';
 import { ROLE_LABEL, sha256Hex, canonicalJson, signJson } from '@plc/shared';
-import type { Decision, FieldDef, RequestDetail, RequestStatus, RequestSummary, Role, TimelineStep } from '@plc/shared';
+import type { Decision, FieldDef, RequestComment, RequestDetail, RequestStatus, RequestSummary, Role, TimelineStep } from '@plc/shared';
 import type { DB } from './db.js';
 import { HttpError } from './errors.js';
 import { issuerKey } from './keys.js';
@@ -228,6 +228,20 @@ export function resubmitRequest(db: DB, studentId: string, requestId: string, in
   if (req.status !== 'returned') throw new HttpError(409, 'Only a returned request can be resubmitted');
   const type = getType(db, req.type);
   const form = cleanForm(type.fields, input);
+  const before = JSON.parse(db.prepare('SELECT form_json FROM request_versions WHERE request_id = ? AND version = ?').pluck().get(req.id, req.current_version) as string) as Form;
+  const changed = type.fields.map((f) => f.key).filter((k) => String(form[k] ?? '') !== String(before[k] ?? ''));
+  if (Array.isArray(attachmentIds) && attachmentIds.length) changed.push('attachments');
+  // Who reviews again: whoever returned it, anyone who had not approved yet, and any approver whose part changed.
+  // Everyone else keeps their approval (a "carried" row pointing at the signature they gave before the return).
+  const prev = db
+    .prepare('SELECT id, role, decision, carried_from FROM approvals WHERE request_id = ? AND round = ?')
+    .all(req.id, req.round) as { id: number; role: Role; decision: Decision; carried_from: number | null }[];
+  const prevOf = (role: Role) => prev.find((p) => p.role === role);
+  const keep = type.steps.filter((s) => {
+    const p = prevOf(s.role);
+    return p && (p.decision === 'approved' || p.decision === 'carried') && !s.affectedBy.some((f) => changed.includes(f));
+  });
+  const redo = type.steps.filter((s) => !keep.includes(s));
   db.transaction(() => {
     const t = now();
     claimAttachments(db, studentId, attachmentIds, req.id, req.current_version);
@@ -235,8 +249,16 @@ export function resubmitRequest(db: DB, studentId: string, requestId: string, in
       JSON.stringify(form), formHash(form, versionAttachments(db, req.id, req.current_version)), req.id, req.current_version,
     );
     db.prepare("UPDATE requests SET status = 'in_review', round = round + 1, updated_at = ? WHERE id = ?").run(t, req.id);
-    askToApprove(db, createRound(db, { ...req, round: req.round + 1 }, type.steps), req.id, req.current_version);
-    audit(db, req.id, studentId, 'resubmitted', req.current_version, { round: req.round + 1 });
+    const round = req.round + 1;
+    askToApprove(db, createRound(db, { ...req, round }, redo), req.id, req.current_version);
+    const carry = db.prepare(
+      "INSERT INTO approvals (request_id, version, round, step_no, role, assignee_id, on_behalf_of, decision, carried_from) SELECT request_id, ?, ?, step_no, role, assignee_id, on_behalf_of, 'carried', ? FROM approvals WHERE id = ?",
+    );
+    for (const s of keep) {
+      const p = prevOf(s.role)!;
+      carry.run(req.current_version, round, p.decision === 'carried' ? p.carried_from : p.id, p.id);
+    }
+    audit(db, req.id, studentId, 'resubmitted', req.current_version, { round, changed, reapprove: redo.map((s) => s.role), kept: keep.map((s) => s.role) });
   })();
 }
 
@@ -356,6 +378,72 @@ export function amendRequest(db: DB, studentId: string, requestId: string, chang
   })();
 }
 
+/**
+ * Reopen a rejected request for changes (a reject is otherwise final). Allowed for the approver who rejected
+ * it, or the HoD / Dean SA of the department. The request becomes "returned", so the student edits and
+ * resubmits; the resubmission routes like any other return.
+ */
+export function reopenRequest(db: DB, userId: string, requestId: string, reason: unknown, pin: unknown) {
+  const req = getRow(db, requestId);
+  if (req.status !== 'rejected') throw new HttpError(409, 'Only a rejected request can be reopened');
+  const rejecter = db.prepare("SELECT assignee_id, role FROM approvals WHERE request_id = ? AND round = ? AND decision = 'rejected'").get(req.id, req.round) as
+    | { assignee_id: string; role: Role }
+    | undefined;
+  const senior = db
+    .prepare("SELECT role FROM user_roles WHERE user_id = ? AND department_id = ? AND role IN ('hod', 'dean_sa') ORDER BY role DESC LIMIT 1")
+    .pluck()
+    .get(userId, req.department_id) as Role | undefined;
+  const role = rejecter?.assignee_id === userId ? rejecter.role : senior;
+  if (!role) throw new HttpError(403, 'Only the approver who rejected it, the HoD or the Dean can reopen it');
+  const user = db.prepare('SELECT pin_hash, name FROM users WHERE id = ?').get(userId) as { pin_hash: string; name: string };
+  if (typeof pin !== 'string' || !bcrypt.compareSync(pin, user.pin_hash)) throw new HttpError(401, 'Wrong PIN');
+  if (typeof reason !== 'string' || !reason.trim()) throw new HttpError(400, 'Tell the student what to change');
+  const note = reason.trim().slice(0, 1000);
+  db.transaction(() => {
+    db.prepare("UPDATE requests SET status = 'returned', updated_at = ? WHERE id = ?").run(now(), req.id);
+    audit(db, req.id, userId, 'reopened', req.current_version, { role, reason: note });
+    notify(db, req.student_id, 'reopened', `Reopened: ${titleOf(db, req.id, req.current_version)}`, `${user.name} (${ROLE_LABEL[role]}) reopened your rejected request: "${note}"\nEdit it and resubmit.\n\n${link(`/requests/${req.id}`)}`, req.id);
+  })();
+}
+
+/** Discussion on a request. Anyone who can see the request can read and post. */
+export function listComments(db: DB, requestId: string): RequestComment[] {
+  const rows = db
+    .prepare(
+      `SELECT c.id, c.version, c.body, c.created_at, u.id AS uid, u.name,
+              (SELECT role FROM user_roles WHERE user_id = u.id ORDER BY rowid LIMIT 1) AS role
+         FROM comments c JOIN users u ON u.id = c.author_id WHERE c.request_id = ? ORDER BY c.id`,
+    )
+    .all(requestId) as { id: number; version: number; body: string; created_at: string; uid: string; name: string; role: Role }[];
+  return rows.map((r) => ({ id: r.id, version: r.version, body: r.body, at: r.created_at, author: { id: r.uid, name: r.name, role: r.role, roleLabel: ROLE_LABEL[r.role] } }));
+}
+
+/**
+ * Post to the discussion. A student's message goes to whoever holds the request now and to whoever returned or
+ * rejected it last; a staff message goes to the student. The discussion never changes the approval itself.
+ */
+export function addComment(db: DB, userId: string, requestId: string, body: unknown) {
+  if (typeof body !== 'string' || !body.trim()) throw new HttpError(400, 'Write a message');
+  const text = body.trim().slice(0, 2000);
+  const req = getRow(db, requestId);
+  db.transaction(() => {
+    db.prepare('INSERT INTO comments (request_id, author_id, version, body, created_at) VALUES (?, ?, ?, ?, ?)').run(req.id, userId, req.current_version, text, now());
+    const author = db.prepare('SELECT name FROM users WHERE id = ?').pluck().get(userId) as string;
+    const title = titleOf(db, req.id, req.current_version);
+    let to: string[];
+    if (userId === req.student_id) {
+      const holders = db.prepare("SELECT assignee_id FROM approvals WHERE request_id = ? AND decision = 'pending'").pluck().all(req.id) as string[];
+      const last = db
+        .prepare("SELECT assignee_id FROM approvals WHERE request_id = ? AND decision IN ('returned', 'rejected') ORDER BY signed_at DESC LIMIT 1")
+        .pluck()
+        .get(req.id) as string | undefined;
+      to = [...holders, ...(last ? [last] : [])];
+    } else to = [req.student_id];
+    notify(db, to.filter((u) => u !== userId), 'comment', `${author} on ${title}`, `"${text.slice(0, 500)}"\n\nReply: ${link(`/requests/${req.id}`)}`, req.id);
+    audit(db, req.id, userId, 'commented', req.current_version, {});
+  })();
+}
+
 // ---------- reads ----------
 
 function getRow(db: DB, id: string): RequestRow {
@@ -449,8 +537,23 @@ export function getDetail(db: DB, id: string): RequestDetail {
       .prepare('SELECT id, name, mime, size, sha256, version FROM attachments WHERE request_id = ? AND version <= ? ORDER BY created_at, id')
       .all(r.id, r.current_version) as RequestDetail['attachments'],
     revocation: null,
+    reopened: reopenInfo(db, r),
+    commentCount: db.prepare('SELECT COUNT(*) FROM comments WHERE request_id = ?').pluck().get(r.id) as number,
     amendment,
   };
+}
+
+/** The latest reopen, if it came after the latest rejection (i.e. it is what the student is acting on now). */
+function reopenInfo(db: DB, r: RequestRow): RequestDetail['reopened'] {
+  if (r.status !== 'returned') return null;
+  const row = db
+    .prepare("SELECT l.details_json, l.at, u.name FROM audit_log l JOIN users u ON u.id = l.actor_id WHERE l.request_id = ? AND l.action = 'reopened' ORDER BY l.id DESC LIMIT 1")
+    .get(r.id) as { details_json: string; at: string; name: string } | undefined;
+  if (!row) return null;
+  const lastReturn = db.prepare("SELECT MAX(at) FROM audit_log WHERE request_id = ? AND action = 'returned'").pluck().get(r.id) as string | null;
+  if (lastReturn && lastReturn > row.at) return null;
+  const d = JSON.parse(row.details_json) as { role: Role; reason: string };
+  return { role: d.role, roleLabel: ROLE_LABEL[d.role], name: row.name, reason: d.reason, at: row.at };
 }
 
 export function listAll(db: DB) {

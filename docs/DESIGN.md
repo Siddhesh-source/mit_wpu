@@ -81,3 +81,10 @@ Camera note: browsers allow live camera only on https or localhost. On plain htt
 - **Timeline:** "Prof. Joshi for Prof. Kulkarni"; amber **Overdue** / red **Escalated** chips on pending steps.
 - **Admin:** tabs Requests · Impact · Audit log · Emails, plus "Run deadline check" and "Reset demo".
 - **Impact** (`components/ImpactDashboard.tsx`, per the dataviz skill): one hero number (approvals digitised and sealed), four stat tiles (sheets, CO2e, trees, average time to sealed; estimates labelled), one single-series horizontal bar chart of average wait per role in the deck accent (validated), values at the bar tip in ink, hover tooltip, "Show table" view, assumptions line.
+
+## Return, reopen and discussion UI
+
+- Returned (student): amber box with the approver's comment, or "Reopened by X (role): reason"; **Edit and resubmit**. The edit form shows a live "Goes back to: … · Kept: …" line before sending.
+- Rejected: red box with the reason. For the rejecting approver, HoD or Dean: **Reopen for changes** (outlined) → sheet with the reason and PIN. The student sees "Disagree? Ask in the discussion below".
+- **Discussion** (`components/Discussion.tsx`) under the request details on every request page: chat-style bubbles (own messages right, in the accent), author and role, time, a one-line box with **Send**. Refreshes every 6 s. The approver card links to it ("Discussion (n)" / "Ask the student").
+- Timeline: approvals kept across a return read "Approved before the changes · still valid".

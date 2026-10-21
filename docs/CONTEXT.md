@@ -40,6 +40,12 @@ Every demo profile has a placeholder email (`…@campus.example`).
 
 Event permission fields: title, date, venue, headcount, purpose. Demo request: Robotics fest, Hall B, 5 Nov, 120 students.
 
+## Return, reject, reopen, discuss
+
+- **Return** (comment required): back to the student, who edits and resubmits. On resubmit, review is selective: the approver who returned it and anyone who had not approved yet review again, plus any earlier approver whose `affectedBy` fields changed (attachments count as a change). Everyone else keeps their approval as a `carried` row pointing at the signature they gave before the return ("Approved before the changes · still valid"). The audit log records `changed`, `reapprove` and `kept`.
+- **Reject** (comment required): ends the request, unless it is **reopened**: the approver who rejected it, the HoD or the Dean SA can reopen it with a reason and PIN. It becomes `returned`, the student sees "Reopened by …" and resubmits; the resubmission routes like any return.
+- **Discussion:** every request has a thread visible to the student, everyone on its chain and the admin. A student's message emails whoever holds the request now plus whoever last returned or rejected it; a staff message emails the student. The discussion never changes the approval itself.
+
 ## Amendment: who signs again (`affectedBy` in `apps/api/src/catalog.ts`)
 
 | Role (event permission) | Re-approves when these change |

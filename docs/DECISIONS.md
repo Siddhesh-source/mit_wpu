@@ -59,3 +59,6 @@
 57. **Email via an outbox table** (same transaction as the event), delivered by a loop; `log` by default, AWS SES via `@aws-sdk/client-sesv2` with the instance role; `EMAIL_REDIRECT_ALL` for the SES sandbox. Revocations also email Security ("sync the gate list"), shrinking the offline gap.
 58. **College ID is on chain (`issuer`), in the QR (`c`) and on the PDF**, as the overview's on-chain table requires; it is the hook for a multi-college network.
 59. **Impact numbers use the overview's stated assumptions** (3 sheets/approval, 12.7 g CO2e/sheet, 8,333 sheets/tree, 0.4 L/sheet) and are labelled as estimates.
+60. **Resubmission after a return is selective** (same `affectedBy` rule as amendments): the returner, anyone not yet approved, and affected earlier approvers review again; others are carried from their pre-return signature. Previously the whole chain restarted.
+61. **Reject stays final unless reopened** by the rejecting approver, the HoD or the Dean SA; reopening turns it into a return (no new request, full history kept).
+62. **Discussion is separate from decisions**: messages never approve, return or reject anything; they are audited ("commented") and emailed to the people who can act.

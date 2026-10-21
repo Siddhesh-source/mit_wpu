@@ -19,7 +19,7 @@ const NOTE: Record<Decision, (s: TimelineStep) => string> = {
   rejected: (s) => `Rejected · ${fmtDate(s.signedAt)}`,
   returned: (s) => `Returned · ${fmtDate(s.signedAt)}`,
   cancelled: () => 'Stopped',
-  carried: (s) => `Carried from v${s.carriedFromVersion ?? s.version - 1}`,
+  carried: (s) => (s.carriedFromVersion === s.version ? 'Approved before the changes · still valid' : `Carried from v${s.carriedFromVersion ?? s.version - 1}`),
 };
 
 /** Vertical role chain (deck slide 7). Steps that share a stepNo sit side by side as parallel. */

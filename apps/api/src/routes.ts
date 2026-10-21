@@ -5,7 +5,7 @@ import { auditLog, batchApprove, colleagues, createDelegation, endDelegation, my
 import type { DB } from './db.js';
 import { requireAuth, requireRole } from './auth.js';
 import { HttpError } from './errors.js';
-import { amendRequest, canView, decide, getDetail, inbox, listAll, listMine, listTypes, resubmitRequest, submitRequest } from './workflow.js';
+import { addComment, amendRequest, canView, decide, getDetail, inbox, listAll, listComments, listMine, listTypes, reopenRequest, resubmitRequest, submitRequest } from './workflow.js';
 import { resetDemo } from './demo.js';
 import { issuerKey } from './keys.js';
 import { rateLimit } from './ratelimit.js';
@@ -66,6 +66,20 @@ export function workflowRoutes(db: DB, svc: Services) {
   }));
 
   r.get('/revocations', verifyLimit, wrap(async (_req, res) => res.json(await revocationList(db))));
+
+  r.post('/requests/:id/reopen', requireAuth, requireRole(...APPROVER_ROLES), wrap((req, res) => {
+    reopenRequest(db, req.user!.sub, req.params.id, req.body?.reason, req.body?.pin);
+    res.json(detail(req.params.id));
+  }));
+  r.get('/requests/:id/comments', requireAuth, wrap((req, res) => {
+    if (!canView(db, req.user!.sub, req.user!.roles, req.params.id)) throw new HttpError(403, 'Not your request');
+    res.json(listComments(db, req.params.id));
+  }));
+  r.post('/requests/:id/comments', requireAuth, wrap((req, res) => {
+    if (!canView(db, req.user!.sub, req.user!.roles, req.params.id)) throw new HttpError(403, 'Not your request');
+    addComment(db, req.user!.sub, req.params.id, req.body?.body);
+    res.status(201).json(listComments(db, req.params.id));
+  }));
 
   r.post('/requests/:id/amend', requireAuth, requireRole('student'), wrap((req, res) => {
     amendRequest(db, req.user!.sub, req.params.id, req.body?.changes, req.body?.reason, req.body?.attachments);

@@ -115,6 +115,14 @@ export interface RequestSummary {
   withNow: { role: Role; roleLabel: string; name: string; since: string }[];
 }
 
+export interface RequestComment {
+  id: number;
+  author: { id: string; name: string; role: Role; roleLabel: string };
+  version: number;
+  body: string;
+  at: string;
+}
+
 export interface AttachmentInfo {
   id: string;
   name: string;
@@ -214,6 +222,9 @@ export interface RequestDetail extends RequestSummary {
   lastComment: { role: Role; decision: Decision; comment: string; version: number } | null;
   seal: SealInfo | null;
   attachments: AttachmentInfo[];
+  /** Set when a rejected request was reopened for changes. */
+  reopened: { role: Role; roleLabel: string; name: string; reason: string; at: string } | null;
+  commentCount: number;
   revocation: { version: number; role: Role; roleLabel: string; name: string; reason: string; at: string; anchored: boolean } | null;
   /** Present when the current version amends an earlier one. */
   amendment: { fromVersion: number; reason: string; previous: Record<string, string | number>; changed: string[] } | null;

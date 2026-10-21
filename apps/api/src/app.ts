@@ -81,7 +81,7 @@ export function createApp(db: DB, services: Partial<Services> = {}) {
     res.json(me);
   });
 
-  app.use(['/api/approvals', '/api/requests/:id/revoke'], (req, res, next) => (req.method === 'POST' ? pinLimit(req, res, next) : next()));
+  app.use(['/api/approvals', '/api/requests/:id/revoke', '/api/requests/:id/reopen'], (req, res, next) => (req.method === 'POST' ? pinLimit(req, res, next) : next()));
   app.use('/api', workflowRoutes(db, svc));
   app.use('/api', (_req, res) => res.status(404).json({ error: 'Not found' }));
 

@@ -1,6 +1,6 @@
 # Requirements check
 
-Audit of the build against `prompts.md`, the product context (`docs/CONTEXT.md`, the deck and overview) and the "Plan Changed" requirements. Evidence = where it is implemented and the test that proves it. Last full run: **88 API tests + 8 contract tests, all green**; web build clean; type checks clean in every workspace; offline gate verified in a headless browser against the production build.
+Audit of the build against `prompts.md`, the product context (`docs/CONTEXT.md`, the deck and overview) and the "Plan Changed" requirements. Evidence = where it is implemented and the test that proves it. Last full run: **93 API tests + 8 contract tests, all green**; web build clean; type checks clean in every workspace; offline gate verified in a headless browser against the production build.
 
 ## "The Plan Changed" requirements
 
@@ -81,6 +81,10 @@ Audit of the build against `prompts.md`, the product context (`docs/CONTEXT.md`,
 | Impact dashboard (turnaround, bottlenecks, paper, CO2e) | Done | `stats` + `ImpactDashboard` | `operations.test.ts` stats |
 | Audit log viewer | Done | `/api/admin/audit`, Admin → Audit log | `operations.test.ts` audit |
 | Email notifications; AWS SES ready | Done | outbox + `log`/`ses` mailers, `docs/EMAIL_SES.md` | `operations.test.ts` email (3, SES request mocked) |
+
+| Return with comments → selective re-review | Done | `resubmitRequest` (`workflow.ts`), live "Goes back to / Kept" preview | `feedback.test.ts` (2) |
+| Reopen a rejected request | Done | `reopenRequest`, `POST /api/requests/:id/reopen`, reopen sheet | `feedback.test.ts` (2) |
+| Discussion between student and approvers | Done | `comments` table, `Discussion` component, emails | `feedback.test.ts` |
 
 Not done here because they need the account owner: deploying to AWS and funding an Amoy wallet (`docs/DEPLOY_AWS.md`), verifying an SES sender and attaching the IAM role (`docs/EMAIL_SES.md`).
 

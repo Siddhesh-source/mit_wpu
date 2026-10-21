@@ -39,7 +39,9 @@ export type Kind =
   | 'gate_revoked'
   | 'sla_nudge'
   | 'sla_escalated'
-  | 'delegated';
+  | 'delegated'
+  | 'reopened'
+  | 'comment';
 
 /** Queue an email to each user (skips users without an address). */
 export function notify(db: DB, userIds: string | string[], kind: Kind, subject: string, text: string, requestId: string | null = null) {

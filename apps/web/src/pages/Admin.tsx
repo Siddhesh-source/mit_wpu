@@ -18,7 +18,7 @@ const ACTION: Record<string, string> = {
   submitted: 'Submitted', resubmitted: 'Resubmitted', approved: 'Approved', rejected: 'Rejected', returned: 'Returned',
   fully_approved: 'Fully approved', sealed: 'PDF sealed', anchored: 'Anchored on chain', amendment_requested: 'Amendment requested',
   amendment_returned: 'Amendment returned', amendment_rejected: 'Amendment rejected', revoked: 'Revoked', revocation_anchored: 'Revocation on chain',
-  sla_nudge: 'Deadline reminder', sla_escalated: 'Escalated', delegation_created: 'Delegate set', delegation_ended: 'Delegation ended',
+  reopened: 'Reopened', commented: 'Comment', sla_nudge: 'Deadline reminder', sla_escalated: 'Escalated', delegation_created: 'Delegate set', delegation_ended: 'Delegation ended',
 };
 
 /** One audit detail value, readable: role keys → labels, long hashes shortened. */

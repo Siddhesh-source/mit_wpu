@@ -283,7 +283,7 @@ export default function Inbox() {
           <p className="mb-4 text-xs text-faint">
             You sign as {ROLE_LABEL[item.myRole]} ·{' '}
             <Link to={`/requests/${item.id}`} className="link text-xs">
-              See full chain
+              See full chain{item.commentCount ? ` · Discussion (${item.commentCount})` : ' · Ask the student'}
             </Link>
           </p>
           <div className="grid grid-cols-2 gap-3">

@@ -16,6 +16,8 @@ The app already sends notifications; by default it only **logs** them (console +
 | Past the step deadline (SLA) | The approver | "Reminder:" |
 | Past twice the deadline | The approver and the next authority (coordinator → HoD, HoD → Dean, Dean → Admin) | "Escalated:" |
 | Someone sets you as their delegate | The delegate | "You are covering for" |
+| A rejected request is reopened | Student | "Reopened:" |
+| A discussion message | Student → current holders + last returner/rejecter; staff → student | "<name> on <title>" |
 
 ## How it works
 

@@ -23,7 +23,7 @@ export const PEOPLE: { id: string; name: string; title: string; role: Role; emai
 export function seed(db: DB) {
   const pinHash = bcrypt.hashSync(DEMO_PIN, 8);
   db.transaction(() => {
-    db.exec(`DELETE FROM outbox; DELETE FROM delegations; DELETE FROM attachments; DELETE FROM revocations; DELETE FROM seals; DELETE FROM audit_log; DELETE FROM approvals; DELETE FROM request_versions; DELETE FROM requests;
+    db.exec(`DELETE FROM comments; DELETE FROM outbox; DELETE FROM delegations; DELETE FROM attachments; DELETE FROM revocations; DELETE FROM seals; DELETE FROM audit_log; DELETE FROM approvals; DELETE FROM request_versions; DELETE FROM requests;
              DELETE FROM route_steps; DELETE FROM request_types;
              DELETE FROM user_roles; DELETE FROM users; DELETE FROM departments;`);
     db.prepare('INSERT INTO departments (id, name) VALUES (?, ?)').run('cse', 'Computer Science and Engineering');
