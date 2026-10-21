@@ -12,6 +12,7 @@ Role-routed digital approvals for Indian universities: a student submits once, t
 - **Versioned sealing**: v2 is linked on chain to v1; v1 then verifies as "Superseded by v2". Full history of who approved which version.
 - **Revocation** by the HoD or Dean: every copy then verifies as "Revoked".
 - **Offline gate check**: signed QR checked on the guard's phone, valid only on the event date, plus a signed revocation list synced at shift start.
+- **Operations**: attachments (hashed into what approvers sign), no-dues clearance with parallel approvers, deadlines with reminders and escalation, delegation while away, batch approve, an impact dashboard (paper and CO2e saved, bottlenecks), an audit log and email notifications (AWS SES ready).
 
 ## Run it
 
@@ -27,7 +28,7 @@ Production on one port: `npm run build && npm run start:local` (or `npm start` w
 ## Test
 
 ```bash
-npm test               # API (72 tests on a real local chain) + contract (8 tests)
+npm test               # API (88 tests on a real local chain) + contract (8 tests)
 ```
 
 ## Layout
@@ -43,4 +44,4 @@ npm test               # API (72 tests on a real local chain) + contract (8 test
 ## Docs
 
 - [Context](docs/CONTEXT.md) · [Architecture](docs/ARCHITECTURE.md) · [Design](docs/DESIGN.md) · [Trust layer](docs/TRUST.md) · [Offline gate](docs/OFFLINE_GATE.md)
-- [Demo script](docs/DEMO.md) · [Deploy on AWS free tier](docs/DEPLOY_AWS.md) · [Decisions](docs/DECISIONS.md) · [Requirements check](docs/COMPLIANCE.md)
+- [Demo script](docs/DEMO.md) · [Deploy on AWS free tier](docs/DEPLOY_AWS.md) · [Email with AWS SES](docs/EMAIL_SES.md) · [Decisions](docs/DECISIONS.md) · [Requirements check](docs/COMPLIANCE.md)

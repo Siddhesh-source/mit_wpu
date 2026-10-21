@@ -36,7 +36,15 @@ export function Timeline({ steps, done }: { steps: TimelineStep[]; done?: false 
               <Dot d={s.decision} />
               <div className="min-w-0">
                 <p className={`font-semibold ${s.decision === 'cancelled' ? 'text-faint' : ''}`}>{s.roleLabel}</p>
-                <p className="text-sm text-muted">{s.assignee.name}</p>
+                <p className="text-sm text-muted">
+                  {s.assignee.name}
+                  {s.onBehalfOf && <span className="text-faint"> for {s.onBehalfOf.name}</span>}
+                </p>
+                {(s.overdue || s.escalated) && (
+                  <span className={`mt-0.5 inline-block rounded-full px-2 py-0.5 text-[11px] font-semibold ${s.escalated ? 'bg-bad-bg text-bad' : 'bg-warn-bg text-warn'}`}>
+                    {s.escalated ? 'Escalated' : 'Overdue'}
+                  </span>
+                )}
                 <p className="text-xs text-faint">{NOTE[s.decision](s)}</p>
                 {s.comment && <p className="mt-1 rounded-lg bg-panel px-2 py-1 text-sm">“{s.comment}”</p>}
               </div>

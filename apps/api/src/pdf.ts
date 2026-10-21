@@ -15,7 +15,9 @@ export interface PdfInput {
   student: { name: string; title: string; department: string };
   fields: FieldDef[];
   form: Record<string, string | number>;
-  signers: { roleLabel: string; name: string; signedAt: string; version: number; carried: boolean; fingerprint: string }[];
+  signers: { roleLabel: string; name: string; signedAt: string; version: number; carried: boolean; fingerprint: string; onBehalfOf?: string | null }[];
+  attachments: { name: string; sha256: string; size: number }[];
+  collegeId: string;
   validity: string;
   qrUrl: string;
   issuedAt: Date;
@@ -75,7 +77,7 @@ export async function buildApprovalPdf(p: PdfInput): Promise<Uint8Array> {
   text(tag, R - mono.widthOfTextAtSize(tag, 9), y + 3, mono, 9, C.muted);
   y -= 34;
 
-  text(`${p.typeName.toUpperCase()}  |  ${p.requestId}  |  v${p.version}`, L, y, mono, 9.5, C.muted);
+  text(`${p.typeName.toUpperCase()}  |  ${p.requestId}  |  v${p.version}  |  ${p.collegeId}`, L, y, mono, 9.5, C.muted);
   y -= 26;
   for (const line of wrap(p.title, bold, 24, W)) {
     text(line, L, y, bold, 24);
@@ -102,7 +104,20 @@ export async function buildApprovalPdf(p: PdfInput): Promise<Uint8Array> {
     wrap(v, reg, 11.5, W - 170).forEach((line, j) => text(line, L + 150, ry - 14 * j, k === 'Valid' ? bold : reg, 11.5));
     ry -= rowH[i];
   });
-  y -= panelH + 30;
+  y -= panelH + 22;
+
+  // Attachments (their SHA-256 is part of what every approver signed)
+  if (p.attachments.length) {
+    text('Attachments', L, y, bold, 11);
+    y -= 15;
+    for (const a of p.attachments) {
+      text(`${a.name} (${Math.max(1, Math.round(a.size / 1024))} KB)`, L + 12, y, reg, 9.5, C.ink);
+      const h = `sha256 ${a.sha256.slice(0, 24)}...`;
+      text(h, R - mono.widthOfTextAtSize(h, 8), y, mono, 8, C.faint);
+      y -= 13;
+    }
+    y -= 12;
+  }
 
   // Signatures
   text('Approvals', L, y, bold, 13);
@@ -112,7 +127,7 @@ export async function buildApprovalPdf(p: PdfInput): Promise<Uint8Array> {
   for (const s of p.signers) {
     page.drawCircle({ x: L + 6, y: y + 4, size: 5, color: C.ok });
     text(s.roleLabel, L + 20, y, bold, 11);
-    text(s.name, L + 170, y, reg, 11);
+    text(s.onBehalfOf ? `${s.name} (for ${s.onBehalfOf})` : s.name, L + 170, y, reg, 11);
     const note = s.carried ? `approved v${s.version}, carried to v${p.version}` : `approved v${s.version}`;
     text(`${note}  -  ${ist(s.signedAt)} IST`, L + 20, y - 14, reg, 9.5, C.muted);
     text(`sig ${s.fingerprint}`, R - mono.widthOfTextAtSize(`sig ${s.fingerprint}`, 8.5), y, mono, 8.5, C.faint);

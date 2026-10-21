@@ -6,6 +6,7 @@ import { bytesToHex, hexToBytes, utf8ToBytes } from '@noble/hashes/utils';
  * Token = base64url(JSON body) + "." + base64url(Ed25519 signature over the exact body bytes).
  */
 export interface PassPayload {
+  c?: string; // issuing college id
   rid: string; // request id
   v: number; // version
   t: string; // request type code

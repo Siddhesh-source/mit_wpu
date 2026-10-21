@@ -5,10 +5,10 @@ import { setup, RIYA_EVENT } from './helpers.js';
 const pendingRoles = (detail: any) => detail.timeline.filter((s: any) => s.decision === 'pending').map((s: any) => s.role).sort();
 
 describe('catalogue', () => {
-  it('lists three request types with the event chain from the deck', async () => {
+  it('lists the request types with the event chain from the deck', async () => {
     const { as } = await setup();
     const types = (await as('u_riya').get('/api/request-types')).body;
-    expect(types.map((t: any) => t.code)).toEqual(['event_permission', 'on_duty', 'bonafide']);
+    expect(types.map((t: any) => t.code)).toEqual(['event_permission', 'on_duty', 'bonafide', 'no_dues']);
     expect(types[0].chain.map(({ stepNo, role }: any) => ({ stepNo, role }))).toEqual([
       { stepNo: 1, role: 'faculty_coordinator' },
       { stepNo: 2, role: 'hod' },

@@ -91,6 +91,10 @@ curl -s https://yourname.duckdns.org/api/health   # shows network "amoy" and the
 
 The first seal deploys the contract and remembers its address in the database. If the RPC is down, seals and revocations queue and are retried every 5 seconds; verify never claims "Verified" before a seal is on chain.
 
+## 5b. Email (AWS SES)
+
+Notifications are logged (Admin → Emails) until you switch on SES: verify a sender, give the instance an IAM role allowed to `ses:SendEmail`, set `EMAIL_PROVIDER=ses` and `EMAIL_FROM` in `.env`, restart. Step by step, including the sandbox and `EMAIL_REDIRECT_ALL` for demos: `docs/EMAIL_SES.md`.
+
 ## 6. Day to day
 
 | Task | Command |

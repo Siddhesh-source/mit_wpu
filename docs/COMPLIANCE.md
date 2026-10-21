@@ -1,6 +1,6 @@
 # Requirements check
 
-Audit of the build against `prompts.md`, the product context (`docs/CONTEXT.md`, the deck and overview) and the "Plan Changed" requirements. Evidence = where it is implemented and the test that proves it. Last full run: **73 API tests + 8 contract tests, all green**; web build clean; type checks clean in every workspace; offline gate verified in a headless browser against the production build.
+Audit of the build against `prompts.md`, the product context (`docs/CONTEXT.md`, the deck and overview) and the "Plan Changed" requirements. Evidence = where it is implemented and the test that proves it. Last full run: **88 API tests + 8 contract tests, all green**; web build clean; type checks clean in every workspace; offline gate verified in a headless browser against the production build.
 
 ## "The Plan Changed" requirements
 
@@ -68,8 +68,25 @@ Audit of the build against `prompts.md`, the product context (`docs/CONTEXT.md`,
 | Lifecycle Draft → Submitted → In review → Approved / Rejected / Returned → Sealed → Verified | Same, without a separate Draft state (a request exists from submit) |
 | Supabase / n8n / Lovable stack | Replaced by one TypeScript app with SQLite for speed and offline demos; schema kept Postgres-compatible (DECISIONS 2) |
 
+## High-priority additions (from the gap review against the overview and deck)
+
+| Gap | Status | Implementation | Proof |
+| --- | --- | --- | --- |
+| Upload documents ("upload the document once") | Done | `attachments.ts`, `AttachmentPicker`; file hashes are inside the signed form hash and listed on the PDF | `operations.test.ts` attachments (3) |
+| Deadlines, nudge, auto-escalation (slide 7 "SLA 48 h", "Missed SLA? Auto-escalates") | Done | `runSla` (`ops.ts`), Overdue / Escalated in timeline and inbox | `operations.test.ts` deadlines (2) |
+| Delegation while away (slide 7 "On leave? Goes to the delegate") | Done | `createDelegation`, on-behalf signing, inbox sheet | `operations.test.ts` delegation (2) |
+| No-dues clearance with parallel approvers | Done | catalogue entry + 4 seeded roles | `operations.test.ts` no-dues |
+| Batch approve ("approve 20 requests in minutes") | Done | `POST /api/approvals/batch`, inbox multi-select | `operations.test.ts` batch |
+| Issuing college ID on chain | Done | contract `issuer`, QR `c`, PDF header | `registry.test.ts`, `operations.test.ts` college id |
+| Impact dashboard (turnaround, bottlenecks, paper, CO2e) | Done | `stats` + `ImpactDashboard` | `operations.test.ts` stats |
+| Audit log viewer | Done | `/api/admin/audit`, Admin → Audit log | `operations.test.ts` audit |
+| Email notifications; AWS SES ready | Done | outbox + `log`/`ses` mailers, `docs/EMAIL_SES.md` | `operations.test.ts` email (3, SES request mocked) |
+
+Not done here because they need the account owner: deploying to AWS and funding an Amoy wallet (`docs/DEPLOY_AWS.md`), verifying an SES sender and attaching the IAM role (`docs/EMAIL_SES.md`).
+
 ## Open items (outside v1 scope, by design)
 
-- Real sign-in (college SSO/OTP) and per-user PINs instead of the shared demo PIN.
-- SLA reminders, delegation, notifications, the AI helpers and the no-code form builder from the deck.
+- Real sign-in (college SSO/OTP), personal PINs, and staff import by CSV.
+- The AI helpers and the no-code form builder from the deck; WhatsApp notifications.
+- Data-protection pages (consent notice, retention, grievance contact).
 - A batched Merkle-root anchoring mode for very high volume.

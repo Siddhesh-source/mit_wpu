@@ -1,7 +1,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
-import { homeFor, type Role } from '@plc/shared';
+import { APPROVER_ROLES, homeFor, type Role } from '@plc/shared';
 import { SessionProvider, useSession } from './lib/session';
 import Login from './pages/Login';
 import Verify from './pages/Verify';
@@ -56,9 +56,9 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
           <Route path="/verify" element={<Verify />} />
           <Route path="/student" element={<Guard roles={['student']}><StudentHome /></Guard>} />
           <Route path="/student/new" element={<Guard roles={['student']}><NewRequest /></Guard>} />
-          <Route path="/requests/:id" element={<Guard roles={['student', 'faculty_coordinator', 'hod', 'dean_sa', 'security', 'admin']}><RequestPage /></Guard>} />
+          <Route path="/requests/:id" element={<Guard roles={['student', 'admin', ...APPROVER_ROLES]}><RequestPage /></Guard>} />
  <Route path="/requests/:id/amend" element={<Guard roles={['student']}><AmendPage /></Guard>} />
-          <Route path="/inbox" element={<Guard roles={['faculty_coordinator', 'hod', 'dean_sa', 'security']}><Inbox /></Guard>} />
+          <Route path="/inbox" element={<Guard roles={APPROVER_ROLES}><Inbox /></Guard>} />
           <Route path="/gate" element={<Guard roles={['security']}><Gate /></Guard>} />
           <Route path="/admin" element={<Guard roles={['admin']}><Admin /></Guard>} />
           <Route path="*" element={<Root />} />

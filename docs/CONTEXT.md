@@ -24,6 +24,10 @@ submit → route by role → sign → seal → verify
 | u_rao | Dr. Rao | dean_sa |
 | u_pawar | Mr. Pawar | security |
 | u_admin | Admin, Registrar office | admin |
+| u_joshi | Prof. Joshi, Associate Professor | faculty (a delegate) |
+| u_iyer / u_shaikh / u_patil / u_desai | Ms. Iyer / Mr. Shaikh / Mr. Patil / Mrs. Desai | librarian / lab_incharge / warden / accounts |
+
+Every demo profile has a placeholder email (`…@campus.example`).
 
 ## Request types (v1)
 
@@ -32,6 +36,7 @@ submit → route by role → sign → seal → verify
 | Event permission | Faculty coordinator → (HoD ‖ Security) → Dean SA |
 | On-duty | Faculty coordinator → HoD |
 | Bonafide | HoD → Dean SA |
+| No-dues clearance | (Librarian ‖ Lab in-charge ‖ Hostel warden ‖ Accounts) → HoD |
 
 Event permission fields: title, date, venue, headcount, purpose. Demo request: Robotics fest, Hall B, 5 Nov, 120 students.
 
@@ -50,7 +55,7 @@ Amendment rules: student owner only; request must be `sealed`; reason required; 
 
 ## On chain vs off chain
 
-- **On chain:** document hash, request ID, type, version, previous-version hash, signer-roles hash, timestamps, validity window, status (Active / Superseded / Revoked). Never personal data.
+- **On chain:** document hash, issuing college ID, request ID, type, version, previous-version hash, signer-roles hash, timestamps, validity window, status (Active / Superseded / Revoked). Never personal data.
 - **Off chain (SQLite + storage):** PDF, form data, comments, audit log.
 
 ## Twist: "The Plan Changed"
@@ -62,6 +67,17 @@ Riya's event permission is sealed; two days later the date and venue change.
 3. **Revocation:** HoD or Dean SA can revoke entirely. An outdated PDF shows "Superseded by v2", a cancelled one "Revoked", never "Verified".
 4. **Offline gate check:** Security verifies the QR fully offline: QR carries the essential details and an Ed25519 signature checked locally; valid only on the event date. Revocations after issuance are handled by a signed revocation list synced to the guard device, plus the date-only validity window and a visible freshness indicator (details in `docs/OFFLINE_GATE.md`, prompt 9).
 
+## Operations (added after the core build, on request)
+
+- **Attachments:** students attach PDF/PNG/JPG files (max 5, 5 MB each) on submit, resubmit or amend. Each file's SHA-256 is part of the form hash every approver signs, and it is listed on the sealed PDF. Adding a file in an amendment goes back to the coordinator.
+- **No-dues clearance:** Librarian, Lab in-charge, Hostel warden and Accounts in parallel (24 h deadline each), then HoD.
+- **Deadlines (SLA):** each step has `sla_hours` (48 by default). Past it: reminder email, step shows **Overdue**. Past twice it: **Escalated**, email to the next authority (coordinator → HoD, HoD → Dean SA, Dean SA → Admin, other roles → HoD). `SLA_MINUTES` shrinks deadlines for demos; Admin has "Run deadline check".
+- **Delegation:** an approver sets "Away? Set a delegate" (colleague + date range). Waiting items move to the delegate; new ones route there while it is active; the delegate signs **on behalf of** the original holder (in the signature, timeline and PDF). Ending it hands open items back.
+- **Batch approve:** tick several inbox items, one PIN; each is still signed and audited separately. Return/reject stay one at a time.
+- **Issuing college ID on chain** (`COLLEGE_ID`), also in the QR pass and on the PDF.
+- **Admin:** Requests, **Impact** (approvals digitised, sheets, CO2e, trees, average time to sealed, average wait per role), **Audit log**, **Emails**.
+- **Email notifications** through an outbox; `log` by default, AWS SES by configuration (`docs/EMAIL_SES.md`).
+
 ## Out of scope for v1
 
-AI/LLM features, DigiLocker, Aadhaar eSign, OTP/SMS, email/WhatsApp notifications, SLA escalation, delegation, no-code form builder, analytics dashboards.
+AI/LLM features, DigiLocker, Aadhaar eSign, OTP/SMS, WhatsApp notifications, no-code form builder.

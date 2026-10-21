@@ -4,6 +4,7 @@ import type { Decision, FieldDef, RequestDetail, RequestStatus, RequestSummary, 
 import type { DB } from './db.js';
 import { HttpError } from './errors.js';
 import { issuerKey } from './keys.js';
+import { link, notify } from './notify.js';
 
 type Form = Record<string, string | number>;
 
@@ -93,6 +94,25 @@ export function cleanForm(fields: FieldDef[], input: unknown): Form {
   return form;
 }
 
+export const todayIST = (ms = Date.now()) => new Date(ms).toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+
+/** The delegate covering for a person today, if any (latest delegation wins). */
+export function activeDelegate(db: DB, userId: string, day = todayIST()): string | null {
+  return (
+    (db
+      .prepare('SELECT delegate_id FROM delegations WHERE user_id = ? AND starts_on <= ? AND ends_on >= ? ORDER BY id DESC LIMIT 1')
+      .pluck()
+      .get(userId, day, day) as string | undefined) ?? null
+  );
+}
+
+/** Role → person, then → their delegate if they are away today. */
+export function resolveAssignee(db: DB, role: Role, departmentId: string) {
+  const holder = resolveRole(db, role, departmentId);
+  const delegate = activeDelegate(db, holder);
+  return delegate ? { assignee: delegate, onBehalfOf: holder } : { assignee: holder, onBehalfOf: null };
+}
+
 /** Resolve a role to the person holding it in a department (role, not name). */
 export function resolveRole(db: DB, role: Role, departmentId: string): string {
   const id = db.prepare('SELECT user_id FROM user_roles WHERE role = ? AND department_id = ? ORDER BY rowid LIMIT 1').pluck().get(role, departmentId) as
@@ -110,25 +130,69 @@ function nextRequestId(db: DB) {
   return prefix + String(n).padStart(4, '0');
 }
 
-const formHash = (form: Form) => sha256Hex(canonicalJson(form));
+/** Fingerprint of what approvers sign: the form, plus the SHA-256 of every attachment when there are any. */
+export const formHash = (form: Form, attachments: string[] = []) =>
+  sha256Hex(canonicalJson(attachments.length ? { form, attachments } : form));
+
+/** Attachment hashes that belong to a version (everything attached up to and including it). */
+export const versionAttachments = (db: DB, requestId: string, version: number) =>
+  db.prepare('SELECT sha256 FROM attachments WHERE request_id = ? AND version <= ? ORDER BY created_at, id').pluck().all(requestId, version) as string[];
+
+const MAX_ATTACHMENTS = 5;
+
+/** Link a student's uploaded files to a request version. */
+function claimAttachments(db: DB, ownerId: string, ids: unknown, requestId: string, version: number) {
+  if (ids === undefined || ids === null) return 0;
+  if (!Array.isArray(ids) || ids.some((i) => typeof i !== 'string')) throw new HttpError(400, 'Attachments must be a list of upload ids');
+  const already = db.prepare('SELECT COUNT(*) FROM attachments WHERE request_id = ?').pluck().get(requestId) as number;
+  if (already + ids.length > MAX_ATTACHMENTS) throw new HttpError(400, `At most ${MAX_ATTACHMENTS} attachments per request`);
+  for (const id of ids) {
+    const a = db.prepare('SELECT owner_id, request_id FROM attachments WHERE id = ?').get(id) as { owner_id: string; request_id: string | null } | undefined;
+    if (!a || a.owner_id !== ownerId) throw new HttpError(400, 'Unknown attachment');
+    if (a.request_id) throw new HttpError(400, 'That file is already attached to a request');
+    db.prepare('UPDATE attachments SET request_id = ?, version = ? WHERE id = ?').run(requestId, version, id);
+  }
+  return ids.length;
+}
 
 /**
  * Create one approval row per role in `steps` for this round. The lowest step opens (pending); later steps wait.
  * Used for submit and resubmit now, and for amendments later with only the affected steps.
  */
-function createRound(db: DB, req: RequestRow, steps: { stepNo: number; role: Role }[]) {
+function createRound(db: DB, req: RequestRow, steps: { stepNo: number; role: Role }[]): string[] {
   const first = Math.min(...steps.map((s) => s.stepNo));
   const ins = db.prepare(
-    'INSERT INTO approvals (request_id, version, round, step_no, role, assignee_id, decision, opened_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+    'INSERT INTO approvals (request_id, version, round, step_no, role, assignee_id, on_behalf_of, decision, opened_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
   );
   const t = now();
+  const openNow: string[] = [];
   for (const s of steps) {
     const open = s.stepNo === first;
-    ins.run(req.id, req.current_version, req.round, s.stepNo, s.role, resolveRole(db, s.role, req.department_id), open ? 'pending' : 'waiting', open ? t : null);
+    const { assignee, onBehalfOf } = resolveAssignee(db, s.role, req.department_id);
+    ins.run(req.id, req.current_version, req.round, s.stepNo, s.role, assignee, onBehalfOf, open ? 'pending' : 'waiting', open ? t : null);
+    if (open) openNow.push(assignee);
   }
+  return openNow;
 }
 
-export function submitRequest(db: DB, studentId: string, typeCode: string, input: unknown) {
+function titleOf(db: DB, requestId: string, version: number) {
+  const f = JSON.parse(db.prepare('SELECT form_json FROM request_versions WHERE request_id = ? AND version = ?').pluck().get(requestId, version) as string);
+  return String(f.title ?? requestId);
+}
+
+function askToApprove(db: DB, people: string[], requestId: string, version: number, amendment = false) {
+  const title = titleOf(db, requestId, version);
+  notify(
+    db,
+    people,
+    amendment ? 'amendment_needed' : 'approval_needed',
+    amendment ? `Amendment to approve: ${title} (v${version})` : `Approval needed: ${title}`,
+    `${amendment ? `An approved request was amended (v${version}). Only the parts that changed need your signature.` : 'A request is waiting for your approval.'}\n\nOpen: ${link('/inbox')}\nRequest: ${requestId}`,
+    requestId,
+  );
+}
+
+export function submitRequest(db: DB, studentId: string, typeCode: string, input: unknown, attachmentIds?: unknown) {
   const type = getType(db, typeCode);
   const form = cleanForm(type.fields, input);
   const student = db.prepare('SELECT department_id FROM users WHERE id = ?').get(studentId) as { department_id: string };
@@ -148,16 +212,17 @@ export function submitRequest(db: DB, studentId: string, typeCode: string, input
     db.prepare(
       'INSERT INTO requests (id, student_id, department_id, type, status, current_version, round, created_at, updated_at) VALUES (@id, @student_id, @department_id, @type, @status, @current_version, @round, @created_at, @updated_at)',
     ).run(req);
+    const files = claimAttachments(db, studentId, attachmentIds, req.id, 1);
     db.prepare('INSERT INTO request_versions (request_id, version, form_json, form_hash, created_at) VALUES (?, 1, ?, ?, ?)').run(
-      req.id, JSON.stringify(form), formHash(form), t,
+      req.id, JSON.stringify(form), formHash(form, versionAttachments(db, req.id, 1)), t,
     );
-    createRound(db, req, type.steps);
-    audit(db, req.id, studentId, 'submitted', 1, { type: type.code });
+    askToApprove(db, createRound(db, req, type.steps), req.id, 1);
+    audit(db, req.id, studentId, 'submitted', 1, { type: type.code, attachments: files });
     return req.id;
   })();
 }
 
-export function resubmitRequest(db: DB, studentId: string, requestId: string, input: unknown) {
+export function resubmitRequest(db: DB, studentId: string, requestId: string, input: unknown, attachmentIds?: unknown) {
   const req = getRow(db, requestId);
   if (req.student_id !== studentId) throw new HttpError(403, 'Not your request');
   if (req.status !== 'returned') throw new HttpError(409, 'Only a returned request can be resubmitted');
@@ -165,11 +230,12 @@ export function resubmitRequest(db: DB, studentId: string, requestId: string, in
   const form = cleanForm(type.fields, input);
   db.transaction(() => {
     const t = now();
+    claimAttachments(db, studentId, attachmentIds, req.id, req.current_version);
     db.prepare('UPDATE request_versions SET form_json = ?, form_hash = ? WHERE request_id = ? AND version = ?').run(
-      JSON.stringify(form), formHash(form), req.id, req.current_version,
+      JSON.stringify(form), formHash(form, versionAttachments(db, req.id, req.current_version)), req.id, req.current_version,
     );
     db.prepare("UPDATE requests SET status = 'in_review', round = round + 1, updated_at = ? WHERE id = ?").run(t, req.id);
-    createRound(db, { ...req, round: req.round + 1 }, type.steps);
+    askToApprove(db, createRound(db, { ...req, round: req.round + 1 }, type.steps), req.id, req.current_version);
     audit(db, req.id, studentId, 'resubmitted', req.current_version, { round: req.round + 1 });
   })();
 }
@@ -188,10 +254,13 @@ export async function decide(db: DB, userId: string, approvalId: number, decisio
   const version = db.prepare('SELECT form_hash FROM request_versions WHERE request_id = ? AND version = ?').get(a.request_id, a.version) as { form_hash: string };
   const signedAt = now();
   const { privateKey } = await issuerKey(db);
+  const onBehalfOf = (db.prepare('SELECT on_behalf_of FROM approvals WHERE id = ?').pluck().get(a.id) as string | null) ?? undefined;
   const signature = await signJson(
-    { requestId: a.request_id, version: a.version, role: a.role, approverId: userId, decision, formHash: version.form_hash, signedAt },
+    { requestId: a.request_id, version: a.version, role: a.role, approverId: userId, onBehalfOf, decision, formHash: version.form_hash, signedAt },
     privateKey,
   );
+  const student = db.prepare('SELECT student_id FROM requests WHERE id = ?').pluck().get(a.request_id) as string;
+  const title = titleOf(db, a.request_id, a.version);
 
   return db.transaction(() => {
     db.prepare('UPDATE approvals SET decision = ?, comment = ?, signed_at = ?, signature = ? WHERE id = ?').run(decision, note, signedAt, signature, a.id);
@@ -206,9 +275,11 @@ export async function decide(db: DB, userId: string, approvalId: number, decisio
         const prevRound = db.prepare('SELECT MAX(round) FROM approvals WHERE request_id = ? AND version = ?').pluck().get(a.request_id, a.version - 1);
         db.prepare("UPDATE requests SET status = 'sealed', current_version = ?, round = ?, updated_at = ? WHERE id = ?").run(a.version - 1, prevRound, signedAt, a.request_id);
         audit(db, a.request_id, userId, `amendment_${decision}`, a.version, { role: a.role, comment: note });
+        notify(db, student, 'amendment_returned', `Amendment ${decision}: ${title}`, `${ROLE_LABEL[a.role]} ${decision} your amendment (v${a.version}): "${note}"\nYour approved v${a.version - 1} is still valid.\n\n${link(`/requests/${a.request_id}`)}`, a.request_id);
         return false;
       }
       db.prepare('UPDATE requests SET status = ?, updated_at = ? WHERE id = ?').run(decision, signedAt, a.request_id);
+      notify(db, student, decision, `${decision === 'returned' ? 'Returned for changes' : 'Rejected'}: ${title}`, `${ROLE_LABEL[a.role]}: "${note}"\n\n${link(`/requests/${a.request_id}`)}`, a.request_id);
       return false;
     }
     const openInStep = db.prepare(`SELECT COUNT(*) FROM approvals WHERE ${round} AND step_no = ? AND decision = 'pending'`).pluck().get(a.request_id, a.round, a.step_no);
@@ -217,6 +288,8 @@ export async function decide(db: DB, userId: string, approvalId: number, decisio
     if (next !== null) {
       db.prepare(`UPDATE approvals SET decision = 'pending', opened_at = ? WHERE ${round} AND step_no = ? AND decision = 'waiting'`).run(signedAt, a.request_id, a.round, next);
       db.prepare('UPDATE requests SET updated_at = ? WHERE id = ?').run(signedAt, a.request_id);
+      const people = db.prepare(`SELECT assignee_id FROM approvals WHERE ${round} AND step_no = ? AND decision = 'pending'`).pluck().all(a.request_id, a.round, next) as string[];
+      askToApprove(db, people, a.request_id, a.version, a.version > 1);
       return false;
     }
     db.prepare("UPDATE requests SET status = 'approved', updated_at = ? WHERE id = ?").run(signedAt, a.request_id);
@@ -231,7 +304,7 @@ export async function decide(db: DB, userId: string, approvalId: number, decisio
  * "carried" row pointing at the approval it carries, so history shows who approved which version.
  * Version n stays sealed and valid until n+1 is sealed.
  */
-export function amendRequest(db: DB, studentId: string, requestId: string, changes: unknown, reason: unknown) {
+export function amendRequest(db: DB, studentId: string, requestId: string, changes: unknown, reason: unknown, attachmentIds?: unknown) {
   const req = getRow(db, requestId);
   if (req.student_id !== studentId) throw new HttpError(403, 'Not your request');
   if (req.status !== 'sealed') throw new HttpError(409, req.status === 'amending' ? 'An amendment is already in review' : 'Only a sealed approval can be amended');
@@ -240,10 +313,12 @@ export function amendRequest(db: DB, studentId: string, requestId: string, chang
   const type = getType(db, req.type);
   const known = new Set(type.fields.map((f) => f.key));
   for (const k of Object.keys(changes)) if (!known.has(k)) throw new HttpError(400, `${k} cannot be amended`);
+  // (attachments are passed separately and count as a change to "attachments")
 
   const before = JSON.parse(db.prepare('SELECT form_json FROM request_versions WHERE request_id = ? AND version = ?').pluck().get(req.id, req.current_version) as string) as Form;
   const after = cleanForm(type.fields, { ...before, ...(changes as object) });
   const changed = type.fields.map((f) => f.key).filter((k) => String(after[k] ?? '') !== String(before[k] ?? ''));
+  if (Array.isArray(attachmentIds) && attachmentIds.length) changed.push('attachments');
   if (!changed.length) throw new HttpError(400, 'Nothing changed');
   const affected = type.steps.filter((s) => s.affectedBy.some((f) => changed.includes(f)));
   if (!affected.length) throw new HttpError(400, 'This change does not need an amendment');
@@ -253,11 +328,14 @@ export function amendRequest(db: DB, studentId: string, requestId: string, chang
   const round = (db.prepare('SELECT MAX(round) FROM approvals WHERE request_id = ?').pluck().get(req.id) as number) + 1;
   db.transaction(() => {
     const t = now();
+    // Files from an earlier, abandoned attempt at this version are released first.
+    db.prepare('UPDATE attachments SET request_id = NULL, version = NULL WHERE request_id = ? AND version >= ?').run(req.id, version);
+    claimAttachments(db, studentId, attachmentIds, req.id, version);
     db.prepare('INSERT OR REPLACE INTO request_versions (request_id, version, form_json, form_hash, reason, created_at) VALUES (?, ?, ?, ?, ?, ?)').run(
-      req.id, version, JSON.stringify(after), formHash(after), reason.trim().slice(0, 500), t,
+      req.id, version, JSON.stringify(after), formHash(after, versionAttachments(db, req.id, version)), reason.trim().slice(0, 500), t,
     );
     db.prepare("UPDATE requests SET status = 'amending', current_version = ?, round = ?, updated_at = ? WHERE id = ?").run(version, round, t, req.id);
-    createRound(db, { ...req, current_version: version, round }, affected);
+    askToApprove(db, createRound(db, { ...req, current_version: version, round }, affected), req.id, version, true);
     const prevRound = db.prepare('SELECT MAX(round) FROM approvals WHERE request_id = ? AND version = ?').pluck().get(req.id, req.current_version);
     const carry = db.prepare(
       "INSERT INTO approvals (request_id, version, round, step_no, role, assignee_id, decision, carried_from) VALUES (?, ?, ?, ?, ?, ?, 'carried', ?)",
@@ -289,7 +367,7 @@ function getRow(db: DB, id: string): RequestRow {
 export function canView(db: DB, userId: string, roles: Role[], requestId: string) {
   const r = getRow(db, requestId);
   if (r.student_id === userId || roles.includes('admin')) return true;
-  return !!db.prepare('SELECT 1 FROM approvals WHERE request_id = ? AND assignee_id = ? LIMIT 1').get(requestId, userId);
+  return !!db.prepare('SELECT 1 FROM approvals WHERE request_id = ? AND (assignee_id = ? OR on_behalf_of = ?) LIMIT 1').get(requestId, userId, userId);
 }
 
 function summarize(db: DB, r: RequestRow): RequestSummary {
@@ -321,17 +399,21 @@ export function getDetail(db: DB, id: string): RequestDetail {
   const r = getRow(db, id);
   const rows = db
     .prepare(
-      `SELECT a.*, u.name AS assignee_name, src.version AS src_version
+      `SELECT a.*, u.name AS assignee_name, src.version AS src_version, ob.name AS on_behalf_name
          FROM approvals a JOIN users u ON u.id = a.assignee_id LEFT JOIN approvals src ON src.id = a.carried_from
+         LEFT JOIN users ob ON ob.id = a.on_behalf_of
         WHERE a.request_id = ? AND a.round = ? ORDER BY a.step_no, a.id`,
     )
-    .all(r.id, r.round) as (ApprovalRow & { assignee_name: string; src_version: number | null })[];
+    .all(r.id, r.round) as (ApprovalRow & { assignee_name: string; src_version: number | null; on_behalf_of: string | null; on_behalf_name: string | null; nudged_at: string | null; escalated_at: string | null })[];
   const timeline: TimelineStep[] = rows.map((a) => ({
     approvalId: a.id,
     stepNo: a.step_no,
     role: a.role,
     roleLabel: ROLE_LABEL[a.role],
     assignee: { id: a.assignee_id, name: a.assignee_name },
+    onBehalfOf: a.on_behalf_of ? { id: a.on_behalf_of, name: a.on_behalf_name! } : null,
+    overdue: a.decision === 'pending' && !!a.nudged_at,
+    escalated: a.decision === 'pending' && !!a.escalated_at,
     decision: a.decision,
     comment: a.comment,
     openedAt: a.opened_at,
@@ -363,6 +445,9 @@ export function getDetail(db: DB, id: string): RequestDetail {
     timeline,
     lastComment: last ?? null,
     seal: null,
+    attachments: db
+      .prepare('SELECT id, name, mime, size, sha256, version FROM attachments WHERE request_id = ? AND version <= ? ORDER BY created_at, id')
+      .all(r.id, r.current_version) as RequestDetail['attachments'],
     revocation: null,
     amendment,
   };

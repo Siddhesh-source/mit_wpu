@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ROLE_LABEL, type RequestDetail, type RequestType } from '@plc/shared';
+import { ROLE_LABEL, type AttachmentInfo, type RequestDetail, type RequestType } from '@plc/shared';
+import { AttachmentPicker, AttachmentList } from '../components/Attachments';
 import { Page, toast } from '../components/ui';
 import { FormFields, type FormValues } from '../components/FormFields';
 import { api } from '../lib/api';
@@ -15,6 +16,7 @@ export default function AmendPage() {
   const [type, setType] = useState<RequestType | null>(null);
   const [values, setValues] = useState<FormValues>({});
   const [reason, setReason] = useState('');
+  const [files, setFiles] = useState<AttachmentInfo[]>([]);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -28,7 +30,8 @@ export default function AmendPage() {
   }, [id]);
 
   const original = useMemo(() => (r ? asValues(r.form) : {}), [r]);
-  const changed = Object.keys({ ...original, ...values }).filter((k) => (original[k] ?? '') !== (values[k] ?? ''));
+  const changedFields = Object.keys({ ...original, ...values }).filter((k) => (original[k] ?? '') !== (values[k] ?? ''));
+  const changed = files.length ? [...changedFields, 'attachments'] : changedFields;
   const back = type?.chain.filter((s) => s.affectedBy.some((f) => changed.includes(f))) ?? [];
   const kept = type?.chain.filter((s) => !back.includes(s)) ?? [];
   const names = (steps: { role: keyof typeof ROLE_LABEL }[]) => steps.map((s) => ROLE_LABEL[s.role]).join(', ');
@@ -38,8 +41,8 @@ export default function AmendPage() {
     if (!r) return;
     setBusy(true);
     try {
-      const changes = Object.fromEntries(changed.map((k) => [k, values[k]]));
-      await api(`/api/requests/${r.id}/amend`, { method: 'POST', json: { changes, reason } });
+      const changes = Object.fromEntries(changedFields.map((k) => [k, values[k]]));
+      await api(`/api/requests/${r.id}/amend`, { method: 'POST', json: { changes, reason, attachments: files.map((f) => f.id) } });
       toast(`Amendment sent to ${names(back)}`);
       nav(`/requests/${r.id}`, { replace: true });
     } catch (err) {
@@ -60,6 +63,10 @@ export default function AmendPage() {
       <p className="mb-5 text-sm text-muted">Change what moved. v{r.version} stays valid until the new version is sealed.</p>
       <form onSubmit={submit} className="flex flex-1 flex-col">
         <FormFields fields={type.fields} values={values} onChange={setValues} original={original} />
+        <div className="mt-4 flex flex-col gap-2">
+          <AttachmentList items={r.attachments} />
+          <AttachmentPicker value={files} onChange={setFiles} max={Math.max(0, 5 - r.attachments.length)} />
+        </div>
         <label className="mt-4 block">
           <span className="mb-1 block text-sm font-semibold">Why did it change?</span>
           <textarea

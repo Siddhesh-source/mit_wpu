@@ -81,6 +81,7 @@ function Result({ check, onAgain, onCheckLatest }: { check: Check; onAgain: () =
         <section className="rounded-2xl border border-rule p-5">
           <p className="font-mono text-xs uppercase tracking-wide text-faint">
             {live?.typeName ?? pass?.t} · {live?.requestId ?? pass?.rid} · v{live?.version ?? pass?.v}
+            {(live?.issuer ?? pass?.c) && ` · ${live?.issuer ?? pass?.c}`}
           </p>
           {pass && (
             <>

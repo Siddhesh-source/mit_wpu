@@ -10,6 +10,7 @@ EnvironmentFile=/opt/paperless/.env
 Environment=NODE_OPTIONS=--max-old-space-size=384
 # Run the server directly (no npm wrapper process): saves ~40 MB on a micro instance.
 ExecStart=/opt/paperless/node_modules/.bin/tsx /opt/paperless/apps/api/src/server.ts
+# AWS SES credentials come from the instance role (docs/EMAIL_SES.md); nothing to store here.
 Restart=always
 RestartSec=3
 MemoryMax=700M

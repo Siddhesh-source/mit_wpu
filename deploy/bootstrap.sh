@@ -43,6 +43,11 @@ CHAIN_MODE=local
 CHAIN_RPC_URL=http://127.0.0.1:8545
 AMOY_RPC_URL=https://rpc-amoy.polygon.technology
 AMOY_PRIVATE_KEY=
+COLLEGE_ID=COLLEGE-001
+EMAIL_PROVIDER=log
+EMAIL_FROM=PaperLess Campus <no-reply@campus.example>
+SES_REGION=ap-south-1
+EMAIL_REDIRECT_ALL=
 ENV
   chmod 600 "$APP/.env" && chown paperless:paperless "$APP/.env"
 fi

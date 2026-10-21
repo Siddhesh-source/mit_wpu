@@ -11,6 +11,7 @@
     "seed:demo": "tsx src/demo.ts"
   },
   "dependencies": {
+    "@aws-sdk/client-sesv2": "^3.1154.0",
     "@plc/contracts": "*",
     "@plc/shared": "*",
     "bcryptjs": "^2.4.3",

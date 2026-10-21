@@ -3,6 +3,8 @@ import { Link, useParams } from 'react-router-dom';
 import { ROLE_LABEL, type RequestDetail, type VersionHistory } from '@plc/shared';
 import { Page, PinPad, Sheet, StatusPill, Tick, toast } from '../components/ui';
 import { VersionStrip } from '../components/VersionStrip';
+import { AttachmentList, AttachmentPicker } from '../components/Attachments';
+import type { AttachmentInfo } from '@plc/shared';
 import { Timeline } from '../components/Timeline';
 import { FieldList, FormFields, type FormValues } from '../components/FormFields';
 import { api, download } from '../lib/api';
@@ -15,6 +17,7 @@ export default function RequestPage() {
   const { data: r, error, reload } = useLive<RequestDetail>(`/api/requests/${id}`);
   const { data: versions, reload: reloadVersions } = useLive<VersionHistory[]>(`/api/requests/${id}/history`, 8000);
   const [editing, setEditing] = useState<FormValues | null>(null);
+  const [newFiles, setNewFiles] = useState<AttachmentInfo[]>([]);
   const [revoking, setRevoking] = useState(false);
   const [revokeReason, setRevokeReason] = useState('');
   const [resetPin, setResetPin] = useState(0);
@@ -59,8 +62,9 @@ export default function RequestPage() {
     e.preventDefault();
     setBusy(true);
     try {
-      await api(`/api/requests/${r!.id}/resubmit`, { method: 'POST', json: { form: editing } });
+      await api(`/api/requests/${r!.id}/resubmit`, { method: 'POST', json: { form: editing, attachments: newFiles.map((f) => f.id) } });
       setEditing(null);
+      setNewFiles([]);
       toast('Sent back for approval');
       reload();
     } catch (err) {
@@ -79,6 +83,10 @@ export default function RequestPage() {
         <h1 className="mb-5 text-2xl font-bold">Edit and resubmit</h1>
         <form onSubmit={resubmit} className="flex flex-1 flex-col">
           <FormFields fields={r.fields} values={editing} onChange={setEditing} />
+          <div className="mt-4 flex flex-col gap-2">
+            <AttachmentList items={r.attachments} />
+            <AttachmentPicker value={newFiles} onChange={setNewFiles} max={Math.max(0, 5 - r.attachments.length)} />
+          </div>
           <div className="mt-auto pt-8 md:mt-0">
             <button className="cta w-full" disabled={busy}>
               {busy ? 'Sending…' : 'Resubmit for approval'}
@@ -130,6 +138,11 @@ export default function RequestPage() {
       <div className="my-5 rounded-2xl bg-panel p-4">
         <FieldList fields={r.fields} form={r.form} previous={r.status === 'amending' ? r.amendment?.previous : undefined} />
       </div>
+      {r.attachments.length > 0 && (
+        <div className="-mt-2 mb-5">
+          <AttachmentList items={r.attachments} />
+        </div>
+      )}
 
       {mine && r.status === 'returned' && (
         <section className="mb-6 flex flex-col items-center gap-3 rounded-2xl border border-warn/30 bg-warn-bg p-5 text-center">

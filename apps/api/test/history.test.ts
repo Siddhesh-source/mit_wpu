@@ -44,7 +44,7 @@ describe('versioned sealing: v1 → v2', () => {
     await act('u_mehta', id, 'approved');
     await act('u_kulkarni', id, 'approved');
     await expect(
-      chain.seal({ docHash: 'ab'.repeat(32), requestId: id, docType: 'event_permission', version: 2, prevHash: v1, rolesHash: 'cd'.repeat(32), validFrom: 0, validUntil: 1 }),
+      chain.seal({ docHash: 'ab'.repeat(32), issuer: 'COLLEGE-001', requestId: id, docType: 'event_permission', version: 2, prevHash: v1, rolesHash: 'cd'.repeat(32), validFrom: 0, validUntil: 1 }),
     ).rejects.toThrow('Contract refused: PrevNotActive');
   });
 

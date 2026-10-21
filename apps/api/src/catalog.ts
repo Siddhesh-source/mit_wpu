@@ -5,7 +5,8 @@ export const CATALOG: {
   code: string;
   name: string;
   fields: FieldDef[];
-  steps: { stepNo: number; role: Role; affectedBy: string[] }[];
+  /** slaHours: deadline for the step (default 48). */
+  steps: { stepNo: number; role: Role; affectedBy: string[]; slaHours?: number }[];
 }[] = [
   {
     code: 'event_permission',
@@ -18,7 +19,7 @@ export const CATALOG: {
       { key: 'purpose', label: 'Purpose', type: 'textarea', required: false },
     ],
     steps: [
-      { stepNo: 1, role: 'faculty_coordinator', affectedBy: ['title', 'date', 'venue', 'headcount', 'purpose'] },
+      { stepNo: 1, role: 'faculty_coordinator', affectedBy: ['title', 'date', 'venue', 'headcount', 'purpose', 'attachments'] },
       { stepNo: 2, role: 'hod', affectedBy: ['title', 'date', 'venue', 'headcount'] },
       { stepNo: 2, role: 'security', affectedBy: ['headcount'] },
       { stepNo: 3, role: 'dean_sa', affectedBy: ['title', 'headcount'] },
@@ -33,7 +34,7 @@ export const CATALOG: {
       { key: 'purpose', label: 'Details', type: 'textarea', required: false },
     ],
     steps: [
-      { stepNo: 1, role: 'faculty_coordinator', affectedBy: ['title', 'date', 'purpose'] },
+      { stepNo: 1, role: 'faculty_coordinator', affectedBy: ['title', 'date', 'purpose', 'attachments'] },
       { stepNo: 2, role: 'hod', affectedBy: ['title', 'date'] },
     ],
   },
@@ -45,8 +46,24 @@ export const CATALOG: {
       { key: 'addressed_to', label: 'Addressed to', type: 'text', required: false },
     ],
     steps: [
-      { stepNo: 1, role: 'hod', affectedBy: ['title', 'addressed_to'] },
+      { stepNo: 1, role: 'hod', affectedBy: ['title', 'addressed_to', 'attachments'] },
       { stepNo: 2, role: 'dean_sa', affectedBy: ['title', 'addressed_to'] },
+    ],
+  },
+  {
+    code: 'no_dues',
+    name: 'No-dues clearance',
+    fields: [
+      { key: 'title', label: 'Needed for', type: 'text', required: true },
+      { key: 'purpose', label: 'Details', type: 'textarea', required: false },
+    ],
+    // Library, labs, hostel and accounts clear in parallel, then the HoD signs off.
+    steps: [
+      { stepNo: 1, role: 'librarian', affectedBy: ['title', 'attachments'], slaHours: 24 },
+      { stepNo: 1, role: 'lab_incharge', affectedBy: ['title', 'attachments'], slaHours: 24 },
+      { stepNo: 1, role: 'warden', affectedBy: ['title', 'attachments'], slaHours: 24 },
+      { stepNo: 1, role: 'accounts', affectedBy: ['title', 'attachments'], slaHours: 24 },
+      { stepNo: 2, role: 'hod', affectedBy: ['title', 'purpose', 'attachments'] },
     ],
   },
 ];

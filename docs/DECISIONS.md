@@ -52,3 +52,10 @@
 50. **PIN attempts rate limited** (login, sign, revoke: 20 per IP per minute) so a 4-digit PIN cannot be brute-forced.
 51. **AWS free tier = one EC2 instance + Caddy + SQLite**, no load balancer, RDS or NAT. t4g.small on post-July-2025 accounts, t3.micro + Amoy on legacy accounts; files in `deploy/`, guide in `docs/DEPLOY_AWS.md`.
 52. **systemd runs the server through `tsx` directly** (no npm wrapper), memory-capped and sandboxed.
+53. **Attachments are hashed into the signed form hash** (`{form, attachments: [sha256…]}`; unchanged hash when there are none), so approvers sign the files, not just the fields. Raw-body upload (no multipart dependency), magic-byte check, PDF/PNG/JPG only, 5 per request.
+54. **Escalation notifies and flags; it does not reassign.** Re-routing work is the delegate's job; the next authority is told the step is stuck. Thresholds: SLA → reminder, 2 × SLA → escalation, once each.
+55. **Delegation is explicit and dated** (no automatic "absent" detection). The delegate signs on behalf; `onBehalfOf` is inside the Ed25519-signed decision.
+56. **Batch approve only approves**; return and reject always need a comment and are one at a time.
+57. **Email via an outbox table** (same transaction as the event), delivered by a loop; `log` by default, AWS SES via `@aws-sdk/client-sesv2` with the instance role; `EMAIL_REDIRECT_ALL` for the SES sandbox. Revocations also email Security ("sync the gate list"), shrinking the offline gap.
+58. **College ID is on chain (`issuer`), in the QR (`c`) and on the PDF**, as the overview's on-chain table requires; it is the hook for a multi-college network.
+59. **Impact numbers use the overview's stated assumptions** (3 sheets/approval, 12.7 g CO2e/sheet, 8,333 sheets/tree, 0.4 L/sheet) and are labelled as estimates.

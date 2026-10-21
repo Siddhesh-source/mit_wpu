@@ -9,7 +9,7 @@ What is signed, hashed, anchored and put in the QR. Code: `apps/api/src/seal.ts`
 
 ## What is signed
 
-1. **Each approval decision**: canonical JSON `{requestId, version, role, approverId, decision, formHash, signedAt}`; `formHash` = SHA-256 of the canonical form JSON.
+1. **Each approval decision**: canonical JSON `{requestId, version, role, approverId, onBehalfOf?, decision, formHash, signedAt}`; `formHash` = SHA-256 of the canonical form JSON, or of `{form, attachments: [sha256 of each file]}` when files are attached. `onBehalfOf` is set when a delegate signs for someone away.
 2. **The QR pass**: see below.
 
 ## Sealing pipeline (runs when the last approver approves)
@@ -25,7 +25,7 @@ What is signed, hashed, anchored and put in the QR. Code: `apps/api/src/seal.ts`
 
 ## On chain (`DocumentRegistry`)
 
-`Record { requestId (bytes32 "PLC-2026-0001"), docType (bytes32 "event_permission"), version, prevHash, rolesHash, sealedAt (block time), validFrom, validUntil, status }`, keyed by `docHash`. Also `supersededBy[old] = new`, `latestFor[requestId]`, `revokeReason[docHash]`.
+`Record { issuer (bytes32 college id, e.g. "COLLEGE-001"), requestId (bytes32 "PLC-2026-0001"), docType (bytes32 "event_permission"), version, prevHash, rolesHash, sealedAt (block time), validFrom, validUntil, status }`, keyed by `docHash`. Also `supersededBy[old] = new`, `latestFor[requestId]`, `revokeReason[docHash]`.
 
 Rules: no duplicate hash; v1 has prevHash 0 and only one v1 per request; v(n+1) needs prevHash Active, same request, version + 1, and marks prev **Superseded**; `revoke` only from Active. Owner-only writes. Custom errors: `NotOwner, EmptyHash, AlreadySealed, RequestAlreadySealed, PrevNotActive, PrevOtherRequest, BadVersion, NotActive`.
 
@@ -37,7 +37,7 @@ Compiled with the `solc` npm package (`npm run compile -w contracts`, output `co
 
 `<PUBLIC_BASE_URL>/verify#p=<token>`, token = `base64url(JSON body) + "." + base64url(Ed25519 sig over the exact body bytes)`.
 
-Body `{rid, v, t (type), ti (title), n (student name), d (department), dt? (event date), ve? (venue), vf, vu (validity, unix s), iat}`. About 390 characters; decodes reliably from the printed PDF.
+Body `{c (college id), rid, v, t (type), ti (title), n (student name), d (department), dt? (event date), ve? (venue), vf, vu (validity, unix s), iat}`. About 390 characters; decodes reliably from the printed PDF.
 
 Validity: event permission = event date 00:00:00 to 23:59:59 IST; other types = one year from issue.
 

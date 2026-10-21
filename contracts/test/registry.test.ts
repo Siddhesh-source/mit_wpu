@@ -25,6 +25,7 @@ beforeEach(async () => {
 const RID = encodeBytes32String('PLC-2026-0001');
 const h = (s: string) => keccak(s); // any 32-byte value works as a test document hash
 const rec = (over: Partial<Record<string, unknown>> = {}) => ({
+  issuer: encodeBytes32String('COLLEGE-001'),
   requestId: RID,
   docType: encodeBytes32String('event_permission'),
   version: 1,
@@ -60,7 +61,8 @@ describe('DocumentRegistry', () => {
     expect(r.validFrom).toBe(1793817000n);
     expect(r.sealedAt).toBeGreaterThan(0n);
     expect(await reg.latestFor(RID)).toBe(h('v1'));
-    expect(Object.keys(r.toObject())).toEqual(['requestId', 'docType', 'version', 'prevHash', 'rolesHash', 'sealedAt', 'validFrom', 'validUntil', 'status']);
+    expect(r.issuer).toBe(encodeBytes32String('COLLEGE-001'));
+    expect(Object.keys(r.toObject())).toEqual(['issuer', 'requestId', 'docType', 'version', 'prevHash', 'rolesHash', 'sealedAt', 'validFrom', 'validUntil', 'status']);
   });
 
   it('rejects a duplicate hash, a second v1 for the same request, a zero hash and a bad first version', async () => {

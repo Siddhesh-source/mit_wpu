@@ -47,6 +47,14 @@ Every profile's PIN is **1234**. Two browser windows (or a laptop + a phone) mak
 
 17. Open the v2 PDF in a text editor, change one character, save → /verify → Upload → **Tampered**. *"Change one character and the proof breaks."*
 
+## G. Operations (optional, 2 min)
+
+18. **Attachments:** Riya → New request → Bonafide → "+ Add a file" (a PDF) → Submit. Prof. Kulkarni's card shows the file; the sealed PDF lists it with its fingerprint.
+19. **No-dues:** Riya → No-dues clearance → four approvers at once (Ms. Iyer, Mr. Shaikh, Mr. Patil, Mrs. Desai), then the HoD. Use **Approve several** if a person has many.
+20. **Delegation:** Prof. Kulkarni → inbox → **Away? Set a delegate** → Prof. Joshi, today → Prof. Joshi's inbox now holds the HoD items; his card says "signing for Prof. Kulkarni".
+21. **Deadlines:** start with `SLA_MINUTES=1`; leave a request untouched for a minute → **Overdue**, two minutes → **Escalated** (or Admin → Run deadline check).
+22. **Admin:** Impact (approvals sealed, paper and CO2e saved, where approvals wait), Audit log (every action), Emails (every notification; "sent" once SES is on).
+
 ## If something goes wrong
 
 - **No network in the room:** run everything on the laptop with `npm run start:local`; the local chain needs no internet. Use "Scan from photo" if the camera is blocked.

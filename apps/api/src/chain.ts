@@ -3,6 +3,7 @@ import { DocumentRegistryArtifact, LOCAL_DEV_KEY, deployRegistry } from '@plc/co
 
 export interface ChainRecord {
   status: 'none' | 'active' | 'superseded' | 'revoked';
+  issuer: string;
   requestId: string;
   docType: string;
   version: number;
@@ -16,6 +17,7 @@ export interface ChainRecord {
 
 export interface SealArgs {
   docHash: string; // hex, no 0x
+  issuer: string; // college id
   requestId: string;
   docType: string;
   version: number;
@@ -130,6 +132,7 @@ export class ChainClient {
   seal(a: SealArgs): Promise<string> {
     return this.write((c) =>
       c.seal(hx(a.docHash), {
+        issuer: encodeBytes32String(a.issuer.slice(0, 31)),
         requestId: encodeBytes32String(a.requestId),
         docType: encodeBytes32String(a.docType.slice(0, 31)),
         version: a.version,
@@ -156,6 +159,7 @@ export class ChainClient {
     const status = STATUS[Number(r.status)];
     return {
       status,
+      issuer: status === 'none' ? '' : decodeBytes32String(r.issuer),
       requestId: status === 'none' ? '' : decodeBytes32String(r.requestId),
       docType: status === 'none' ? '' : decodeBytes32String(r.docType),
       version: Number(r.version),

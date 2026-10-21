@@ -3,11 +3,12 @@ import fs from 'node:fs';
 import path from 'node:path';
 import cors from 'cors';
 import bcrypt from 'bcryptjs';
-import type { Me, Profile, Role } from '@plc/shared';
+import { ROLES, type Me, type Profile, type Role } from '@plc/shared';
 import type { DB } from './db.js';
 import { requireAuth, signToken } from './auth.js';
 import { errorHandler, workflowRoutes } from './routes.js';
 import { rateLimit } from './ratelimit.js';
+import { configureLinks } from './notify.js';
 import type { Services } from './seal.js';
 import { config } from './config.js';
 
@@ -20,10 +21,18 @@ const initials = (name: string) =>
     .slice(0, 2)
     .toUpperCase();
 
-const ROLE_ORDER: Role[] = ['student', 'faculty_coordinator', 'hod', 'dean_sa', 'security', 'admin'];
 
 export function createApp(db: DB, services: Partial<Services> = {}) {
-  const svc: Services = { chain: null, storageDir: config.storageDir, publicBaseUrl: config.publicBaseUrl, ...services };
+  const svc: Services = {
+    chain: null,
+    storageDir: config.storageDir,
+    publicBaseUrl: config.publicBaseUrl,
+    collegeId: config.collegeId,
+    maxUploadMb: config.maxUploadMb,
+    slaMinutes: config.slaMinutes,
+    ...services,
+  };
+  configureLinks({ publicBaseUrl: svc.publicBaseUrl });
   const app = express();
   if (config.trustProxy) app.set('trust proxy', 1); // behind Caddy/nginx: real client IP for rate limits
   app.disable('x-powered-by');
@@ -39,7 +48,7 @@ export function createApp(db: DB, services: Partial<Services> = {}) {
 
   const rolesOf = (userId: string) =>
     (db.prepare('SELECT DISTINCT role FROM user_roles WHERE user_id = ?').pluck().all(userId) as Role[]).sort(
-      (a, b) => ROLE_ORDER.indexOf(a) - ROLE_ORDER.indexOf(b),
+      (a, b) => ROLES.indexOf(a) - ROLES.indexOf(b),
     );
 
   app.get('/api/health', async (_req, res) => {

@@ -6,6 +6,7 @@ import {
   type Decision, type PassPayload, type RequestDetail, type RevocationEntry, type RevocationList, type Role, type SealInfo, type VerifyResult, type VersionHistory,
 } from '@plc/shared';
 import { HttpError } from './errors.js';
+import { link, notify } from './notify.js';
 import type { DB } from './db.js';
 import type { ChainClient } from './chain.js';
 import { issuerKey } from './keys.js';
@@ -16,6 +17,12 @@ export interface Services {
   chain: ChainClient | null;
   storageDir: string;
   publicBaseUrl: string;
+  /** Issuing college id, written on chain with every seal. */
+  collegeId?: string;
+  /** Upload size limit in MB (default 5). */
+  maxUploadMb?: number;
+  /** Demo: every SLA counts as this many minutes. */
+  slaMinutes?: number | null;
   /** Public verify calls per IP per minute (default 60). */
   verifyRateLimit?: number;
   /** PIN attempts (login, sign, revoke) per IP per minute (default 20): a 4-digit PIN must not be brute-forced. */
@@ -47,10 +54,15 @@ function signersFor(db: DB, requestId: string, version: number) {
   return db
     .prepare(
       `SELECT a.role, a.decision, a.signed_at, a.signature, a.version, u.name,
-              src.version AS src_version, src.signed_at AS src_signed_at, src.signature AS src_signature
+              src.version AS src_version, src.signed_at AS src_signed_at, src.signature AS src_signature,
+              COALESCE(ob.name, sob.name) AS on_behalf_name,
+              su.name AS src_name
          FROM approvals a
          JOIN users u ON u.id = a.assignee_id
          LEFT JOIN approvals src ON src.id = a.carried_from
+         LEFT JOIN users su ON su.id = src.assignee_id
+         LEFT JOIN users ob ON ob.id = a.on_behalf_of
+         LEFT JOIN users sob ON sob.id = src.on_behalf_of
         WHERE a.request_id = ? AND a.version = ? AND a.decision IN ('approved', 'carried')
           AND a.round = (SELECT MAX(round) FROM approvals WHERE request_id = ? AND version = ?)
         ORDER BY a.step_no, a.id`,
@@ -65,6 +77,8 @@ function signersFor(db: DB, requestId: string, version: number) {
     src_version: number | null;
     src_signed_at: string | null;
     src_signature: string | null;
+    on_behalf_name: string | null;
+    src_name: string | null;
   }[];
 }
 
@@ -96,7 +110,8 @@ export async function sealRequest(db: DB, svc: Services, requestId: string) {
     return {
       role: s.role,
       roleLabel: ROLE_LABEL[s.role],
-      name: s.name,
+      name: carried ? (s.src_name ?? s.name) : s.name,
+      onBehalfOf: s.on_behalf_name,
       signedAt: (carried ? s.src_signed_at : s.signed_at)!,
       version: carried ? s.src_version! : s.version,
       carried,
@@ -108,7 +123,9 @@ export async function sealRequest(db: DB, svc: Services, requestId: string) {
   const issued = new Date();
   const iat = Math.floor(issued.getTime() / 1000);
   const { vf, vu } = validityFor(req.type, form, iat);
+  const collegeId = svc.collegeId ?? 'COLLEGE-001';
   const payload: PassPayload = {
+    c: collegeId,
     rid: req.id,
     v: req.current_version,
     t: req.type,
@@ -139,6 +156,10 @@ export async function sealRequest(db: DB, svc: Services, requestId: string) {
     fields: type.fields,
     form,
     signers,
+    attachments: db
+      .prepare('SELECT name, sha256, size FROM attachments WHERE request_id = ? AND version <= ? ORDER BY created_at, id')
+      .all(req.id, req.current_version) as { name: string; sha256: string; size: number }[],
+    collegeId,
     validity,
     qrUrl: passUrl(svc.publicBaseUrl, pass),
     issuedAt: issued,
@@ -168,6 +189,7 @@ export async function anchor(db: DB, svc: Services, requestId: string, version: 
   try {
     const txHash = await svc.chain.seal({
       docHash: s.doc_hash,
+      issuer: svc.collegeId ?? 'COLLEGE-001',
       requestId,
       docType: type,
       version,
@@ -182,6 +204,12 @@ export async function anchor(db: DB, svc: Services, requestId: string, version: 
       if (s.prev_hash) db.prepare("UPDATE seals SET chain_status = 'superseded' WHERE doc_hash = ?").run(s.prev_hash);
       db.prepare("UPDATE requests SET status = 'sealed', updated_at = ? WHERE id = ? AND status = 'sealing' AND current_version = ?").run(t, requestId, version);
       audit(db, requestId, null, 'anchored', version, { txHash, network: svc.chain!.network });
+      if (!s.anchored_at) {
+        // First time on chain only (a replay after a chain restart does not email again).
+        const student = db.prepare('SELECT student_id FROM requests WHERE id = ?').pluck().get(requestId) as string;
+        const title = String(JSON.parse(db.prepare('SELECT form_json FROM request_versions WHERE request_id = ? AND version = ?').pluck().get(requestId, version) as string).title ?? requestId);
+        notify(db, student, 'sealed', `Approved and sealed: ${title}${version > 1 ? ` (v${version})` : ''}`, `Your approval is sealed on chain${version > 1 ? ` as v${version}; v${version - 1} is now superseded` : ''}. Download the PDF with its QR:\n${link(`/requests/${requestId}`)}`, requestId);
+      }
     })();
   } catch (e) {
     const msg = (e as Error).message ?? String(e);
@@ -292,8 +320,15 @@ export async function verifyHash(db: DB, svc: Services, rawHash: string): Promis
     validUntil: s.valid_until,
     now: Math.floor(Date.now() / 1000),
   });
+  let issuer: string | undefined;
+  try {
+    issuer = svc.chain ? (await svc.chain.get(docHash)).issuer || undefined : undefined;
+  } catch {
+    issuer = undefined;
+  }
   return {
     status: verdict === 'not_yet_valid' ? 'verified' : verdict,
+    issuer,
     notYetValid: verdict === 'not_yet_valid',
     revokedBy: revocation ? { role: revocation.role, roleLabel: ROLE_LABEL[revocation.role], at: revocation.created_at } : null,
     docHash,
@@ -368,6 +403,12 @@ export async function revokeRequest(db: DB, svc: Services, userId: string, reque
     db.prepare("UPDATE requests SET status = 'revoked', updated_at = ? WHERE id = ?").run(at, req.id);
     db.prepare("UPDATE seals SET chain_status = 'revoked' WHERE doc_hash = ?").run(seal.doc_hash);
     audit(db, req.id, userId, 'revoked', seal.version, { role, reason: note });
+    const student = db.prepare('SELECT student_id FROM requests WHERE id = ?').pluck().get(req.id) as string;
+    const title = String(JSON.parse(db.prepare('SELECT form_json FROM request_versions WHERE request_id = ? AND version = ?').pluck().get(req.id, seal.version) as string).title ?? req.id);
+    notify(db, student, 'revoked', `Approval revoked: ${title}`, `The ${ROLE_LABEL[role]} revoked this approval: "${note}". Every copy now verifies as Revoked.\n\n${link(`/requests/${req.id}`)}`, req.id);
+    // Close the offline gap: tell the gate right away to sync its revocation list.
+    const guards = db.prepare("SELECT user_id FROM user_roles WHERE role = 'security' AND department_id = ?").pluck().all(req.department_id) as string[];
+    notify(db, guards, 'gate_revoked', `Gate: pass revoked (${req.id} · ${title})`, `Do not admit on this pass. Open the gate app and tap Sync now.\n\n${link('/gate')}`, req.id);
   })();
 
   await anchorRevocation(db, svc, req.id);

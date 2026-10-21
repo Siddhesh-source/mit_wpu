@@ -3,11 +3,12 @@ pragma solidity ^0.8.24;
 
 /// @title DocumentRegistry
 /// @notice Anchors SHA-256 hashes of sealed approval PDFs. Stores no personal data:
-///         only hashes, request id, type, version, validity window and status.
+///         only hashes, issuing college, request id, type, version, validity window and status.
 contract DocumentRegistry {
     enum Status { None, Active, Superseded, Revoked }
 
     struct Record {
+        bytes32 issuer;      // issuing college ID (the node in a multi-college network), e.g. "COLLEGE-001"
         bytes32 requestId;   // e.g. "PLC-2026-0001" as bytes32
         bytes32 docType;     // e.g. "event_permission" as bytes32
         uint32 version;      // 1, 2, ...
@@ -66,6 +67,7 @@ contract DocumentRegistry {
         }
 
         records[docHash] = Record({
+            issuer: r.issuer,
             requestId: r.requestId,
             docType: r.docType,
             version: r.version,

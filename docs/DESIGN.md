@@ -73,3 +73,11 @@ Camera note: browsers allow live camera only on https or localhost. On plain htt
 - HoD / Dean SA on a sealed or amending request: red text link **Revoke approval** (never a primary CTA) → sheet with a required reason and PIN. Toast reminds them to have Security sync the gate list.
 - Revoked request: red banner "Revoked by HoD (name) on date: reason"; Amend disappears; the PDF is still downloadable as a record.
 - Verify page adds **Expired** (amber) and shows "Cancelled by the HoD on date" for Revoked; Verified shows "Valid from <date> (that day only)" for a future event.
+
+## Operations UI
+
+- **Attachments:** "+ Add a file" (dashed) on new request, resubmit and amend; files upload immediately and show name, size, Remove. Read-only lists (request page, approver card) download with auth and show the first 8 hex of the SHA-256.
+- **Approver inbox:** under the central CTA, "Approve several" (checkbox list + sticky green "Approve selected (n)" → one PIN) and "Away? Set a delegate" (sheet: colleague, from, to; current delegations with End). The card shows "You are signing for X, who is away", and Overdue / Escalated badges.
+- **Timeline:** "Prof. Joshi for Prof. Kulkarni"; amber **Overdue** / red **Escalated** chips on pending steps.
+- **Admin:** tabs Requests · Impact · Audit log · Emails, plus "Run deadline check" and "Reset demo".
+- **Impact** (`components/ImpactDashboard.tsx`, per the dataviz skill): one hero number (approvals digitised and sealed), four stat tiles (sheets, CO2e, trees, average time to sealed; estimates labelled), one single-series horizontal bar chart of average wait per role in the deck accent (validated), values at the bar tip in ink, hover tooltip, "Show table" view, assumptions line.

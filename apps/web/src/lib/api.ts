@@ -38,6 +38,18 @@ export async function download(path: string, filename: string) {
   setTimeout(() => URL.revokeObjectURL(url), 10_000);
 }
 
+/** Upload one file as a raw body; returns the stored attachment (id, name, sha256...). */
+export async function uploadFile<T>(file: File): Promise<T> {
+  const res = await fetch('/api/attachments', {
+    method: 'POST',
+    headers: { ...(auth.token ? { Authorization: `Bearer ${auth.token}` } : {}), 'Content-Type': file.type || 'application/octet-stream', 'X-Filename': encodeURIComponent(file.name) },
+    body: file,
+  });
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) throw new ApiError(body.error || (res.status === 413 ? 'File too large (max 5 MB)' : 'Upload failed'), res.status);
+  return body as T;
+}
+
 export async function api<T>(path: string, init: RequestInit & { json?: unknown } = {}): Promise<T> {
   const headers: Record<string, string> = { ...(init.headers as Record<string, string>) };
   if (auth.token) headers.Authorization = `Bearer ${auth.token}`;

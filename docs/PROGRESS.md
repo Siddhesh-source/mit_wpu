@@ -26,3 +26,4 @@
 - Prompt 9: gateCheck (7 fake-clock tests incl. the known gap), gate PWA with sync bar and help sheet, offline session, HTTPS dev mode. 68 API tests.
 - Prompt 10: demo e2e test (a–h + no personal data on chain), seed:demo + Admin reset/list, single-port production, security headers, DEMO.md, README. Offline gate verified in a headless browser against the production build (reload and scan with network off). 72 API tests.
 - Wrap-up: PIN rate limit, AWS free-tier deployment (`deploy/` + `docs/DEPLOY_AWS.md`), requirements audit (`docs/COMPLIANCE.md`). Final: 73 API tests + 8 contract tests green, all workspaces type-check, production build verified (single port, demo seed, queued anchoring, offline gate).
+- High-priority additions: attachments, no-dues (parallel), SLA reminders + escalation, delegation, batch approve, college ID on chain, impact dashboard, audit log viewer, email outbox with AWS SES ready (`docs/EMAIL_SES.md`). 88 API tests + 8 contract tests.

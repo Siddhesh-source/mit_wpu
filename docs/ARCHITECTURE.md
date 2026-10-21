@@ -38,6 +38,9 @@ Production: the API serves `apps/web/dist` (hashed assets cached for a year, `in
 | `request_versions (request_id, version, form_json, form_hash, reason)` | Form per version; `form_hash` = SHA-256 of canonical JSON |
 | `approvals (request_id, version, round, step_no, role, assignee_id, decision, comment, opened_at, signed_at, signature, carried_from)` | One row per role per round |
 | `audit_log (request_id, actor_id, action, version, details_json, at)` | Every state change |
+| `attachments (id, owner_id, request_id, version, name, mime, size, sha256, path)` | Uploaded files; unlinked until claimed by submit / resubmit / amend |
+| `delegations (user_id, delegate_id, starts_on, ends_on)` | Away periods; `approvals.on_behalf_of` records who a delegate signs for |
+| `outbox (to_user, to_addr, subject, body_text, kind, request_id, status, attempts, last_error)` | Email notifications, written in the same transaction as the event |
 | `revocations (request_id, version, doc_hash, role, actor_id, reason, reason_code, signature, anchor_status, tx_hash, …)` | One per revoked request; see `docs/TRUST.md` |
 | `seals (request_id, version, doc_hash, prev_hash, roles_hash, pass, pdf_path, valid_from, valid_until, anchor_status, chain_status, tx_hash, attempts, last_error)` | One per sealed version; see `docs/TRUST.md` |
 
@@ -73,6 +76,10 @@ Approve/Return/Reject require the approver's PIN. The server signs canonical JSO
 | GET | /api/health (includes chain network + contract) | Public |
 | GET | /api/requests/:id/history | Owner, anyone on the chain, admin |
 | GET | /api/admin/requests · POST /api/admin/reset-demo | Admin |
+| GET | /api/admin/stats · /api/admin/audit `?request=&limit=` · /api/admin/emails · POST /api/admin/run-sla | Admin |
+| POST | /api/attachments (raw body; `Content-Type` = file type, `X-Filename`) → `{id, name, sha256, …}` · GET /api/attachments/:id | Student uploads; owner / request viewers download |
+| POST | /api/approvals/batch `{ids, pin}` | Approvers |
+| GET / POST / DELETE | /api/delegations · /api/delegations/:id | Approvers |
 | POST | /api/requests/:id/revoke `{reason, pin}` | HoD / Dean SA of the department |
 | GET | /api/revocations (signed list) | Public |
 
@@ -81,6 +88,10 @@ Errors: `{error}` with 400 / 401 / 403 / 404 / 409 / 422 via `HttpError`.
 ## Tests
 
 API tests start one Hardhat node (`test/global-setup.ts`, port 8621); each `setup()` deploys a fresh contract with a per-worker dev account. Contract tests use port 8611; the restart test uses 8631.
+
+## Background loops (`apps/api/src/server.ts`)
+
+Every 5 s: anchor pending seals and revocations (`processQueue`), deliver pending emails (`processOutbox`). Every 60 s (15 s with `SLA_MINUTES`): deadline check (`runSla` in `ops.ts`).
 
 ## Request state machine
 

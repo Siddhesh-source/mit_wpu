@@ -3,7 +3,10 @@ export * from './pass';
 export * from './status';
 export * from './gate';
 
-export const ROLES = ['student', 'faculty_coordinator', 'hod', 'dean_sa', 'security', 'admin'] as const;
+export const ROLES = [
+  'student', 'faculty_coordinator', 'hod', 'dean_sa', 'security', 'admin',
+  'faculty', 'librarian', 'lab_incharge', 'warden', 'accounts',
+] as const;
 export type Role = (typeof ROLES)[number];
 
 export const ROLE_LABEL: Record<Role, string> = {
@@ -13,7 +16,15 @@ export const ROLE_LABEL: Record<Role, string> = {
   dean_sa: 'Dean Student Affairs',
   security: 'Security',
   admin: 'Admin',
+  faculty: 'Faculty',
+  librarian: 'Librarian',
+  lab_incharge: 'Lab in-charge',
+  warden: 'Hostel warden',
+  accounts: 'Accounts office',
 };
+
+/** Everyone who can be asked to approve something (and so has an inbox). */
+export const APPROVER_ROLES: Role[] = ['faculty_coordinator', 'hod', 'dean_sa', 'security', 'faculty', 'librarian', 'lab_incharge', 'warden', 'accounts'];
 
 
 export interface Profile {
@@ -31,6 +42,7 @@ export interface Me extends Omit<Profile, 'role'> {
 
 /** Home route for a user, by their primary role. */
 export function homeFor(roles: Role[]): string {
+  // student, security and admin have their own homes; every other staff role lands on the inbox
   if (roles.includes('student')) return '/student';
   if (roles.includes('security')) return '/gate';
   if (roles.includes('admin')) return '/admin';
@@ -74,6 +86,11 @@ export interface TimelineStep {
   role: Role;
   roleLabel: string;
   assignee: { id: string; name: string };
+  /** Set when a delegate holds this step for someone on leave. */
+  onBehalfOf: { id: string; name: string } | null;
+  /** Past its SLA (nudged) / past twice its SLA (escalated). */
+  overdue: boolean;
+  escalated: boolean;
   decision: Decision;
   comment: string | null;
   openedAt: string | null;
@@ -98,6 +115,58 @@ export interface RequestSummary {
   withNow: { role: Role; roleLabel: string; name: string; since: string }[];
 }
 
+export interface AttachmentInfo {
+  id: string;
+  name: string;
+  mime: string;
+  size: number;
+  sha256: string;
+  version: number;
+}
+
+export interface Delegation {
+  id: number;
+  delegate: { id: string; name: string; title: string };
+  startsOn: string;
+  endsOn: string;
+}
+
+export interface Stats {
+  requests: number;
+  digitised: number;
+  inReview: number;
+  overdue: number;
+  avgTurnaroundHours: number | null;
+  sheetsSaved: number;
+  co2Kg: number;
+  trees: number;
+  waterLitres: number;
+  byType: { type: string; name: string; count: number }[];
+  byRole: { role: Role; roleLabel: string; decided: number; pending: number; avgWaitHours: number | null }[];
+  assumptions: string;
+}
+
+export interface AuditEntry {
+  id: number;
+  at: string;
+  requestId: string | null;
+  actor: string | null;
+  action: string;
+  version: number | null;
+  details: Record<string, unknown>;
+}
+
+export interface OutboxEntry {
+  id: number;
+  to: string;
+  subject: string;
+  kind: string;
+  requestId: string | null;
+  status: 'pending' | 'sent' | 'logged' | 'failed';
+  createdAt: string;
+  sentAt: string | null;
+}
+
 export interface SealInfo {
   version: number;
   docHash: string;
@@ -117,6 +186,8 @@ export interface VerifyResult {
   status: VerifyStatus;
   docHash?: string;
   requestId?: string;
+  /** Issuing college id, from the chain record. */
+  issuer?: string;
   version?: number;
   type?: string;
   typeName?: string;
@@ -142,6 +213,7 @@ export interface RequestDetail extends RequestSummary {
   timeline: TimelineStep[];
   lastComment: { role: Role; decision: Decision; comment: string; version: number } | null;
   seal: SealInfo | null;
+  attachments: AttachmentInfo[];
   revocation: { version: number; role: Role; roleLabel: string; name: string; reason: string; at: string; anchored: boolean } | null;
   /** Present when the current version amends an earlier one. */
   amendment: { fromVersion: number; reason: string; previous: Record<string, string | number>; changed: string[] } | null;

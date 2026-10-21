@@ -1,4 +1,7 @@
-import { Router, type NextFunction, type Request, type Response } from 'express';
+import express, { Router, type NextFunction, type Request, type Response } from 'express';
+import { APPROVER_ROLES } from '@plc/shared';
+import { ALLOWED, attachmentFor, saveUpload } from './attachments.js';
+import { auditLog, batchApprove, colleagues, createDelegation, endDelegation, myDelegations, outbox, runSla, stats } from './ops.js';
 import type { DB } from './db.js';
 import { requireAuth, requireRole } from './auth.js';
 import { HttpError } from './errors.js';
@@ -26,7 +29,7 @@ export function workflowRoutes(db: DB, svc: Services) {
   r.get('/issuer-public-key', wrap(async (_req, res) => res.json({ publicKey: (await issuerKey(db)).publicKey })));
 
   r.post('/requests', requireAuth, requireRole('student'), wrap((req, res) => {
-    const id = submitRequest(db, req.user!.sub, req.body?.type, req.body?.form);
+    const id = submitRequest(db, req.user!.sub, req.body?.type, req.body?.form, req.body?.attachments);
     res.status(201).json(detail(id));
   }));
 
@@ -48,7 +51,7 @@ export function workflowRoutes(db: DB, svc: Services) {
   r.get('/verify/ref/:rid/:v', verifyLimit, wrap(async (req, res) => res.json(await verifyRef(db, svc, req.params.rid, Number(req.params.v)))));
 
   r.post('/requests/:id/resubmit', requireAuth, requireRole('student'), wrap((req, res) => {
-    resubmitRequest(db, req.user!.sub, req.params.id, req.body?.form);
+    resubmitRequest(db, req.user!.sub, req.params.id, req.body?.form, req.body?.attachments);
     res.json(detail(req.params.id));
   }));
 
@@ -65,14 +68,42 @@ export function workflowRoutes(db: DB, svc: Services) {
   r.get('/revocations', verifyLimit, wrap(async (_req, res) => res.json(await revocationList(db))));
 
   r.post('/requests/:id/amend', requireAuth, requireRole('student'), wrap((req, res) => {
-    amendRequest(db, req.user!.sub, req.params.id, req.body?.changes, req.body?.reason);
+    amendRequest(db, req.user!.sub, req.params.id, req.body?.changes, req.body?.reason, req.body?.attachments);
     res.json(detail(req.params.id));
   }));
 
+  // Attachments: raw upload (Content-Type = file type, X-Filename = name), then pass the id with the request.
+  r.post(
+    '/attachments',
+    requireAuth,
+    requireRole('student'),
+    express.raw({ type: Object.keys(ALLOWED), limit: `${svc.maxUploadMb ?? 5}mb` }),
+    wrap((req, res) => res.status(201).json(saveUpload(db, svc.storageDir, req.user!.sub, req.headers['content-type'] ?? '', String(req.headers['x-filename'] ?? ''), req.body as Buffer))),
+  );
+  r.get('/attachments/:id', requireAuth, wrap((req, res) => {
+    const a = attachmentFor(db, req.user!.sub, req.user!.roles, req.params.id);
+    res.type(a.mime).download(a.path, a.name);
+  }));
+
+  // Approver tools: batch approve, delegation
+  r.post('/approvals/batch', requireAuth, requireRole(...APPROVER_ROLES), wrap(async (req, res) => {
+    const results = await batchApprove(db, req.user!.sub, req.body?.ids, req.body?.pin);
+    for (const done of results.filter((x) => x.completed)) await sealRequest(db, svc, done.completed!);
+    res.json(results);
+  }));
+  r.get('/delegations', requireAuth, requireRole(...APPROVER_ROLES), (req, res) => res.json({ mine: myDelegations(db, req.user!.sub), colleagues: colleagues(db, req.user!.sub) }));
+  r.post('/delegations', requireAuth, requireRole(...APPROVER_ROLES), wrap((req, res) => res.status(201).json(createDelegation(db, req.user!.sub, req.body?.delegateId, req.body?.startsOn, req.body?.endsOn))));
+  r.delete('/delegations/:id', requireAuth, requireRole(...APPROVER_ROLES), wrap((req, res) => (endDelegation(db, req.user!.sub, Number(req.params.id)), res.json({ ok: true }))));
+
+  // Admin: overview, impact, audit, emails, deadline check
+  r.get('/admin/stats', requireAuth, requireRole('admin'), (_req, res) => res.json(stats(db)));
+  r.get('/admin/audit', requireAuth, requireRole('admin'), (req, res) => res.json(auditLog(db, Math.min(Number(req.query.limit) || 200, 1000), req.query.request ? String(req.query.request) : undefined)));
+  r.get('/admin/emails', requireAuth, requireRole('admin'), (_req, res) => res.json(outbox(db)));
+  r.post('/admin/run-sla', requireAuth, requireRole('admin'), (_req, res) => res.json(runSla(db, Date.now(), svc.slaMinutes ?? null)));
   r.get('/admin/requests', requireAuth, requireRole('admin'), (_req, res) => res.json(listAll(db)));
   r.post('/admin/reset-demo', requireAuth, requireRole('admin'), wrap(async (_req, res) => res.json({ id: await resetDemo(db, svc) })));
 
-  r.get('/inbox', requireAuth, requireRole('faculty_coordinator', 'hod', 'dean_sa', 'security'), (req, res) => res.json(inbox(db, req.user!.sub)));
+  r.get('/inbox', requireAuth, requireRole(...APPROVER_ROLES), (req, res) => res.json(inbox(db, req.user!.sub)));
 
   r.post('/approvals/:id/decide', requireAuth, wrap(async (req, res) => {
     const done = await decide(db, req.user!.sub, Number(req.params.id), req.body?.decision, req.body?.comment, req.body?.pin);
