@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import type { Connection, LibraryDocument, Person, RequestDetail, RequestSummary } from '@plc/shared';
 import { Page, toast } from '../components/ui';
@@ -27,11 +27,14 @@ export default function SendDocument() {
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
 
-  // Pre-selected recipient (from a teacher block)
+  // Pre-selected recipient (from a teacher block), applied once so "Change" can clear it.
+  const preset = useRef(params.get('to'));
   useEffect(() => {
-    const id = params.get('to');
-    if (id && !to) api<Person[]>('/api/people').then((all) => setTo(all.find((p) => p.id === id) ?? null)).catch(() => undefined);
-  }, [params, to]);
+    const id = preset.current;
+    if (!id) return;
+    preset.current = null;
+    api<Person[]>('/api/people').then((all) => setTo(all.find((p) => p.id === id) ?? null)).catch(() => undefined);
+  }, []);
 
   useEffect(() => {
     const t = setTimeout(() => {
