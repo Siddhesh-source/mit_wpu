@@ -29,8 +29,11 @@ function PageView(props: {
   images?: Record<number, string>;
   onChange?: (fields: SignField[]) => void;
   all: SignField[];
+  editable?: (i: number) => boolean;
+  signStep?: number | null;
+  onSign?: () => void;
 }) {
-  const { pdf, n, width, fields, signers, mode, active, highlight, images, onChange, all } = props;
+  const { pdf, n, width, fields, signers, mode, active, highlight, images, onChange, all, editable = () => true, signStep, onSign } = props;
   const canvas = useRef<HTMLCanvasElement>(null);
   const [ratio, setRatio] = useState(1.414);
   const host = useRef<HTMLDivElement>(null);
@@ -60,7 +63,7 @@ function PageView(props: {
   const drag = useRef<{ i: number; kind: 'move' | 'size'; sx: number; sy: number; f: SignField } | null>(null);
   const [live, setLive] = useState<{ i: number; f: SignField } | null>(null);
   const start = (e: ReactPointerEvent, i: number, kind: 'move' | 'size') => {
-    if (mode !== 'edit') return;
+    if (mode !== 'edit' || !editable(i)) return;
     e.stopPropagation();
     (e.target as HTMLElement).setPointerCapture(e.pointerId);
     drag.current = { i, kind, sx: e.clientX, sy: e.clientY, f: all[i] };
@@ -108,12 +111,17 @@ function PageView(props: {
         const color = SIGNER_COLORS[(box.step - 1) % SIGNER_COLORS.length];
         const dim = highlight != null && box.step !== highlight;
         const img = images?.[box.step];
+        const canEdit = mode === 'edit' && editable(i);
+        // the signer's own unsigned box: one click signs
+        const signHere = !img && !!onSign && signStep === box.step;
         return (
           <div
             key={i}
             onPointerDown={(e) => start(e, i, 'move')}
-            onClick={(e) => e.stopPropagation()}
-            className={`absolute flex touch-none select-none flex-col justify-end rounded-sm text-[10px] font-semibold leading-tight ${mode === 'edit' ? 'cursor-move' : ''} ${dim ? 'opacity-35' : ''}`}
+            onClick={(e) => (e.stopPropagation(), signHere && onSign!())}
+            role={signHere ? 'button' : undefined}
+            title={signHere ? 'Sign here' : undefined}
+            className={`absolute flex touch-none select-none flex-col justify-end rounded-sm text-[10px] font-semibold leading-tight ${canEdit ? 'cursor-move' : ''} ${signHere ? 'cursor-pointer ring-2 ring-offset-1 hover:brightness-95' : ''} ${dim ? 'opacity-35' : ''}`}
             style={{
               left: `${box.x * 100}%`,
               top: `${box.y * 100}%`,
@@ -127,10 +135,10 @@ function PageView(props: {
               <img src={img} alt={`Signature of ${signers[box.step - 1]?.name ?? signers[box.step - 1]?.label}`} className="h-full w-full object-contain object-bottom" />
             ) : (
               <span className="truncate px-1 pb-0.5" style={{ color }}>
-                {signers[box.step - 1]?.label ?? 'Signer'}
+                {signHere ? 'Sign here' : (signers[box.step - 1]?.label ?? 'Signer')}
               </span>
             )}
-            {mode === 'edit' && (
+            {canEdit && (
               <>
                 <button
                   type="button"
@@ -164,8 +172,13 @@ export function PdfSigner(props: {
   highlight?: number | null;
   images?: Record<number, string>;
   onChange?: (fields: SignField[]) => void;
+  /** Which boxes can be moved and removed in edit mode (default: all). */
+  editable?: (i: number) => boolean;
+  /** One-click signing: the signer's step, and what a click on their unsigned box does. */
+  signStep?: number | null;
+  onSign?: () => void;
 }) {
-  const { pdf, fields, signers, mode, active = null, highlight, images, onChange } = props;
+  const { pdf, fields, signers, mode, active = null, highlight, images, onChange, editable, signStep, onSign } = props;
   const host = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(600);
   useEffect(() => {
@@ -200,6 +213,9 @@ export function PdfSigner(props: {
             highlight={highlight}
             images={images}
             onChange={onChange}
+            editable={editable}
+            signStep={signStep}
+            onSign={onSign}
           />
         ))}
     </div>

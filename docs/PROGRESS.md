@@ -42,3 +42,4 @@
 - Send page fix (2026-10-21): the Send button sat at the bottom of a sticky side column taller than the screen, so it was out of reach; it is now a send bar fixed to the bottom of the screen. Signer slots suggest the matching faculty in one tap; empty slots (e.g. Project Coordinator) no longer block sending.
 - Removed the four-number stat banners from the student, staff and registrar dashboards (2026-10-22).
 - Demo script rewritten for the current app (2026-10-22): FF 180 signed in place first, then verify and tamper, the plan-changed scenarios, the department tools, a close and answers to common questions (`docs/DEMO.md`).
+- Sign in place for any PDF (2026-10-22): one-click boxes for every signer on any uploaded PDF; faculty sign with one click on their box or tap to place their own when approving; works for every request with a PDF attached and for parallel signers. 114 API tests + 8 contract tests.

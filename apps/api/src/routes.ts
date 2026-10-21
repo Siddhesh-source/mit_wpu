@@ -159,17 +159,16 @@ export function workflowRoutes(db: DB, svc: Services) {
     res.json({ dataUrl: null });
   });
 
-  // The signature captured when a step was signed (shown in its boxes on the request page).
-  r.get('/requests/:id/signatures/:step', requireAuth, wrap((req, res) => {
+  // The signature captured with an approval (shown in its boxes on the request page).
+  r.get('/requests/:id/signatures/:approvalId', requireAuth, wrap((req, res) => {
     if (!canView(db, req.user!.sub, req.user!.roles, req.params.id)) throw new HttpError(403, 'Not your request');
     const png = db
       .prepare(
-        `SELECT s.png FROM approvals a JOIN requests r ON r.id = a.request_id
-           JOIN approval_signatures s ON s.approval_id = COALESCE(a.carried_from, a.id)
-          WHERE a.request_id = ? AND a.step_no = ? AND a.decision IN ('approved', 'carried') AND a.round = r.round`,
+        `SELECT s.png FROM approvals a JOIN approval_signatures s ON s.approval_id = COALESCE(a.carried_from, a.id)
+          WHERE a.request_id = ? AND a.id = ? AND a.decision IN ('approved', 'carried')`,
       )
       .pluck()
-      .get(req.params.id, Number(req.params.step)) as Buffer | undefined;
+      .get(req.params.id, Number(req.params.approvalId)) as Buffer | undefined;
     if (!png) throw new HttpError(404, 'Not signed yet');
     res.type('png').setHeader('Cache-Control', 'private, max-age=3600').send(png);
   }));
@@ -196,7 +195,7 @@ export function workflowRoutes(db: DB, svc: Services) {
   }));
 
   r.post('/approvals/:id/decide', requireAuth, wrap(async (req, res) => {
-    const done = await decide(db, req.user!.sub, Number(req.params.id), req.body?.decision, req.body?.comment, req.body?.pin);
+    const done = await decide(db, req.user!.sub, Number(req.params.id), req.body?.decision, req.body?.comment, req.body?.pin, req.body?.place);
     if (done) {
       const requestId = db.prepare('SELECT request_id FROM approvals WHERE id = ?').pluck().get(Number(req.params.id)) as string;
       await sealRequest(db, svc, requestId);

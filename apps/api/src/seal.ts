@@ -158,8 +158,8 @@ export async function sealRequest(db: DB, svc: Services, requestId: string) {
       : `Until ${new Date(vu * 1000).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', day: 'numeric', month: 'short', year: 'numeric' })}`;
 
   // Sign in place: the signed copy is the student's own PDF with each signature in its boxes, then the certificate.
-  const boxes = db.prepare('SELECT attachment_id, step_no, page, x, y, w, h FROM sign_fields WHERE request_id = ? ORDER BY id').all(req.id) as {
-    attachment_id: string; step_no: number; page: number; x: number; y: number; w: number; h: number;
+  const boxes = db.prepare('SELECT attachment_id, step_no, role, page, x, y, w, h FROM sign_fields WHERE request_id = ? ORDER BY id').all(req.id) as {
+    attachment_id: string; step_no: number; role: Role | null; page: number; x: number; y: number; w: number; h: number;
   }[];
   const original = boxes.length ? fs.readFileSync(db.prepare('SELECT path FROM attachments WHERE id = ?').pluck().get(boxes[0].attachment_id) as string) : null;
   const pdf = await buildApprovalPdf({
@@ -185,12 +185,12 @@ export async function sealRequest(db: DB, svc: Services, requestId: string) {
   let finalPdf = pdf;
   if (original) {
     const stamps = boxes.flatMap((b) => {
-      const s = rows.find((x) => x.step_no === b.step_no);
+      const s = rows.find((x) => x.step_no === b.step_no && (!b.role || x.role === b.role));
       const png = s ? (db.prepare('SELECT png FROM approval_signatures WHERE approval_id = ?').pluck().get(s.carried_from ?? s.id) as Buffer | undefined) : undefined;
       if (!s || !png) return [];
-      const signer = signers.find((x) => x.role === s.role)!;
+      const signer = signers[rows.indexOf(s)];
       const by = signer.onBehalfOf ? `${signer.name} for ${signer.onBehalfOf}` : signer.name;
-      return [{ ...b, png, caption: [`Digitally signed by ${by}`, `${signer.roleLabel}, ${istStamp(signer.signedAt)}`] as [string, string] }];
+      return [{ page: b.page, x: b.x, y: b.y, w: b.w, h: b.h, png, caption: [`Digitally signed by ${by}`, `${signer.roleLabel}, ${istStamp(signer.signedAt)}`] as [string, string] }];
     });
     const base = svc.publicBaseUrl.replace(/\/$/, '');
     finalPdf = await stampDocument(

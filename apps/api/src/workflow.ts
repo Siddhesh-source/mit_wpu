@@ -352,8 +352,8 @@ export function submitRequest(
     }
     if (plan && signDoc && plan.signFields.length) {
       const docId = db.prepare('SELECT id FROM attachments WHERE request_id = ? AND sha256 = ? ORDER BY rowid LIMIT 1').pluck().get(req.id, signDoc.sha256) as string;
-      const box = db.prepare('INSERT INTO sign_fields (request_id, attachment_id, step_no, page, x, y, w, h) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
-      for (const f of plan.signFields) box.run(req.id, docId, f.step, f.page, f.x, f.y, f.w, f.h);
+      const box = db.prepare('INSERT INTO sign_fields (request_id, attachment_id, step_no, role, page, x, y, w, h) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)');
+      for (const f of plan.signFields) box.run(req.id, docId, f.step, plan.steps[f.step - 1].role, f.page, f.x, f.y, f.w, f.h);
     }
     askToApprove(db, createRound(db, req, steps), req.id, 1);
     audit(db, req.id, studentId, 'submitted', 1, { type: type.code, attachments: files });
@@ -403,7 +403,7 @@ export function resubmitRequest(db: DB, studentId: string, requestId: string, in
 }
 
 /** Record a decision. Returns true when this decision completed the chain (the caller then seals). */
-export async function decide(db: DB, userId: string, approvalId: number, decision: unknown, comment: unknown, pin: unknown): Promise<boolean> {
+export async function decide(db: DB, userId: string, approvalId: number, decision: unknown, comment: unknown, pin: unknown, place?: unknown): Promise<boolean> {
   if (decision !== 'approved' && decision !== 'rejected' && decision !== 'returned') throw new HttpError(400, 'Decision must be approved, rejected or returned');
   const a = db.prepare('SELECT * FROM approvals WHERE id = ?').get(approvalId) as ApprovalRow | undefined;
   if (!a || a.assignee_id !== userId) throw new HttpError(404, 'Not in your inbox');
@@ -413,8 +413,13 @@ export async function decide(db: DB, userId: string, approvalId: number, decisio
   const note = typeof comment === 'string' && comment.trim() ? comment.trim().slice(0, 1000) : null;
   if (decision !== 'approved' && !note) throw new HttpError(400, 'Add a short comment so the student knows why');
 
-  // Sign in place: whoever signs a step with boxes on the document needs a saved signature; it is captured now.
-  const hasBoxes = !!db.prepare('SELECT 1 FROM sign_fields WHERE request_id = ? AND step_no = ?').get(a.request_id, a.step_no);
+  // Sign in place: the signer may mark where they sign on the document (any PDF), then their saved signature is
+  // captured with the approval and stamped there when the request is signed off.
+  const placed = decision === 'approved' ? placeBoxes(place) : [];
+  const doc = placed.length ? signingDocument(db, a.request_id) : null;
+  if (placed.length && !doc) throw new HttpError(400, 'This request has no PDF to sign');
+  const hasBoxes =
+    placed.length > 0 || !!db.prepare('SELECT 1 FROM sign_fields WHERE request_id = ? AND step_no = ? AND (role IS NULL OR role = ?)').get(a.request_id, a.step_no, a.role);
   const savedSignature = hasBoxes && decision === 'approved' ? (db.prepare('SELECT png FROM user_signatures WHERE user_id = ?').pluck().get(userId) as Buffer | undefined) : undefined;
   if (hasBoxes && decision === 'approved' && !savedSignature) throw new HttpError(409, 'Add your signature first (Dashboard, My signature)');
 
@@ -432,6 +437,8 @@ export async function decide(db: DB, userId: string, approvalId: number, decisio
   return db.transaction(() => {
     db.prepare('UPDATE approvals SET decision = ?, comment = ?, signed_at = ?, signature = ? WHERE id = ?').run(decision, note, signedAt, signature, a.id);
     if (savedSignature) db.prepare('INSERT OR REPLACE INTO approval_signatures (approval_id, png) VALUES (?, ?)').run(a.id, savedSignature);
+    const box = db.prepare('INSERT INTO sign_fields (request_id, attachment_id, step_no, role, page, x, y, w, h) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)');
+    for (const f of placed) box.run(a.request_id, doc, a.step_no, a.role, f.page, f.x, f.y, f.w, f.h);
     audit(db, a.request_id, userId, decision, a.version, { role: a.role, comment: note });
     const round = 'request_id = ? AND round = ?';
     if (decision !== 'approved') {
@@ -701,20 +708,55 @@ export function labelsOf(db: DB, requestId: string) {
 
 /** Sign in place: the document, its boxes and who signs where (null when the request has no boxes). */
 function signingOf(db: DB, r: RequestRow, timeline: TimelineStep[]): RequestDetail['signing'] {
-  const fields = db.prepare('SELECT attachment_id, step_no, page, x, y, w, h FROM sign_fields WHERE request_id = ? ORDER BY id').all(r.id) as {
-    attachment_id: string; step_no: number; page: number; x: number; y: number; w: number; h: number;
+  const doc = signingDocument(db, r.id);
+  if (!doc) return null;
+  // Everyone who signs, in chain order (parallel signers each get their own number); cancelled steps are out.
+  const signers = timeline.filter((t) => t.decision !== 'cancelled');
+  const fields = db.prepare('SELECT step_no, role, page, x, y, w, h FROM sign_fields WHERE request_id = ? ORDER BY id').all(r.id) as {
+    step_no: number; role: Role | null; page: number; x: number; y: number; w: number; h: number;
   }[];
-  if (!fields.length) return null;
-  const steps = stepsOf(db, r);
   return {
-    attachmentId: fields[0].attachment_id,
-    fields: fields.map((f) => ({ step: f.step_no, page: f.page, x: f.x, y: f.y, w: f.w, h: f.h })),
-    signers: steps.map((s) => {
-      const t = timeline.find((x) => x.stepNo === s.stepNo);
-      const name = s.assignee ? ((db.prepare('SELECT name FROM users WHERE id = ?').pluck().get(s.assignee) as string) ?? '') : (t?.assignee.name ?? '');
-      return { step: s.stepNo, label: s.label ?? ROLE_LABEL[s.role], name, userId: s.assignee ?? t?.assignee.id ?? '', signed: t?.decision === 'approved' || t?.decision === 'carried' };
+    attachmentId: doc,
+    fields: fields.flatMap((f) => {
+      const i = signers.findIndex((t) => t.stepNo === f.step_no && (!f.role || t.role === f.role));
+      return i < 0 ? [] : [{ step: i + 1, page: f.page, x: f.x, y: f.y, w: f.w, h: f.h }];
     }),
+    signers: signers.map((t, i) => ({
+      step: i + 1,
+      label: t.roleLabel,
+      name: t.onBehalfOf ? `${t.assignee.name} for ${t.onBehalfOf.name}` : t.assignee.name,
+      userId: t.assignee.id,
+      signed: t.decision === 'approved' || t.decision === 'carried',
+      approvalId: t.approvalId,
+    })),
   };
+}
+
+/** The PDF a request is signed on: the one its boxes are on, else its first PDF attachment. Null when it has none. */
+export function signingDocument(db: DB, requestId: string): string | null {
+  return (
+    (db.prepare('SELECT attachment_id FROM sign_fields WHERE request_id = ? ORDER BY id LIMIT 1').pluck().get(requestId) as string | undefined) ??
+    (db
+      .prepare(
+        `SELECT a.id FROM attachments a JOIN requests r ON r.id = a.request_id
+          WHERE a.request_id = ? AND a.mime = 'application/pdf' AND a.version <= r.current_version ORDER BY a.rowid LIMIT 1`,
+      )
+      .pluck()
+      .get(requestId) as string | undefined) ??
+    null
+  );
+}
+
+/** Boxes a signer marks on the document when approving (fractions of the page, top-left origin), at most 10. */
+function placeBoxes(place: unknown) {
+  if (place === undefined || place === null) return [];
+  if (!Array.isArray(place) || place.length > 10) throw new HttpError(400, 'At most 10 signature boxes');
+  return place.map((b) => {
+    const f = b as Record<string, unknown>;
+    if (!Number.isInteger(f.page) || (f.page as number) < 1) throw new HttpError(400, 'A signature box has no page');
+    if (![f.x, f.y, f.w, f.h].every(frac) || (f.w as number) <= 0 || (f.h as number) <= 0) throw new HttpError(400, 'A signature box is off the page');
+    return { page: f.page as number, x: f.x as number, y: f.y as number, w: f.w as number, h: f.h as number };
+  });
 }
 
 /** The latest reopen, if it came after the latest rejection (i.e. it is what the student is acting on now). */

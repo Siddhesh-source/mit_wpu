@@ -73,8 +73,8 @@ describe('sign in place', () => {
     expect(res.body.signing).toMatchObject({
       fields: [expect.objectContaining({ step: 1, page: 1 }), expect.objectContaining({ step: 2, page: 1 })],
       signers: [
-        { step: 1, label: 'Guide', name: 'Prof. Dr. Minal Barhate', userId: 'u_barhate', signed: false },
-        { step: 2, label: 'Head of Department', name: 'Dr. Shital Parag Dongre', userId: 'u_dongre', signed: false },
+        expect.objectContaining({ step: 1, label: 'Guide', name: 'Prof. Dr. Minal Barhate', userId: 'u_barhate', signed: false }),
+        expect.objectContaining({ step: 2, label: 'Head of Department', name: 'Dr. Shital Parag Dongre', userId: 'u_dongre', signed: false }),
       ],
     });
     expect(res.body.timeline.map((s: any) => [s.roleLabel, s.assignee.id, s.decision])).toEqual([
@@ -85,10 +85,11 @@ describe('sign in place', () => {
 
     await ctx.act('u_barhate', id, 'approved');
     // the guide's captured signature is now visible in her box
-    const sig = await ctx.as('u_riya').get(`/api/requests/${id}/signatures/1`);
+    const [guide, hod] = res.body.signing.signers.map((x: any) => x.approvalId);
+    const sig = await ctx.as('u_riya').get(`/api/requests/${id}/signatures/${guide}`);
     expect(sig.status).toBe(200);
     expect(sig.headers['content-type']).toMatch(/png/);
-    expect((await ctx.as('u_riya').get(`/api/requests/${id}/signatures/2`)).status).toBe(404);
+    expect((await ctx.as('u_riya').get(`/api/requests/${id}/signatures/${hod}`)).status).toBe(404);
 
     await ctx.act('u_dongre', id, 'approved');
     const done = (await ctx.as('u_riya').get(`/api/requests/${id}`)).body;
@@ -136,5 +137,88 @@ describe('sign in place', () => {
     expect((await send({ signers: [{ userId: 'u_barhate' }], fields: [{ step: 1, page: 1, x: 0.9, y: 0.1, w: 2, h: 0.05 }] })).status).toBe(400);
     expect((await ctx.as('u_riya').post('/api/templates/ff180', { values: {} })).status).toBe(400);
     expect((await ctx.as('u_riya').get('/api/templates')).body.map((t: any) => t.code)).toEqual(['ff180', 'leave', 'noc', 'iv']);
+  });
+});
+
+describe('sign in place on any PDF', () => {
+  const login = async (ctx: any, id: string) => {
+    const request = (await import('supertest')).default;
+    return (await request(ctx.app).post('/api/auth/login').send({ userId: id, pin: '1234' })).body.token as string;
+  };
+  const decide = async (ctx: any, user: string, requestId: string, place?: object[]) => {
+    const item = (await ctx.as(user).get('/api/inbox')).body.find((i: any) => i.id === requestId);
+    return ctx.as(user).post(`/api/approvals/${item.approvalId}/decide`, { decision: 'approved', pin: '1234', ...(place ? { place } : {}) });
+  };
+  const box = { page: 1, x: 0.6, y: 0.8, w: 0.25, h: 0.06 };
+
+  it('a PDF sent with no boxes: the guide marks where she signs while approving; the HoD signs without a box', async () => {
+    const ctx = await ready();
+    const gen = await ctx.as('u_riya').post('/api/templates/ff180', { values: FF180 });
+    const res = await ctx.as('u_riya').post('/api/requests', {
+      type: 'sign_document',
+      form: { title: 'Uploaded form' },
+      attachments: [gen.body.document.id],
+      signers: [{ userId: 'u_barhate', label: 'Guide' }, { userId: 'u_dongre', label: 'Head of Department' }],
+    });
+    expect(res.body.signing).toMatchObject({ attachmentId: expect.any(String), fields: [] });
+    expect((await decide(ctx, 'u_barhate', res.body.id, [{ page: 1, x: 2, y: 0, w: 0.1, h: 0.1 }])).status).toBe(400);
+    expect((await decide(ctx, 'u_barhate', res.body.id, [box])).status).toBe(200);
+    expect((await ctx.as('u_riya').get(`/api/requests/${res.body.id}`)).body.signing.fields).toEqual([{ step: 1, ...box }]);
+    expect((await decide(ctx, 'u_dongre', res.body.id)).status).toBe(200);
+    const pdf = (await pdfBytes(ctx.as('u_riya').get(`/api/requests/${res.body.id}/pdf`))).body as Buffer;
+    expect((await PDFDocument.load(pdf)).getPageCount()).toBe(3); // the 2-page form + certificate
+    expect((await ctx.pub(`/api/verify/hash/${sha256Hex(pdf)}`)).body.status).toBe('verified');
+  });
+
+  it('any request with a PDF attached (custom request): the approver places a box; a saved signature is required', async () => {
+    const ctx = await ready();
+    await ctx.login('u_iyer');
+    const gen = await ctx.as('u_riya').post('/api/templates/leave', { values: { kind: 'Leave', from: '2026-11-02', to: '2026-11-04', reason: 'Family function' } });
+    const res = await ctx.as('u_riya').post('/api/requests', {
+      type: 'custom',
+      form: { title: 'Library fine waiver', purpose: 'Attached application' },
+      chain: ['librarian', 'hod'],
+      attachments: [gen.body.document.id],
+    });
+    expect(res.body.signing.signers.map((x: any) => x.label)).toEqual(['Librarian', 'HoD']);
+    const blocked = await decide(ctx, 'u_iyer', res.body.id, [box]);
+    expect(blocked.status).toBe(409);
+    const request = (await import('supertest')).default;
+    await request(ctx.app).put('/api/me/signature').set('Authorization', `Bearer ${await login(ctx, 'u_iyer')}`).send({ dataUrl: PNG_1x1 });
+    expect((await decide(ctx, 'u_iyer', res.body.id, [box])).status).toBe(200);
+    expect((await decide(ctx, 'u_kulkarni', res.body.id)).status).toBe(200); // no box: signs on the certificate only
+    const done = (await ctx.as('u_riya').get(`/api/requests/${res.body.id}`)).body;
+    expect(done.status).toBe('sealed');
+    const pdf = (await pdfBytes(ctx.as('u_riya').get(`/api/requests/${res.body.id}/pdf`))).body as Buffer;
+    expect((await PDFDocument.load(pdf)).getPageCount()).toBe(2); // the 1-page application + certificate
+  });
+
+  it('parallel signers on the same step each get their own box and their own signature', async () => {
+    const ctx = await ready();
+    const gen = await ctx.as('u_riya').post('/api/templates/iv', {
+      values: { industry: 'Tata Motors', place: 'Pimpri', date: '2026-11-20', faculty: 'Prof. Mehta', students: '40', purpose: 'Assembly line visit' },
+    });
+    const res = await ctx.as('u_riya').post('/api/requests', {
+      type: 'event_permission',
+      form: { title: 'Industrial visit', date: '2026-11-20', venue: 'Pimpri', headcount: 40 },
+      attachments: [gen.body.document.id],
+    });
+    const signers = res.body.signing.signers.map((x: any) => x.userId);
+    expect(signers).toEqual(['u_mehta', 'u_kulkarni', 'u_pawar', 'u_rao']);
+    const request = (await import('supertest')).default;
+    for (const u of ['u_mehta', 'u_kulkarni', 'u_pawar', 'u_rao'])
+      await request(ctx.app).put('/api/me/signature').set('Authorization', `Bearer ${await login(ctx, u)}`).send({ dataUrl: PNG_1x1 });
+    await decide(ctx, 'u_mehta', res.body.id);
+    await decide(ctx, 'u_kulkarni', res.body.id, [{ ...box, x: 0.1 }]);
+    await decide(ctx, 'u_pawar', res.body.id, [{ ...box, x: 0.5 }]);
+    const mid = (await ctx.as('u_riya').get(`/api/requests/${res.body.id}`)).body.signing;
+    expect(mid.fields.map((f: any) => [f.step, f.x])).toEqual([
+      [2, 0.1],
+      [3, 0.5],
+    ]);
+    await decide(ctx, 'u_rao', res.body.id);
+    const pdf = (await pdfBytes(ctx.as('u_riya').get(`/api/requests/${res.body.id}/pdf`))).body as Buffer;
+    expect((await PDFDocument.load(pdf)).getPageCount()).toBe(2);
+    expect((await ctx.pub(`/api/verify/hash/${sha256Hex(pdf)}`)).body.status).toBe('verified');
   });
 });

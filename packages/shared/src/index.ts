@@ -294,10 +294,14 @@ export interface SignField {
   h: number;
 }
 
+/**
+ * Sign in place, for any request whose document is a PDF. `signers` are everyone who signs, in chain order;
+ * a box's `step` is the 1-based position in that list (parallel signers each have their own).
+ */
 export interface SigningInfo {
   attachmentId: string;
   fields: SignField[];
-  signers: { step: number; label: string; name: string; userId: string; signed: boolean }[];
+  signers: { step: number; label: string; name: string; userId: string; signed: boolean; approvalId: number }[];
 }
 
 /** Ready-made forms (VIT Pune formats) with their sign spots already placed. */

@@ -226,24 +226,50 @@ export default function SendDocument() {
 
   const chips = slots.map((s) => ({ label: s.label || s.person?.roleLabel || 'Signer', name: s.person?.name }));
 
-  async function find() {
-    if (!pdf) return;
-    const labels = slots.map((s) => s.label).filter(Boolean);
-    if (!labels.length) return toast('Add who signs first, with what they sign as');
+  // Signers chosen before the PDF: once it opens, give each of them a box (templates arrive with theirs).
+  useEffect(() => {
+    if (pdf && !fields.length && slots.some((x) => x.person)) placeAll();
+  }, [pdf]);
+
+  /**
+   * One click: a box for every signer who has none. Where the form names the signer ("Guide", "Head of
+   * Department", "Signature of Guide:"), the box goes there; otherwise boxes line up at the foot of the last page.
+   */
+  async function placeAll(list: Slot[] = slots, current: SignField[] = fields) {
+    if (!pdf || !list.length) return;
+    const without = list.map((_, i) => i + 1).filter((step) => !current.some((f) => f.step === step));
+    if (!without.length) return toast('Every signer already has a box. Drag to adjust, or tap the page to add more.');
     setFinding(true);
     try {
-      const spots = await findSpots(pdf, labels);
-      const asField = (s: FoundSpot): SignField => ({ step: slots.findIndex((x) => x.label === s.label) + 1, page: s.page, x: s.x, y: s.y, w: s.w, h: s.h });
-      const first = labels.map((l) => spots.find((s) => s.label === l)).filter(Boolean) as FoundSpot[];
-      const rest = spots.filter((s) => !first.includes(s)).map(asField);
-      const placed = first.map(asField).filter((f) => !fields.some((g) => g.step === f.step && g.page === f.page));
-      setFields([...fields, ...placed]);
+      const labels = [...new Set(without.map((st) => list[st - 1].label).filter(Boolean))];
+      const spots = labels.length ? await findSpots(pdf, labels) : [];
+      const found: SignField[] = [];
+      const rest: SignField[] = [];
+      for (const step of without) {
+        const mine = spots.filter((s) => s.label === list[step - 1].label);
+        if (mine[0]) found.push({ step, page: mine[0].page, x: mine[0].x, y: mine[0].y, w: mine[0].w, h: mine[0].h });
+        rest.push(...mine.slice(1).map((s) => ({ step, page: s.page, x: s.x, y: s.y, w: s.w, h: s.h })));
+      }
+      const unplaced = without.filter((st) => !found.some((f) => f.step === st));
+      const n = unplaced.length;
+      const gap = 0.03;
+      const w = Math.min(0.26, (0.84 - gap * (n - 1)) / Math.max(n, 1));
+      const row = unplaced.map((step, k) => ({ step, page: pdf.numPages, x: 0.08 + k * (w + gap), y: 0.86, w, h: 0.06 }));
+      setFields([...current, ...found, ...row]);
       setMore(rest);
-      toast(placed.length ? `Placed ${placed.length} signature box${placed.length > 1 ? 'es' : ''}. Check them, then send.` : 'No sign spots found for these labels. Tap the page to place boxes.');
+      toast(
+        found.length && row.length
+          ? `Found ${found.length} sign spot${found.length > 1 ? 's' : ''} on the form; ${row.length} more box${row.length > 1 ? 'es' : ''} at the end. Drag to adjust.`
+          : found.length
+            ? `Placed ${found.length} box${found.length > 1 ? 'es' : ''} where the form asks for signatures. Check them, then send.`
+            : `Placed ${row.length} box${row.length > 1 ? 'es' : ''} at the foot of the last page. Drag them where each person signs.`,
+      );
     } finally {
       setFinding(false);
     }
   }
+  /** Taps place a box for the chosen signer, else the next signer without one. */
+  const placing = active ?? (slots.length ? slots.findIndex((_, i) => !fields.some((f) => f.step === i + 1)) + 1 || 1 : null);
 
   function pick(p: Person) {
     if (picking === null) return;
@@ -251,7 +277,8 @@ export default function SendDocument() {
     next[picking] = { label: next[picking]?.label || defaultLabel(p), person: p };
     setSlots(next);
     setPicking(null);
-    if (active === null) setActive(picking + 1);
+    // a new signer gets a box straight away
+    if (!fields.some((f) => f.step === picking + 1)) placeAll(next);
   }
   function removeSlot(i: number) {
     setSlots(slots.filter((_, j) => j !== i));
@@ -315,8 +342,8 @@ export default function SendDocument() {
         <section className="order-2 lg:order-1">
           <SectionHead title="Where each person signs">
             {isPdf && pdf && (
-              <button type="button" className="link inline-flex min-h-[40px] items-center gap-1.5 font-semibold" onClick={find} disabled={finding}>
-                <Icon name="search" className="h-4 w-4" /> {finding ? 'Reading the form…' : 'Find sign spots'}
+              <button type="button" className="link inline-flex min-h-[40px] items-center gap-1.5 font-semibold" onClick={() => placeAll()} disabled={finding || !slots.length}>
+                <Icon name="pen" className="h-4 w-4" /> {finding ? 'Reading the form…' : 'Place signature boxes'}
               </button>
             )}
           </SectionHead>
@@ -338,9 +365,9 @@ export default function SendDocument() {
                     <button
                       key={i}
                       type="button"
-                      onClick={() => setActive(active === i + 1 ? null : i + 1)}
+                      onClick={() => setActive(i + 1)}
                       className="flex min-h-[32px] items-center gap-1.5 rounded-full border px-3 text-xs font-semibold"
-                      style={{ borderColor: SIGNER_COLORS[i % 6], background: active === i + 1 ? SIGNER_COLORS[i % 6] : 'transparent', color: active === i + 1 ? '#fff' : SIGNER_COLORS[i % 6] }}
+                      style={{ borderColor: SIGNER_COLORS[i % 6], background: placing === i + 1 ? SIGNER_COLORS[i % 6] : 'transparent', color: placing === i + 1 ? '#fff' : SIGNER_COLORS[i % 6] }}
                     >
                       {c.label} · {fields.filter((f) => f.step === i + 1).length}
                     </button>
@@ -352,7 +379,8 @@ export default function SendDocument() {
                   )}
                 </div>
               )}
-              <PdfSigner pdf={pdf} fields={fields} signers={chips} mode="edit" active={active} onChange={setFields} />
+              {slots.length === 0 && <p className="mb-2 text-sm text-muted">Add who signs on the right; each gets a box here in one click.</p>}
+              <PdfSigner pdf={pdf} fields={fields} signers={chips} mode="edit" active={placing} onChange={setFields} />
             </>
           )}
         </section>
@@ -394,8 +422,9 @@ export default function SendDocument() {
                         label={s.label}
                         exclude={slots.map((x) => x.person?.id ?? '')}
                         onPick={(p) => {
-                          setSlots(slots.map((x, j) => (j === i ? { ...x, person: p } : x)));
-                          if (active === null) setActive(i + 1);
+                          const next = slots.map((x, j) => (j === i ? { ...x, person: p } : x));
+                          setSlots(next);
+                          if (!fields.some((f) => f.step === i + 1)) placeAll(next);
                         }}
                         onMore={() => setPicking(i)}
                       />

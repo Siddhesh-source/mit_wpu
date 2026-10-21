@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { ROLE_LABEL, type Classroom, type Connection, type Delegation, type InboxItem, type StaffDashboard } from '@plc/shared';
+import { ROLE_LABEL, type Classroom, type Connection, type Delegation, type InboxItem, type SignField, type StaffDashboard } from '@plc/shared';
 import { PersonBlock } from '../components/PersonBlock';
 import { DecisionList } from '../components/Decisions';
 import { Empty, Page, PageHeader, PinPad, SectionHead, Sheet, Tick, toast } from '../components/ui';
@@ -114,6 +114,8 @@ export default function Inbox() {
   // Sign in place: my saved signature (needed when the document has boxes for me)
   const { data: mySig, reload: reloadSig } = useLive<{ dataUrl: string | null }>('/api/me/signature', 120_000);
   const [sigOpen, setSigOpen] = useState(false);
+  /** Boxes the reviewer taps onto the document to mark where they sign (sent with the approval). */
+  const [placed, setPlaced] = useState<Omit<SignField, 'step'>[]>([]);
 
   const isStudent = !!me?.roles.includes('student');
   const { data: conns, reload: reloadConns } = useLive<Connection[]>(isStudent ? null : '/api/connections', 8000);
@@ -130,7 +132,12 @@ export default function Inbox() {
   const item = items?.find((i) => i.approvalId === current) ?? items?.[0];
   const count = items?.length ?? 0;
   const mine = item?.timeline.find((s) => s.approvalId === item.approvalId);
-  const myBoxes = item?.signing?.fields.filter((f) => f.step === mine?.stepNo).length ?? 0;
+  // My position in the document's signer list, and how many boxes are mine (the student's plus any I placed)
+  const meOnDoc = item?.signing ? item.signing.signers.findIndex((x) => x.approvalId === item.approvalId) + 1 : 0;
+  const myBoxes = (item?.signing?.fields.filter((f) => f.step === meOnDoc).length ?? 0) + placed.length;
+  useEffect(() => setPlaced([]), [item?.approvalId]);
+  /** Approve; a document with boxes for me needs my saved signature first. */
+  const approve = () => (myBoxes > 0 && !mySig?.dataUrl ? setSigOpen(true) : setChoice('approved'));
 
   async function decide(pin: string) {
     if (!item || !choice) return;
@@ -141,7 +148,8 @@ export default function Inbox() {
     }
     setBusy(true);
     try {
-      await api(`/api/approvals/${item.approvalId}/decide`, { method: 'POST', json: { decision: choice, comment, pin } });
+      await api(`/api/approvals/${item.approvalId}/decide`, { method: 'POST', json: { decision: choice, comment, pin, ...(choice === 'approved' && placed.length ? { place: placed } : {}) } });
+      setPlaced([]);
       toast(`${DONE[choice]} · ${item.title}`);
       setChoice(null);
       setComment('');
@@ -492,8 +500,8 @@ export default function Inbox() {
             </div>
           )}
           <div className="grid grid-cols-2 gap-3">
-            <button className="rounded-xl bg-ok py-4 text-lg font-semibold text-white active:scale-[0.98]" onClick={() => (myBoxes > 0 && !mySig?.dataUrl ? setSigOpen(true) : setChoice('approved'))}>
-              {myBoxes > 0 ? 'Approve and sign' : 'Approve'}
+            <button className="rounded-xl bg-ok py-4 text-lg font-semibold text-white active:scale-[0.98]" onClick={approve}>
+              {item.signing ? 'Approve and sign' : 'Approve'}
             </button>
             <button className="rounded-xl border-2 border-ink py-4 text-lg font-semibold active:scale-[0.98]" onClick={() => setChoice('returned')}>
               Return
@@ -505,8 +513,11 @@ export default function Inbox() {
         </article>
         {item.signing ? (
           <section className="mt-8 lg:mt-0">
-            <h2 className="mb-3 text-base font-semibold">The document {myBoxes > 0 && <span className="font-normal text-muted">· your boxes are highlighted</span>}</h2>
-            <SignedDocument requestId={item.id} signing={item.signing} highlight={mine?.stepNo} />
+            <h2 className="mb-3 text-base font-semibold">
+              The document{' '}
+              <span className="font-normal text-muted">{myBoxes > 0 ? '· click your box to sign' : '· tap where you sign (optional)'}</span>
+            </h2>
+            <SignedDocument requestId={item.id} signing={item.signing} me={meOnDoc || null} placed={placed} onPlace={setPlaced} onSign={approve} />
           </section>
         ) : (
           <section className="hidden lg:block lg:rounded-2xl lg:border lg:border-rule lg:p-6">

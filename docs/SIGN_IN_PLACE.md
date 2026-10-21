@@ -22,6 +22,21 @@ With CampusSign:
 - **Captured at signing time.** The signature image used is the one the person had when they approved, stored with that approval.
 - **Order and delegation still work.** Signers sign one after another; a delegate signs "on behalf of" and the caption says so.
 
+## Any PDF, not just templates
+
+Templates are a shortcut. The same pipeline runs for **every PDF**:
+
+- **Student, one click:** upload any PDF, pick who signs; each signer gets a box straight away (**Place signature
+  boxes** puts it where the form names them, otherwise in a row at the foot of the last page). Drag to adjust, tap the
+  page to add more.
+- **Faculty, one click:** their box says **Sign here**; one click opens the PIN. If the document has no box for them
+  (any request with a PDF attached: custom requests, event permission, bonafide…), they tap where they sign and
+  approve; their box is saved with the approval.
+- **Every role-based chain too:** parallel signers on one step (HoD ‖ Security) each get their own box and their
+  own signature.
+- **The signed copy is always the same shape:** the original PDF with signatures in their boxes, captions, footer,
+  certificate page; verified on chain. A signer with no box signs on the certificate page only.
+
 ## Rules
 
 - Signers: 1 to 6 people, in order, each with a "signs as" label (Guide, Project Coordinator, Head of Department, Class Teacher, Mentor, …). Two signers cannot share a designation in one request (send separately).

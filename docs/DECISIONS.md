@@ -91,3 +91,4 @@
 89. **pdf.js is loaded only on screens that show a PDF** (separate chunk and worker), keeping the main bundle unchanged.
 90. **Filled real forms with personal data stay out of the repository and the server**; the FF 180 used for design is reproduced as a blank template.
 91. **No stat banners on dashboards** (student, staff, registrar). The counts already appear where they lead to action: the Review next hero, the filter tabs, the top-bar badge and the People rows. The `StatStrip` component was removed.
+92. **Sign in place is the core for any PDF, not a template feature.** Every request whose document is a PDF carries signing info; the signer list is the chain in order (parallel signers numbered separately, boxes keyed by step and role); an approver can place their own box when approving; the student gets one-click boxes for every signer (form's own spots, else a row at the foot of the last page).
