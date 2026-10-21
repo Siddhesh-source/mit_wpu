@@ -10,6 +10,7 @@
 | `packages/shared` | Types, role labels, routing helpers; later canonical JSON, hashing, QR codec, verify precedence (used by API and browser) |
 | `contracts` | Solidity `DocumentRegistry`, compiled with solcjs (`scripts/compile.mjs`); `lib/index.ts` exports the artifact, `deployRegistry`, `startLocalNode`; Hardhat only runs the local node |
 | `docs` | Project memory for Claude |
+| `deploy` | EC2 bootstrap, update and backup scripts, systemd units, Caddyfile (see `docs/DEPLOY_AWS.md`) |
 
 ## Stack
 

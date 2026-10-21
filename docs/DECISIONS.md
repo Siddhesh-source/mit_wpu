@@ -49,3 +49,6 @@
 47. **Admin reset clears the stored contract address**, so each reset gets a fresh contract and request ids restart cleanly.
 48. **One port in production**: the API serves the built web app; `tsx` is a runtime dependency of the API (no separate compile step).
 49. **End-to-end test runs the whole demo script** (`apps/api/test/demo.e2e.test.ts`) and scans every chain transaction's calldata for personal data.
+50. **PIN attempts rate limited** (login, sign, revoke: 20 per IP per minute) so a 4-digit PIN cannot be brute-forced.
+51. **AWS free tier = one EC2 instance + Caddy + SQLite**, no load balancer, RDS or NAT. t4g.small on post-July-2025 accounts, t3.micro + Amoy on legacy accounts; files in `deploy/`, guide in `docs/DEPLOY_AWS.md`.
+52. **systemd runs the server through `tsx` directly** (no npm wrapper), memory-capped and sandboxed.

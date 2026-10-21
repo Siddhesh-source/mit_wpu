@@ -18,6 +18,8 @@ export interface Services {
   publicBaseUrl: string;
   /** Public verify calls per IP per minute (default 60). */
   verifyRateLimit?: number;
+  /** PIN attempts (login, sign, revoke) per IP per minute (default 20): a 4-digit PIN must not be brute-forced. */
+  pinRateLimit?: number;
 }
 
 interface SealRow {

@@ -7,6 +7,7 @@ import type { Me, Profile, Role } from '@plc/shared';
 import type { DB } from './db.js';
 import { requireAuth, signToken } from './auth.js';
 import { errorHandler, workflowRoutes } from './routes.js';
+import { rateLimit } from './ratelimit.js';
 import type { Services } from './seal.js';
 import { config } from './config.js';
 
@@ -52,7 +53,8 @@ export function createApp(db: DB, services: Partial<Services> = {}) {
     res.json(profiles);
   });
 
-  app.post('/api/auth/login', (req, res) => {
+  const pinLimit = rateLimit({ max: svc.pinRateLimit ?? 20, windowMs: 60_000 });
+  app.post('/api/auth/login', pinLimit, (req, res) => {
     const { userId, pin } = req.body ?? {};
     const user = db.prepare('SELECT id, pin_hash FROM users WHERE id = ?').get(userId) as { id: string; pin_hash: string } | undefined;
     if (!user || typeof pin !== 'string' || !bcrypt.compareSync(pin, user.pin_hash))
@@ -70,6 +72,7 @@ export function createApp(db: DB, services: Partial<Services> = {}) {
     res.json(me);
   });
 
+  app.use(['/api/approvals', '/api/requests/:id/revoke'], (req, res, next) => (req.method === 'POST' ? pinLimit(req, res, next) : next()));
   app.use('/api', workflowRoutes(db, svc));
   app.use('/api', (_req, res) => res.status(404).json({ error: 'Not found' }));
 

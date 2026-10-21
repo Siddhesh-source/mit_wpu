@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { JsonRpcProvider, toUtf8String } from 'ethers';
+import { JsonRpcProvider } from 'ethers';
 import { gateCheck, sha256Hex, type SignedRevocationList } from '@plc/shared';
 import { setup, RIYA_EVENT, rpcUrl } from './helpers.js';
 
@@ -98,7 +98,7 @@ describe('live demo script', () => {
     expect(txs.length).toBe(5);
     for (const tx of txs) {
       const data = (await provider.getTransaction(tx))!.data;
-      const text = toUtf8String(data.slice(0, 2) + data.slice(10).replace(/00/g, ''), () => '');
+      const text = Buffer.from(data.slice(2), 'hex').toString('latin1'); // any ASCII text in the calldata shows up as-is
       for (const personal of ['Riya', 'Mehta', 'Kulkarni', 'Rao', 'Pawar', 'Hall B', 'Auditorium', 'Robotics', 'Computer Science', 'Scholarship', 'Seminar']) {
         expect(text, `${tx} leaks ${personal}`).not.toContain(personal);
       }

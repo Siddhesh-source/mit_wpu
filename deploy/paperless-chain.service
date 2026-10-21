@@ -1,0 +1,18 @@
+[Unit]
+Description=PaperLess Campus local chain (only when CHAIN_MODE=local)
+After=network-online.target
+
+[Service]
+User=paperless
+WorkingDirectory=/opt/paperless/contracts
+Environment=HARDHAT_DISABLE_TELEMETRY_PROMPT=true
+Environment=NODE_OPTIONS=--max-old-space-size=320
+ExecStart=/opt/paperless/node_modules/.bin/hardhat node --hostname 127.0.0.1 --port 8545
+Restart=always
+RestartSec=3
+MemoryMax=500M
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

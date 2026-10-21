@@ -63,3 +63,14 @@ describe('role guard', () => {
     expect((await request(guarded).get('/hod-only')).status).toBe(401);
   });
 });
+
+describe('PIN brute-force protection', () => {
+  it('limits login attempts per client', async () => {
+    const db = openDb();
+    seed(db);
+    const limited = createApp(db, { pinRateLimit: 5 });
+    const codes: number[] = [];
+    for (let i = 0; i < 7; i++) codes.push((await request(limited).post('/api/auth/login').send({ userId: 'u_riya', pin: String(1000 + i) })).status);
+    expect(codes).toEqual([401, 401, 401, 401, 401, 429, 429]);
+  });
+});

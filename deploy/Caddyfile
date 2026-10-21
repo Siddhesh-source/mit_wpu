@@ -1,0 +1,9 @@
+# Automatic HTTPS (Let's Encrypt). Replace {$DOMAIN} or let bootstrap.sh fill it in.
+{$DOMAIN} {
+	encode zstd gzip
+	reverse_proxy 127.0.0.1:4000
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		-Server
+	}
+}
