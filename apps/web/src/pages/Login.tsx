@@ -4,6 +4,7 @@ import { DESIGNATIONS, DESIGNATION_LABEL, ROLE_LABEL, homeFor, type Department }
 import { api } from '../lib/api';
 import { useSession } from '../lib/session';
 import { ThemeToggle } from '../components/ThemeToggle';
+import { Icon } from '../components/Icon';
 
 type Kind = 'student' | 'staff';
 const KIND = 'plc.kind';
@@ -73,23 +74,33 @@ export default function Login() {
   return (
     <main className="relative mx-auto flex min-h-screen max-w-md flex-col px-4 py-10 md:max-w-2xl md:justify-center">
       <ThemeToggle className="absolute right-4 top-4" />
-      <header className="mb-8 text-center">
-        <h1 className="text-3xl font-bold md:text-5xl">CampusSign</h1>
-        <p className="mt-2 text-muted md:text-lg">No queues. No paper. No forged signatures.</p>
+      <header className="mb-10 flex flex-col items-center text-center">
+        <span className="mb-4 grid h-12 w-12 place-items-center rounded-xl bg-accent text-white">
+          <Icon name="check" className="h-6 w-6" />
+        </span>
+        <h1 className="text-3xl font-bold md:text-4xl">CampusSign</h1>
+        <p className="mt-2 text-muted">No queues. No paper. No forged signatures.</p>
       </header>
 
       {!kind ? (
-        <div className="grid gap-3 md:grid-cols-2 md:gap-4">
-          <button onClick={() => choose('student')} className="rounded-3xl border-2 border-rule bg-panel p-6 text-left transition hover:border-accent active:scale-[0.99]">
-            <span className="mb-3 grid h-12 w-12 place-items-center rounded-full bg-accent text-xl text-white">🎓</span>
-            <p className="text-xl font-bold">I'm a student</p>
-            <p className="mt-1 text-sm text-muted">Send documents, request approvals, track every signature.</p>
-          </button>
-          <button onClick={() => choose('staff')} className="rounded-3xl border-2 border-rule bg-panel p-6 text-left transition hover:border-accent active:scale-[0.99]">
-            <span className="mb-3 grid h-12 w-12 place-items-center rounded-full bg-ink text-xl text-bg">🏛️</span>
-            <p className="text-xl font-bold">I'm staff / administrator</p>
-            <p className="mt-1 text-sm text-muted">Faculty, HoD, Dean, Security, offices or Registrar. Review and sign.</p>
-          </button>
+        <div className="mx-auto flex w-full max-w-md flex-col gap-3">
+          {(
+            [
+              { k: 'student', icon: 'student', title: "I'm a student", line: 'Request approvals, send documents, track every signature' },
+              { k: 'staff', icon: 'building', title: "I'm staff / administrator", line: 'Faculty, HoD, Dean, Security, offices or Registrar' },
+            ] as const
+          ).map((c) => (
+            <button key={c.k} onClick={() => choose(c.k)} className="group flex items-center gap-4 rounded-2xl border border-rule p-4 text-left transition-colors hover:border-accent hover:bg-panel">
+              <span className="grid h-11 w-11 place-items-center rounded-xl bg-accent/10 text-accent">
+                <Icon name={c.icon} className="h-6 w-6" />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block font-semibold">{c.title}</span>
+                <span className="block text-sm text-muted">{c.line}</span>
+              </span>
+              <Icon name="chevron" className="h-5 w-5 text-faint transition-colors group-hover:text-accent" />
+            </button>
+          ))}
         </div>
       ) : (
         <section className="mx-auto w-full max-w-md">

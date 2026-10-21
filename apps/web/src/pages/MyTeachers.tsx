@@ -6,6 +6,7 @@ import { Empty, Page, SectionHead, toast } from '../components/ui';
 import { api } from '../lib/api';
 import { fmtDate, useLive } from '../lib/hooks';
 import { useSession } from '../lib/session';
+import { Icon } from '../components/Icon';
 
 type Tab = 'teachers' | 'classes';
 
@@ -139,7 +140,7 @@ export default function MyTeachers() {
                 return (
                   <PersonBlock key={p.id} p={p}>
                     {st === 'accepted' ? (
-                      <span className="text-xs font-semibold text-ok">✓ Your teacher</span>
+                      <span className="inline-flex items-center gap-1 text-xs font-semibold text-ok"><Icon name="check" className="h-4 w-4" /> Your teacher</span>
                     ) : st === 'pending' ? (
                       <span className="text-xs font-semibold text-warn">Requested</span>
                     ) : (

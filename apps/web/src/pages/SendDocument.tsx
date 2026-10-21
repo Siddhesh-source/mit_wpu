@@ -6,6 +6,7 @@ import { DocumentLibrary } from '../components/DocumentLibrary';
 import { PersonBlock } from '../components/PersonBlock';
 import { api } from '../lib/api';
 import { useLive } from '../lib/hooks';
+import { Icon } from '../components/Icon';
 
 type Tab = 'all' | 'staff' | 'student';
 
@@ -102,7 +103,7 @@ export default function SendDocument() {
                 <div className="grid max-h-[28rem] gap-3 overflow-y-auto pr-1 sm:grid-cols-2 xl:grid-cols-3">
                   {sorted.map((p) => (
                     <button type="button" key={p.id} className="text-left" onClick={() => setTo(p)}>
-                      <PersonBlock p={p}>{teacherIds.has(p.id) && <span className="text-xs font-semibold text-ok">✓ Your teacher</span>}</PersonBlock>
+                      <PersonBlock p={p}>{teacherIds.has(p.id) && <span className="inline-flex items-center gap-1 text-xs font-semibold text-ok"><Icon name="check" className="h-4 w-4" /> Your teacher</span>}</PersonBlock>
                     </button>
                   ))}
                   {people && people.length === 0 && <p className="text-sm text-faint">Nobody matches.</p>}

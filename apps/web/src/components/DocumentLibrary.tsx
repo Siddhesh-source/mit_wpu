@@ -2,6 +2,7 @@ import { useRef, useState, type DragEvent } from 'react';
 import type { LibraryDocument } from '@plc/shared';
 import { api, uploadFile } from '../lib/api';
 import { toast } from './ui';
+import { Icon } from './Icon';
 
 const ACCEPT = ['application/pdf', 'image/png', 'image/jpeg'];
 const kb = (n: number) => (n < 1024 * 1024 ? `${Math.max(1, Math.round(n / 1024))} KB` : `${(n / 1024 / 1024).toFixed(1)} MB`);
@@ -71,7 +72,7 @@ export function DocumentLibrary({
           over ? 'border-accent bg-accent/5' : 'border-rule hover:border-accent/50'
         }`}
       >
-        <p className="text-2xl">⬆</p>
+        <Icon name="upload" className="mb-1 h-6 w-6 text-accent" />
         <p className="text-sm font-semibold text-accent">{busy ? `Uploading ${busy}…` : 'Drop files here'}</p>
         <p className="text-xs text-faint">or click to choose · PDF, PNG, JPG · 5 MB</p>
         <input ref={ref} type="file" hidden multiple accept={ACCEPT.join(',')} onChange={(e) => (add([...(e.target.files ?? [])]), (e.target.value = ''))} />
@@ -84,7 +85,7 @@ export function DocumentLibrary({
             <li key={d.id} className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-sm ${on ? 'border-accent bg-panel' : 'border-rule'}`}>
               <input type="checkbox" className="h-4 w-4 shrink-0 accent-accent" checked={on} onChange={() => onSelect(on ? selected.filter((x) => x !== d.id) : [...selected, d.id])} aria-label={`Select ${d.name}`} />
               <span className="min-w-0 flex-1">
-                <span className="block truncate font-medium">{d.mime === 'application/pdf' ? '📄' : '🖼️'} {d.name}</span>
+                <span className="flex min-w-0 items-center gap-1.5 font-medium"><Icon name="file" className="h-4 w-4 text-faint" /><span className="truncate">{d.name}</span></span>
                 <span className="text-[11px] text-faint">
                   {kb(d.size)}
                   {d.usedIn > 0 && ` · sent ${d.usedIn}×`}
