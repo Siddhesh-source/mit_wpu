@@ -17,6 +17,7 @@ import { ROLES } from '@plc/shared';
 import Inbox from './pages/Inbox';
 import History from './pages/History';
 import People from './pages/People';
+import MyTeachers from './pages/MyTeachers';
 import { Toaster } from './components/ui';
 import './index.css';
 
@@ -61,6 +62,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
           <Route path="/verify" element={<Verify />} />
           <Route path="/student" element={<Guard roles={['student']}><StudentHome /></Guard>} />
           <Route path="/student/new" element={<Guard roles={['student']}><NewRequest /></Guard>} />
+          <Route path="/student/teachers" element={<Guard roles={['student']}><MyTeachers /></Guard>} />
           <Route path="/student/send" element={<Guard roles={['student']}><SendDocument /></Guard>} />
           <Route path="/profile" element={<Guard roles={[...ROLES]}><Profile /></Guard>} />
           <Route path="/requests/:id" element={<Guard roles={['student', 'admin', ...APPROVER_ROLES]}><RequestPage /></Guard>} />

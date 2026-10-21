@@ -28,7 +28,7 @@ function navFor(roles: Role[], waiting: number): NavItem[] {
     return [
       { to: '/student', label: 'Home', end: true },
       { to: '/student/new', label: 'New request' },
-      { to: '/student/send', label: 'Send a document' },
+      { to: '/student/teachers', label: 'My teachers' },
       { to: '/inbox', label: 'To sign', badge: waiting },
       { to: '/verify', label: 'Verify' },
     ];

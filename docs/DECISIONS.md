@@ -81,3 +81,4 @@
 79. **User-facing wording: "Signed", never "Sealed"; "Reminder sent", never "Overdue".** Internal status values (`sealed`, `sealing`), database columns and the on-chain contract keep their names.
 80. **Verify is part of the app when signed in** (same top bar); the public page keeps a light header with Sign in for anyone holding a document.
 81. **New catalogue types reach existing databases on start** (`syncCatalog`, insert-only), so deploying never needs a demo reset.
+82. **Students manage teachers and classes on their own page (My teachers), mirroring the staff People page.** The student home keeps a summary card (teachers, classes, join link); "Send a document" stays a home action and is reachable from every teacher block, but is not a top-bar item.

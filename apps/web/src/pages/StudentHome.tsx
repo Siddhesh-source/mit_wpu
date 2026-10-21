@@ -1,11 +1,9 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import type { Classroom, Connection, InboxItem, LibraryDocument, Person, RequestStatus, RequestSummary } from '@plc/shared';
+import type { Classroom, Connection, InboxItem, LibraryDocument, RequestStatus, RequestSummary } from '@plc/shared';
 import { Empty, Page, SectionHead, StatTile, StatusPill, toast } from '../components/ui';
 import { useSession } from '../lib/session';
 import { DocumentLibrary } from '../components/DocumentLibrary';
-import { PersonBlock } from '../components/PersonBlock';
-import { api } from '../lib/api';
 import { ago, fmtDate, useLive } from '../lib/hooks';
 
 type Filter = 'all' | 'active' | 'action' | 'sealed' | 'closed';
@@ -21,67 +19,22 @@ const FILTERS: { key: Filter; label: string }[] = [
   { key: 'closed', label: 'Closed' },
 ];
 
-/** Student workspace: documents (drag and drop), teachers as blocks, add a teacher, things to sign, my requests. */
+/** Student home: actions, numbers, what needs action, my requests, documents. Teachers and classes live in My teachers. */
 export default function StudentHome() {
   const nav = useNavigate();
   const { me } = useSession();
   const [filter, setFilter] = useState<Filter>('all');
   const { data: mine, error } = useLive<RequestSummary[]>('/api/requests/mine');
   const { data: docs, reload: reloadDocs } = useLive<LibraryDocument[]>('/api/documents', 15_000);
-  const { data: conns, reload: reloadConns } = useLive<Connection[]>('/api/connections', 8000);
+  const { data: conns } = useLive<Connection[]>('/api/connections', 15_000);
+  const { data: classes } = useLive<Classroom[]>('/api/classrooms', 30_000);
   const { data: toSign } = useLive<InboxItem[]>('/api/inbox', 8000);
   const [selected, setSelected] = useState<string[]>([]);
-  const [q, setQ] = useState('');
-  const [found, setFound] = useState<Person[] | null>(null);
-
-  useEffect(() => {
-    if (!q.trim()) return setFound(null); // results appear as you type
-    const t = setTimeout(() => {
-      api<Person[]>(`/api/people?kind=staff&q=${encodeURIComponent(q)}`).then(setFound).catch(() => setFound([]));
-    }, 250);
-    return () => clearTimeout(t);
-  }, [q]);
-
-  const { data: classes, reload: reloadClasses } = useLive<Classroom[]>('/api/classrooms', 30_000);
-  const [code, setCode] = useState('');
-  const [joining, setJoining] = useState(false);
-  async function join(e: FormEvent) {
-    e.preventDefault();
-    setJoining(true);
-    try {
-      const c = await api<Classroom>('/api/classrooms/join', { method: 'POST', json: { code } });
-      toast(`You joined ${c.name}. ${c.teacher.name} is now one of your teachers.`);
-      setCode('');
-      reloadClasses();
-      reloadConns();
-    } catch (err) {
-      toast((err as Error).message);
-    } finally {
-      setJoining(false);
-    }
-  }
-
   const count = (f: Exclude<Filter, 'all'>) => mine?.filter((r) => GROUP[r.status] === f).length ?? 0;
   const needsAction = mine?.filter((r) => r.status === 'returned') ?? [];
   const shown = mine?.filter((r) => filter === 'all' || GROUP[r.status] === filter) ?? [];
   const teachers = conns?.filter((c) => c.status === 'accepted') ?? [];
-  const pending = conns?.filter((c) => c.status === 'pending') ?? [];
-  const statusOf = (id: string) => conns?.find((c) => c.person.id === id)?.status;
   const send = (to?: string, docIds = selected) => nav(`/student/send?${new URLSearchParams({ ...(to ? { to } : {}), ...(docIds.length ? { docs: docIds.join(',') } : {}) })}`);
-
-  async function connect(p: Person) {
-    try {
-      await api('/api/connections', { method: 'POST', json: { staffId: p.id } });
-      toast(`Request sent to ${p.name}`);
-      reloadConns();
-    } catch (e) {
-      toast((e as Error).message);
-    }
-  }
-  async function remove(c: Connection) {
-    await api(`/api/connections/${c.id}`, { method: 'DELETE' }).catch((e) => toast(e.message));
-    reloadConns();
-  }
 
   const library = (
     <aside className="lg:sticky lg:top-6">
@@ -220,102 +173,31 @@ export default function StudentHome() {
             )}
           </section>
 
-          {/* Classes: join with the code a teacher emailed */}
-          <section>
-            <SectionHead title={`My classes${classes?.length ? ` (${classes.length})` : ''}`} />
-            <form onSubmit={join} className="mb-3 flex gap-2">
-              <input
-                className="w-full rounded-xl border border-rule px-4 py-3 font-mono uppercase tracking-widest outline-none placeholder:font-sans placeholder:normal-case placeholder:tracking-normal focus:border-accent"
-                placeholder="Class code from your email"
-                maxLength={6}
-                value={code}
-                onChange={(e) => setCode(e.target.value.toUpperCase())}
-              />
-              <button className="shrink-0 rounded-xl bg-accent px-5 font-semibold text-white disabled:opacity-40" disabled={code.trim().length !== 6 || joining}>
-                Join
-              </button>
-            </form>
-            {classes && classes.length > 0 ? (
-              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                {classes.map((c) => (
-                  <div key={c.id} className="rounded-2xl border border-rule bg-panel p-4">
-                    <p className="truncate font-semibold">{c.name}</p>
-                    <p className="truncate text-xs text-muted">
-                      {c.teacher.name} · {c.joinedCount} student{c.joinedCount === 1 ? '' : 's'}
-                    </p>
-                    <button className="mt-3 text-sm font-semibold text-accent" onClick={() => send(c.teacher.id)}>
-                      Send a document to {c.teacher.name.split(' ').slice(-1)[0]} →
-                    </button>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-xs text-faint">Your teacher emails a 6-letter code to the address you signed up with ({me?.email}). It only works for your account.</p>
-            )}
-          </section>
-
-          {/* Teachers as blocks */}
-          <section>
-            <h2 className="mb-3 text-sm font-semibold text-muted">My teachers</h2>
-            {teachers.length === 0 && pending.length === 0 && <p className="mb-2 text-sm text-faint">Add your teachers below to send them documents in one tap.</p>}
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-              {teachers.map((c) => (
-                <PersonBlock key={c.id} p={c.person}>
-                  <button className="flex-1 whitespace-nowrap rounded-xl bg-accent px-4 py-2.5 text-sm font-semibold text-white active:scale-[0.98]" onClick={() => send(c.person.id)}>
-                    Send document
-                  </button>
-                  <button className="px-2 text-xs text-faint hover:text-bad" onClick={() => remove(c)} title="Remove">
-                    Remove
-                  </button>
-                </PersonBlock>
-              ))}
-              {pending.map((c) => (
-                <PersonBlock key={c.id} p={c.person} muted>
-                  <span className="text-xs font-semibold text-warn">Waiting for {c.person.name.split(' ').slice(-1)[0]} to accept</span>
-                  <button className="ml-auto text-xs text-faint" onClick={() => send(c.person.id)}>
-                    Send anyway
-                  </button>
-                </PersonBlock>
-              ))}
+          {/* Teachers and classes: summary here, managed in My teachers */}
+          <section className="rounded-2xl border border-rule p-4">
+            <SectionHead title="My teachers">
+              <Link to="/student/teachers" className="link">
+                Open →
+              </Link>
+            </SectionHead>
+            <div className="grid grid-cols-2 gap-3">
+              <Link to="/student/teachers" className="rounded-xl bg-panel p-3 hover:bg-rule">
+                <p className="text-2xl font-bold tabular-nums">{conns ? teachers.length : '–'}</p>
+                <p className="text-xs text-muted">Teachers</p>
+              </Link>
+              <Link to="/student/teachers?tab=classes" className="rounded-xl bg-panel p-3 hover:bg-rule">
+                <p className="text-2xl font-bold tabular-nums">{classes?.length ?? '–'}</p>
+                <p className="text-xs text-muted">Classes</p>
+              </Link>
             </div>
+            <Link to="/student/teachers?tab=classes" className="mt-3 block text-center text-sm font-semibold text-accent">
+              Got a class code? Join a class →
+            </Link>
           </section>
 
-          {/* On phones the documents sit right after the teachers */}
+          {/* On phones the documents come last */}
           <div className="lg:hidden">{library}</div>
 
-          {/* Add a teacher */}
-          <section>
-            <h2 className="mb-3 text-sm font-semibold text-muted">Add a teacher</h2>
-            <input
-              className="mb-3 w-full rounded-xl border border-rule px-4 py-3 outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
-              placeholder="Search by name, designation or department"
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-            />
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-              {found?.slice(0, 9).map((p) => {
-                const st = statusOf(p.id);
-                return (
-                  <PersonBlock key={p.id} p={p}>
-                    {st === 'accepted' ? (
-                      <span className="text-xs font-semibold text-ok">✓ Your teacher</span>
-                    ) : st === 'pending' ? (
-                      <span className="text-xs font-semibold text-warn">Requested</span>
-                    ) : (
-                      <button className="rounded-xl border-2 border-accent px-4 py-2 text-sm font-semibold text-accent" onClick={() => connect(p)}>
-                        + Add
-                      </button>
-                    )}
-                    <button className="ml-auto text-xs font-semibold text-accent" onClick={() => send(p.id)}>
-                      Send document
-                    </button>
-                  </PersonBlock>
-                );
-              })}
-            </div>
-            {found && found.length === 0 && <p className="text-sm text-faint">Nobody matches “{q}”.</p>}
-            {!found && <p className="text-xs text-faint">Type a name (e.g. “Meera”), a designation (“HoD”) or a department.</p>}
-          </section>
 
         </div>
       </div>
