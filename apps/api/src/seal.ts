@@ -11,6 +11,8 @@ export interface Services {
   chain: ChainClient | null;
   storageDir: string;
   publicBaseUrl: string;
+  /** Public verify calls per IP per minute (default 60). */
+  verifyRateLimit?: number;
 }
 
 interface SealRow {

@@ -31,7 +31,7 @@ Mobile-first and responsive. `Page` takes `wide`: phone = one `max-w-md` column;
 | Approver inbox | /inbox | Review next (n) → phone card: Approve / Return / Reject → sheet with comment + PIN; auto-advances; "All clear" at zero | `pages/Inbox.tsx` |
 | Gate | /gate | Scan pass (prompt 9); secondary link to inbox, since Security is also an approver | `pages/Home.tsx` |
 | Admin | /admin | All requests (prompt 10) | `pages/Home.tsx` |
-| Verify (public) | /verify | Scan QR (prompt 5) | `pages/Verify.tsx` |
+| Verify (public) | /verify | Scan QR (live camera) · secondary: Upload PDF, Scan from photo. Opening `/verify#p=…` (phone camera app) runs the check directly. One full-screen verdict + details card + Check another | `pages/Verify.tsx` |
 
 ## Components (`apps/web/src/components`)
 
@@ -42,3 +42,18 @@ Mobile-first and responsive. `Page` takes `wide`: phone = one `max-w-md` column;
 ## Live updates
 
 `useLive(url)` in `lib/hooks.ts` refetches every 5 s while the tab is visible and on focus, so the student timeline, request list and approver inbox update on their own without a refresh.
+
+## Verify verdicts (`pages/Verify.tsx`, `lib/verify.ts`)
+
+| Check | Verdict | Tone |
+| --- | --- | --- |
+| QR signature fails | Invalid QR | red |
+| Live status Active | Verified | green |
+| Live status Superseded | Superseded by vN (+ "Check vN") | amber |
+| Live status Revoked | Revoked | red |
+| Anchor pending | Sealing in progress | grey |
+| Uploaded file hash unknown | Tampered | red |
+| QR ref unknown | Not found | red |
+| QR signature fine, server unreachable | Signature valid (never "Verified") | amber |
+
+Camera note: browsers allow live camera only on https or localhost. On plain http over LAN, use the phone camera app (opens the link) or "Scan from photo" (jsQR on an image). The QR reader is `components/QrScanner.tsx` (jsQR, no other dependency).

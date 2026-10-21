@@ -6,7 +6,7 @@
 | 2 | Core workflow backend | Done | 2026-10-21 |
 | 3 | Core workflow UI | Done | 2026-10-21 |
 | 4 | Seal: PDF, SHA-256, chain, signed QR | Done | 2026-10-21 |
-| 5 | Verify page | Todo | |
+| 5 | Verify page | Done | 2026-10-21 |
 | 6 | Twist: amendment | Todo | |
 | 7 | Twist: versioned sealing | Todo | |
 | 8 | Twist: revocation | Todo | |
@@ -20,3 +20,4 @@
 - Prompt 3: student submit/track, approver inbox with PIN sheet, live refresh. UI not tested by Claude (user tests). Backend still 19/19.
 - After prompt 3: desktop layout (two-column request/review, 3-across picker, centred PIN dialog), readable dates, "Stopped" for cancelled steps, sign-out-on-network-error fix. Verified with Playwright screenshots at 390px and 1440px.
 - Prompt 4: DocumentRegistry (8 contract tests), sealing pipeline, PDF with signed QR (decodes from the rendered page), queue-and-retry, chain-restart replay, per-DB contract. 29 API tests. UI: Download PDF + "Sealed on chain" badge.
+- Prompt 5: verify page (scan / upload / photo / link), rate-limited verify API; 31 API tests.

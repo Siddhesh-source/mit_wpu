@@ -24,3 +24,7 @@
 22. **Queue-and-retry anchoring** (`seals.anchor_status`, retried every 5 s): sealing never blocks on the chain; verify says `pending` until anchored.
 23. **No "Verified" stamp printed on the PDF.** Only a live scan may say Verified; an old version must read Superseded.
 24. **PDF uses standard Helvetica/Courier** (no font embedding) to keep it small and deterministic; colours follow the deck.
+25. **jsQR for scanning** (live camera loop + decode from photo), no heavier scanner library. Photo decode covers plain-http LAN setups where browsers block live camera.
+26. **Verify page never says "Verified" without a live Active status**; an offline QR check with a good signature reads "Signature valid".
+27. **Public verify endpoints rate limited** in memory: 60 per IP per minute (`apps/api/src/ratelimit.ts`).
+28. **Issuer public key cached in localStorage** by the verify page so signature checks keep working offline (used again by the gate in prompt 9).

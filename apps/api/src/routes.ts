@@ -4,6 +4,7 @@ import { requireAuth, requireRole } from './auth.js';
 import { HttpError } from './errors.js';
 import { canView, decide, getDetail, inbox, listMine, listTypes, resubmitRequest, submitRequest } from './workflow.js';
 import { issuerKey } from './keys.js';
+import { rateLimit } from './ratelimit.js';
 import { pdfPath, sealInfo, sealRequest, verifyHash, verifyRef, type Services } from './seal.js';
 
 type Handler = (req: Request, res: Response) => unknown;
@@ -41,8 +42,9 @@ export function workflowRoutes(db: DB, svc: Services) {
     res.download(file.pdf_path, `${req.params.id}-v${file.version}.pdf`);
   }));
 
-  r.get('/verify/hash/:hash', wrap(async (req, res) => res.json(await verifyHash(db, svc, req.params.hash))));
-  r.get('/verify/ref/:rid/:v', wrap(async (req, res) => res.json(await verifyRef(db, svc, req.params.rid, Number(req.params.v)))));
+  const verifyLimit = rateLimit({ max: svc.verifyRateLimit ?? 60, windowMs: 60_000 });
+  r.get('/verify/hash/:hash', verifyLimit, wrap(async (req, res) => res.json(await verifyHash(db, svc, req.params.hash))));
+  r.get('/verify/ref/:rid/:v', verifyLimit, wrap(async (req, res) => res.json(await verifyRef(db, svc, req.params.rid, Number(req.params.v)))));
 
   r.post('/requests/:id/resubmit', requireAuth, requireRole('student'), wrap((req, res) => {
     resubmitRequest(db, req.user!.sub, req.params.id, req.body?.form);
