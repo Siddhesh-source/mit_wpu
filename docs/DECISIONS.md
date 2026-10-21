@@ -70,3 +70,4 @@
 68. **The people directory exposes name, designation, title and department only** (no email or phone).
 69. **No hard-coded document titles.** "What is it?" is free text; the only suggestions are the student's own earlier titles (browser autocomplete).
 70. **Light/dark switch for everyone, saved per device**, defaulting to the device setting. Colours are CSS-variable tokens, so every component follows the theme without per-component dark styles.
+71. **Live deployment is one dedicated t4g.micro** (Arm, 1 GB + 2 GB swap, 12 GB gp3, local chain) in ap-south-1, not a co-host on another project's instance and not a t4g.small: the cheapest isolated option on the account's Free plan credits (~$9/month incl. the public IPv4). CPU credits are **standard** (never billed for bursts), IMDSv2 only, SSH only from the admin IP, and SES uses the instance role (no keys on disk). Hostname is `<ip>.sslip.io` on an Elastic IP so QR links survive stop/start.

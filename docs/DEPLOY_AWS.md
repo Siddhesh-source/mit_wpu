@@ -139,3 +139,39 @@ Restore: stop `paperless`, copy a backup over `/var/lib/paperless/app.sqlite`, u
 - Only 80/443 are public; the API and chain listen on localhost.
 - Unattended security updates are on.
 - The demo PIN (1234) is for demos only: change PINs (or put real sign-in in front) before real use.
+
+## Live deployment (ap-south-1)
+
+Created entirely with the AWS CLI; the instance installs itself on first boot (user data runs `deploy/bootstrap.sh`, switches email to SES and seeds the demo; log in `/var/log/paperless-setup.log`).
+
+| Resource | Value |
+| --- | --- |
+| URL | https://13-205-194-159.sslip.io |
+| Instance | `i-0f226b2f18ae18e70`, t4g.micro (Arm, 1 GB + 2 GB swap), Ubuntu 24.04, CPU credits **standard**, IMDSv2 only |
+| Disk | 12 GB gp3, deleted with the instance |
+| Elastic IP | 13.205.194.159 (`eipalloc-0ab7268f5d10f2afa`) |
+| Security group | `sg-0049400ba7c62bb38` (`paperless-sg`): 80/443 public, 22 from the admin IP only |
+| SSH key pair | `paperless-key` (private key `~/.ssh/paperless-key` on the admin machine) |
+| IAM | role + instance profile `paperless-ec2`, inline policy `ses-send` (`ses:SendEmail`, `ses:SendRawEmail` only) |
+| SES | identity `csiddhesh3011@gmail.com` (sandbox; `EMAIL_REDIRECT_ALL` sends every notification there) |
+| Chain | `CHAIN_MODE=local` (Hardhat on the instance) |
+
+SSH: `ssh -i ~/.ssh/paperless-key ubuntu@13.205.194.159`. If your IP changes, update the port-22 rule:
+`aws ec2 authorize-security-group-ingress --group-id sg-0049400ba7c62bb38 --protocol tcp --port 22 --cidr <your-ip>/32`.
+
+Cost (from Free plan credits, Mumbai prices): instance ~$6/month, public IPv4 ~$3.6/month, disk ~$1/month, SES $0.10 per 1,000 emails. Nothing else is billed: no load balancer, NAT, RDS, snapshots or CloudWatch extras. Standard CPU credits mean bursts are throttled, never charged.
+
+Teardown (stops all charges):
+
+```bash
+aws ec2 terminate-instances --instance-ids i-0f226b2f18ae18e70
+aws ec2 wait instance-terminated --instance-ids i-0f226b2f18ae18e70
+aws ec2 release-address --allocation-id eipalloc-0ab7268f5d10f2afa
+aws ec2 delete-security-group --group-id sg-0049400ba7c62bb38
+aws ec2 delete-key-pair --key-name paperless-key
+aws iam remove-role-from-instance-profile --instance-profile-name paperless-ec2 --role-name paperless-ec2
+aws iam delete-instance-profile --instance-profile-name paperless-ec2
+aws iam delete-role-policy --role-name paperless-ec2 --policy-name ses-send
+aws iam delete-role --role-name paperless-ec2
+aws sesv2 delete-email-identity --email-identity csiddhesh3011@gmail.com --region ap-south-1
+```

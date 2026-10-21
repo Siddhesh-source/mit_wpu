@@ -45,7 +45,7 @@ AMOY_RPC_URL=https://rpc-amoy.polygon.technology
 AMOY_PRIVATE_KEY=
 COLLEGE_ID=COLLEGE-001
 EMAIL_PROVIDER=log
-EMAIL_FROM=PaperLess Campus <no-reply@campus.example>
+EMAIL_FROM="PaperLess Campus <no-reply@campus.example>"
 SES_REGION=ap-south-1
 EMAIL_REDIRECT_ALL=
 ENV

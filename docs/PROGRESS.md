@@ -31,3 +31,4 @@
 - Return / reopen / discuss: selective resubmission, reopen of rejected requests, discussion thread with emails. 93 API tests + 8 contract tests.
 - Prompt 11: open sign-up / log in (student, staff / administrator), profile, live routing, teachers (search, connect, accept), document library with drag and drop, send to anyone (staff or student). 102 API tests + 8 contract tests. Live flow (sign up both sides → connect → accept → drop file → send → sign → sealed) verified headlessly on the production build.
 - Light / dark mode toggle on every screen (saved per device, follows the device until chosen). Checked rendered in both themes.
+- Deployed to AWS (2026-10-21): t4g.micro `i-0f226b2f18ae18e70` in ap-south-1, Elastic IP 13.205.194.159, https://13-205-194-159.sslip.io, local chain, email via SES (sandbox, sender and redirect `csiddhesh3011@gmail.com`). Details and teardown: `docs/DEPLOY_AWS.md` → "Live deployment".
