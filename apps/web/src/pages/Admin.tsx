@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ROLE_LABEL, type AuditEntry, type OutboxEntry, type RequestSummary, type Role, type Stats } from '@plc/shared';
-import { Empty, Page, PageHeader, StatStrip, StatusPill, toast } from '../components/ui';
+import { Empty, Page, PageHeader, StatusPill, toast } from '../components/ui';
 import { ImpactDashboard } from '../components/ImpactDashboard';
 import { api } from '../lib/api';
 import { fmtDate, useLive } from '../lib/hooks';
@@ -35,7 +35,7 @@ const detail = (v: unknown): string => {
 export default function Admin() {
   const [tab, setTab] = useState<Tab>('requests');
   const { data: all, reload } = useLive<RequestSummary[]>(tab === 'requests' ? '/api/admin/requests' : null);
-  const { data: stats } = useLive<Stats>('/api/admin/stats', 15_000);
+  const { data: stats } = useLive<Stats>(tab === 'impact' ? '/api/admin/stats' : null, 15_000);
   const [q, setQ] = useState('');
   const needle = q.trim().toLowerCase();
   const shown = all?.filter((r) => !needle || [r.id, r.title, r.typeName, r.student.name, r.department].some((v) => v.toLowerCase().includes(needle)));
@@ -65,20 +65,6 @@ export default function Admin() {
   return (
     <Page wide>
       <PageHeader title="Registrar dashboard" subtitle="Every request across the college, its impact, the audit trail and the emails sent." />
-      <div className="mb-8">
-        <StatStrip
-          items={[
-            { label: 'Requests', value: stats?.requests ?? '–', hint: 'all time' },
-            { label: 'In review', value: stats?.inReview ?? '–', tone: stats?.inReview ? 'accent' : 'ink', hint: 'with approvers now' },
-            { label: 'Reminders sent', value: stats?.overdue ?? '–', tone: stats?.overdue ? 'warn' : 'ink', hint: 'waiting past the usual time' },
-            {
-              label: 'Signed',
-              value: stats?.digitised ?? '–',
-              hint: stats?.avgTurnaroundHours != null ? `average ${Math.round(stats.avgTurnaroundHours)} h to sign` : 'approved and on chain',
-            },
-          ]}
-        />
-      </div>
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <div className="flex gap-1 rounded-xl bg-panel p-1">
           {TABS.map((t) => (

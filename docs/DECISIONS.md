@@ -90,3 +90,4 @@
 88. **Find sign spots** reads the PDF's text in the browser (pdf.js) and maps signer labels to the form's own words ("Signature of Guide:", "Head of Department"); first match per label is placed, the rest offered. Templates we generate carry exact spots.
 89. **pdf.js is loaded only on screens that show a PDF** (separate chunk and worker), keeping the main bundle unchanged.
 90. **Filled real forms with personal data stay out of the repository and the server**; the FF 180 used for design is reproduced as a blank template.
+91. **No stat banners on dashboards** (student, staff, registrar). The counts already appear where they lead to action: the Review next hero, the filter tabs, the top-bar badge and the People rows. The `StatStrip` component was removed.

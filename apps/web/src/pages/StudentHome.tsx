@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import type { Classroom, Connection, InboxItem, LibraryDocument, RequestStatus, RequestSummary } from '@plc/shared';
-import { Empty, Page, PageHeader, SectionHead, StatStrip, StatusPill } from '../components/ui';
+import { Empty, Page, PageHeader, SectionHead, StatusPill } from '../components/ui';
 import { Icon } from '../components/Icon';
 import { useSession } from '../lib/session';
 import { DocumentLibrary } from '../components/DocumentLibrary';
@@ -76,14 +76,6 @@ export default function StudentHome() {
             </PageHeader>
           </div>
 
-          <StatStrip
-            items={[
-              { label: 'In progress', value: mine ? count('active') : '–', hint: 'with approvers now' },
-              { label: 'Needs your action', value: mine ? count('action') : '–', tone: count('action') ? 'warn' : 'ink', hint: 'returned for changes' },
-              { label: 'Signed', value: mine ? count('sealed') : '–', hint: 'PDF ready' },
-              { label: 'To sign', value: toSign?.length ?? '–', tone: toSign?.length ? 'accent' : 'ink', hint: 'sent to you', to: '/inbox' },
-            ]}
-          />
 
           {toSign && toSign.length > 0 && (
             <Link to="/inbox" className="flex items-center justify-between gap-3 rounded-2xl bg-warn-bg px-4 py-3 text-sm">

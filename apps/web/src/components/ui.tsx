@@ -135,40 +135,6 @@ export function Page({ children, back, wide = false }: { children: ReactNode; ba
   );
 }
 
-export type Stat = { label: string; value: ReactNode; hint?: string; tone?: 'ink' | 'accent' | 'ok' | 'warn' | 'bad'; to?: string };
-
-/**
- * Key numbers as one strip: a single bordered row divided by hairlines (two columns on phones). Callers colour a
- * number only when it asks for action and is not zero; everything else is ink.
- */
-export function StatStrip({ items }: { items: Stat[] }) {
-  const color = { ink: 'text-ink', accent: 'text-accent', ok: 'text-ok', warn: 'text-warn', bad: 'text-bad' };
-  return (
-    <dl className={`grid grid-cols-2 overflow-hidden rounded-2xl border border-rule ${items.length === 4 ? 'md:grid-cols-4' : 'md:grid-cols-3'}`}>
-      {items.map((s, i) => {
-        const body = (
-          <>
-            <dt className="text-xs text-muted">{s.label}</dt>
-            <dd className={`mt-1 text-2xl font-bold tabular-nums ${color[s.tone ?? 'ink']}`}>{s.value}</dd>
-            {s.hint && <dd className="mt-0.5 truncate text-xs text-faint">{s.hint}</dd>}
-          </>
-        );
-        // hairlines between cells: left border except the first in a row, top border on the phone's second row
-        const cls = `block px-4 py-3.5 ${i % 2 ? 'border-l border-rule' : ''} ${i >= 2 ? 'border-t border-rule md:border-t-0' : ''} ${i === 2 ? 'md:border-l' : ''}`;
-        return s.to ? (
-          <Link key={s.label} to={s.to} className={`${cls} transition-colors hover:bg-panel`}>
-            {body}
-          </Link>
-        ) : (
-          <div key={s.label} className={cls}>
-            {body}
-          </div>
-        );
-      })}
-    </dl>
-  );
-}
-
 /** Page title, one-line subtitle and an optional action on the right. */
 export function PageHeader({ title, subtitle, children }: { title: ReactNode; subtitle?: ReactNode; children?: ReactNode }) {
   return (

@@ -35,10 +35,10 @@ Mobile-first and responsive. **Top bar** on every signed-in page (sticky): logo,
 | People (staff) | /people | Tabs **Classes** (New class → 6-letter code; per class: Email the code to registered student emails, members Joined / Invited, Remove, Delete) · **Students** (want to add you: Accept / Decline; my students with their classes) · **Colleagues** (faculty and staff in the department) | `pages/People.tsx` |
 | Request page | /requests/:id | Returned: Edit and resubmit · Approved: Download PDF (enabled in prompt 4) | `pages/RequestPage.tsx` |
 | Amend | /requests/:id/amend | Prefilled form, changed fields tagged, reason, live "Goes back to: … · Kept: …" preview → Send amendment | `pages/AmendPage.tsx` |
-| Staff dashboard | /inbox | Greeting; hero **Review next (n)** (or All clear) + Approve several; tiles Waiting · Overdue · Signed this week · Avg response; Waiting for you list (tap any row to review it); Recent decisions; sidebar Away (delegate), student requests, My students, Quick links. Review = phone card: Approve / Return / Reject → sheet with comment + PIN, "n of m waiting", auto-advances | `pages/Inbox.tsx` |
-| History (staff) | /history | Tiles Signed · Approved · Returned · Rejected; filter chips, search, Export CSV; each row opens the request | `pages/History.tsx` |
+| Staff dashboard | /inbox | Greeting; hero **Review next (n)** (or All clear) + Approve several; Waiting for you list (tap any row to review it); Recent decisions; sidebar Away (delegate), student requests, My students, Quick links. Review = phone card: Approve / Return / Reject → sheet with comment + PIN, "n of m waiting", auto-advances | `pages/Inbox.tsx` |
+| History (staff) | /history | Totals in the subtitle; filter chips with counts, search, Export CSV; each row opens the request | `pages/History.tsx` |
 | Gate | /gate | Scan pass (big) · Scan from photo · sync bar "Revocation list synced HH:MM · n entries" + Sync now · "How offline checks work" sheet · link to Approvals. Result: full-screen VALID / NOT TODAY / SUPERSEDED / REVOKED / INVALID + Scan next | `pages/Gate.tsx` |
-| Admin | /admin | Registrar dashboard: tiles Requests · In review · Overdue · Sealed; tabs Requests (search) · Impact · Audit log · Emails; Run deadline check, Reset demo | `pages/Admin.tsx` |
+| Admin | /admin | Registrar dashboard: tabs Requests (search) · Impact · Audit log · Emails; Run deadline check, Reset demo | `pages/Admin.tsx` |
 | Verify | /verify (inside the app with the top bar when signed in; public header with Sign in otherwise) | Scan QR (live camera) · secondary: Upload PDF, Scan from photo. Opening `/verify#p=…` (phone camera app) runs the check directly. One full-screen verdict + details card + Check another | `pages/Verify.tsx` |
 
 ## Components (`apps/web/src/components`)
@@ -111,7 +111,7 @@ Camera note: browsers allow live camera only on https or localhost. On plain htt
 ## Visual system (after the 2026-10-21 audit, `docs/DESIGN_AUDIT.md`)
 
 - **Icons:** `components/Icon.tsx`, one line set (24 px grid, 1.75 stroke, currentColor). No emoji or text glyphs as icons. Icons label nav items, choices, upload zones, empty states and list rows; never decoration in coloured circles.
-- **Numbers:** `StatStrip` (one bordered row, hairline dividers, sentence-case labels, tabular numbers). Colour a number only when it asks for action and is non-zero.
+- **Numbers:** no summary banners of counts on dashboards; counts live where they act (the Review next hero, filter tabs, the top-bar badge, the People rows). Colour a number only when it asks for action and is non-zero.
 - **Headings:** `PageHeader` (title, one-line subtitle, optional action) and `SectionHead` (body size, ink). Sections 32 px apart.
 - **Surfaces:** sections divided by hairlines, lists as divided rows in one bordered box; no cards inside cards. Dashed borders only for drop zones. Empty states are a quiet panel with an icon.
 - **States:** global `:focus-visible` ring in the accent; no permanently disabled primary buttons (hide them, or label what is missing); 44 px targets on phones.

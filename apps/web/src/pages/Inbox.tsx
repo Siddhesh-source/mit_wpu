@@ -3,7 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { ROLE_LABEL, type Classroom, type Connection, type Delegation, type InboxItem, type StaffDashboard } from '@plc/shared';
 import { PersonBlock } from '../components/PersonBlock';
 import { DecisionList } from '../components/Decisions';
-import { Empty, Page, PageHeader, PinPad, SectionHead, Sheet, StatStrip, Tick, toast } from '../components/ui';
+import { Empty, Page, PageHeader, PinPad, SectionHead, Sheet, Tick, toast } from '../components/ui';
 import { Icon } from '../components/Icon';
 import { MySignature, SignatureSheet } from '../components/SignaturePad';
 import { SignedDocument } from '../components/SignedDocument';
@@ -318,7 +318,6 @@ export default function Inbox() {
         </Page>
       );
 
-    const avg = dash?.avgResponseHours;
     return (
       <Page wide>
         <PageHeader
@@ -329,14 +328,6 @@ export default function Inbox() {
         <div className="flex flex-col gap-8">
           {hero}
 
-          <StatStrip
-            items={[
-              { label: 'Waiting for you', value: count, tone: count ? 'accent' : 'ink' },
-              { label: 'Reminders sent', value: dash?.overdue ?? 0, tone: dash?.overdue ? 'warn' : 'ink', hint: 'waiting past the usual time' },
-              { label: 'Signed this week', value: dash?.decided.thisWeek ?? '–', hint: dash ? `${dash.decided.total} in total` : undefined, to: '/history' },
-              { label: 'Average response', value: avg == null ? '–' : avg < 1 ? '<1 h' : `${Math.round(avg)} h`, hint: 'opened to signed' },
-            ]}
-          />
 
           <div className="flex flex-col gap-8 lg:grid lg:grid-cols-[1fr_20rem] lg:items-start lg:gap-10">
             <div className="flex flex-col gap-8">
