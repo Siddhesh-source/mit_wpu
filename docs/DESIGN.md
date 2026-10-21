@@ -26,7 +26,7 @@ Mobile-first and responsive. `Page` takes `wide`: phone = one `max-w-md` column;
 | --- | --- | --- | --- |
 | Sign up / log in | /login | Two big choices (Student · Staff / administrator) → Sign up / Log in tabs; optional staff details folded under "More details" | `pages/Login.tsx` |
 | Profile | /profile (click your name) | Save profile | `pages/Profile.tsx` |
-| Send a document | /student/send | Recipient (blocks; All · Staff · Students; search; your teachers first) · documents (library + drop zone) · what is it (suggestion chips) → **Send to <name>** | `pages/SendDocument.tsx` |
+| Send a document | /student/send | Recipient (blocks; All · Staff · Students; search; your teachers first) · documents (library + drop zone) · what is it (free text in the student's own words; autocomplete only from their own earlier sends, nothing pre-set) → **Send to <name>** | `pages/SendDocument.tsx` |
 | Student workspace | /student | **New request** + **Send a document**; sidebar My documents (drag and drop, select, "Send n to…"); My teachers as blocks with **Send document**; Add a teacher (search as you type, results as blocks with + Add); "n waiting for your signature"; My requests. On phones: actions, teachers, documents, search, requests | `pages/StudentHome.tsx` |
 | New request | /student/new | Type tile → form → Submit for approval | `pages/NewRequest.tsx` |
 | Request page | /requests/:id | Returned: Edit and resubmit · Approved: Download PDF (enabled in prompt 4) | `pages/RequestPage.tsx` |

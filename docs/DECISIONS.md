@@ -68,3 +68,4 @@
 66. **Documents are a reusable library**; attaching copies a reference (same stored file and hash) to the request. Deleting a library item never breaks a sent request.
 67. **"Document for signature" is a normal request type with a `recipient` step**, so direct sends get the same signing, sealing, verification, discussion, deadlines and audit as every other request. Sending does not require a connection; connections only put teachers on the dashboard and steer routing.
 68. **The people directory exposes name, designation, title and department only** (no email or phone).
+69. **No hard-coded document titles.** "What is it?" is free text; the only suggestions are the student's own earlier titles (browser autocomplete).

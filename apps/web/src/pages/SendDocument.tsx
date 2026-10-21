@@ -1,13 +1,12 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import type { Connection, LibraryDocument, Person, RequestDetail } from '@plc/shared';
+import type { Connection, LibraryDocument, Person, RequestDetail, RequestSummary } from '@plc/shared';
 import { Page, toast } from '../components/ui';
 import { DocumentLibrary } from '../components/DocumentLibrary';
 import { PersonBlock } from '../components/PersonBlock';
 import { api } from '../lib/api';
 import { useLive } from '../lib/hooks';
 
-const SUGGEST = ['Letter of recommendation', 'Project report', 'Internship certificate', 'Event report', 'Team declaration'];
 type Tab = 'all' | 'staff' | 'student';
 
 /** Send documents to anyone (staff or another student) to sign. Sealed and verifiable like every request. */
@@ -16,6 +15,9 @@ export default function SendDocument() {
   const [params] = useSearchParams();
   const { data: docs, reload } = useLive<LibraryDocument[]>('/api/documents', 30_000);
   const { data: conns } = useLive<Connection[]>('/api/connections', 30_000);
+  const { data: mine } = useLive<RequestSummary[]>('/api/requests/mine', 60_000);
+  // Autocomplete from what this student typed before; nothing is pre-set.
+  const pastTitles = [...new Set((mine ?? []).filter((r) => r.type === 'document_signature').map((r) => r.title))];
   const [selected, setSelected] = useState<string[]>(() => (params.get('docs') ? params.get('docs')!.split(',') : []));
   const [to, setTo] = useState<Person | null>(null);
   const [tab, setTab] = useState<Tab>('all');
@@ -111,18 +113,18 @@ export default function SendDocument() {
             <h2 className="text-sm font-semibold text-muted">What is it?</h2>
             <input
               required
+              list="past-titles"
+              maxLength={200}
               className="w-full rounded-xl border border-rule px-4 py-3 outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
-              placeholder="e.g. Letter of recommendation"
+              placeholder="Describe the document in your own words"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
             />
-            <div className="flex flex-wrap gap-2">
-              {SUGGEST.map((s) => (
-                <button type="button" key={s} className="rounded-full border border-rule px-3 py-1 text-xs text-muted hover:border-accent" onClick={() => setTitle(s)}>
-                  {s}
-                </button>
+            <datalist id="past-titles">
+              {pastTitles.map((t) => (
+                <option key={t} value={t} />
               ))}
-            </div>
+            </datalist>
             <textarea
               rows={2}
               className="w-full rounded-xl border border-rule px-4 py-3 outline-none focus:border-accent"

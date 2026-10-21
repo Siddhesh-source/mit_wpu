@@ -17,7 +17,7 @@ Demo accounts (all password **demo1234**, signing PIN **1234**): `riya@campus.ex
 1. Hand a phone to a volunteer: **I'm staff / administrator → Sign up** → name, email, password, a 4-digit PIN, department, designation (e.g. **Faculty**; "More details" is optional) → they land on their inbox.
 2. On the laptop: **I'm a student → Sign up** → you land on the student workspace.
 3. **Add a teacher** → type the volunteer's name → **+ Add**. On their phone: **Accept** under "Students who want to add you". Their block appears on your dashboard.
-4. **Drag a PDF** onto "My documents" → on their block, **Send document** → "Letter of recommendation" → **Send**.
+4. **Drag a PDF** onto "My documents" → on their block, **Send document** → type what it is in your own words → **Send**.
 5. On their phone: **Review next** → the card shows the file and your note → **Approve** + their PIN. Your request turns **Sealed**; Download the PDF and verify it on /verify.
 6. Variations: send to **another student** (Students tab) who signs from "waiting for your signature"; a volunteer who signs up as **HoD** immediately receives the next bonafide/event request in their department.
 
