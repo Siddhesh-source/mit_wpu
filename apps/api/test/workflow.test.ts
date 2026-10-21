@@ -114,7 +114,7 @@ describe("Riya's event permission", () => {
 describe('other chains', () => {
   it('on-duty: coordinator → HoD → approved', async () => {
     const { as, act } = await setup();
-    const id = (await as('u_riya').post('/api/requests', { type: 'on_duty', form: { title: 'Hackathon at COEP', date: '2026-11-10' } })).body.id;
+    const id = (await as('u_riya').post('/api/requests', { type: 'on_duty', form: { title: 'Robotics workshop at COEP', date: '2026-11-10' } })).body.id;
     await act('u_mehta', id, 'approved');
     await act('u_kulkarni', id, 'approved');
     expect((await as('u_riya').get(`/api/requests/${id}`)).body.status).toBe('sealed');

@@ -15,7 +15,6 @@ export const ROLE_LABEL: Record<Role, string> = {
   admin: 'Admin',
 };
 
-export const APPROVER_ROLES: Role[] = ['faculty_coordinator', 'hod', 'dean_sa', 'security'];
 
 export interface Profile {
   id: string;

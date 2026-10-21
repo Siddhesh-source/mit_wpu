@@ -11,6 +11,8 @@ export const config = {
   dbPath: path.resolve(ROOT, process.env.DB_PATH || 'apps/api/data/app.sqlite'),
   storageDir: path.resolve(ROOT, process.env.STORAGE_DIR || 'apps/api/storage'),
   publicBaseUrl: process.env.PUBLIC_BASE_URL || 'http://localhost:5173',
+  webDist: path.join(ROOT, 'apps', 'web', 'dist'),
+  trustProxy: process.env.TRUST_PROXY === '1',
   chainMode: (process.env.CHAIN_MODE || 'local') as 'local' | 'amoy' | 'off',
   localRpcUrl: process.env.CHAIN_RPC_URL || 'http://127.0.0.1:8545',
   amoyRpcUrl: process.env.AMOY_RPC_URL || 'https://rpc-amoy.polygon.technology',

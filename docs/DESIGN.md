@@ -31,7 +31,7 @@ Mobile-first and responsive. `Page` takes `wide`: phone = one `max-w-md` column;
 | Amend | /requests/:id/amend | Prefilled form, changed fields tagged, reason, live "Goes back to: … · Kept: …" preview → Send amendment | `pages/AmendPage.tsx` |
 | Approver inbox | /inbox | Review next (n) → phone card: Approve / Return / Reject → sheet with comment + PIN; auto-advances; "All clear" at zero | `pages/Inbox.tsx` |
 | Gate | /gate | Scan pass (big) · Scan from photo · sync bar "Revocation list synced HH:MM · n entries" + Sync now · "How offline checks work" sheet · link to Approvals. Result: full-screen VALID / NOT TODAY / SUPERSEDED / REVOKED / INVALID + Scan next | `pages/Gate.tsx` |
-| Admin | /admin | All requests (prompt 10) | `pages/Home.tsx` |
+| Admin | /admin | All requests (id, title, type, student, version, who has it, status) + Reset demo | `pages/Admin.tsx` |
 | Verify (public) | /verify | Scan QR (live camera) · secondary: Upload PDF, Scan from photo. Opening `/verify#p=…` (phone camera app) runs the check directly. One full-screen verdict + details card + Check another | `pages/Verify.tsx` |
 
 ## Components (`apps/web/src/components`)

@@ -7,12 +7,13 @@ import { createApp } from '../src/app.js';
 import { requireAuth, requireRole } from '../src/auth.js';
 
 let app: express.Express;
+/** A tiny app with only the guard, to test requireAuth + requireRole in isolation. */
+const guarded = express().get('/hod-only', requireAuth, requireRole('hod'), (_req, res) => res.json({ ok: true }));
 
 beforeEach(() => {
   const db = openDb();
   seed(db);
   app = createApp(db);
-  app.get('/api/_hod-only', requireAuth, requireRole('hod'), (_req, res) => res.json({ ok: true }));
 });
 
 const login = (userId: string, pin = DEMO_PIN) => request(app).post('/api/auth/login').send({ userId, pin });
@@ -57,7 +58,8 @@ describe('role guard', () => {
   it('lets the right role through and blocks others', async () => {
     const hod = (await login('u_kulkarni')).body.token;
     const riya = (await login('u_riya')).body.token;
-    expect((await request(app).get('/api/_hod-only').set('Authorization', `Bearer ${hod}`)).status).toBe(200);
-    expect((await request(app).get('/api/_hod-only').set('Authorization', `Bearer ${riya}`)).status).toBe(403);
+    expect((await request(guarded).get('/hod-only').set('Authorization', `Bearer ${hod}`)).status).toBe(200);
+    expect((await request(guarded).get('/hod-only').set('Authorization', `Bearer ${riya}`)).status).toBe(403);
+    expect((await request(guarded).get('/hod-only')).status).toBe(401);
   });
 });

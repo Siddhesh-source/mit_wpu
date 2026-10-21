@@ -1,4 +1,6 @@
 import express from 'express';
+import fs from 'node:fs';
+import path from 'node:path';
 import cors from 'cors';
 import bcrypt from 'bcryptjs';
 import type { Me, Profile, Role } from '@plc/shared';
@@ -22,8 +24,17 @@ const ROLE_ORDER: Role[] = ['student', 'faculty_coordinator', 'hod', 'dean_sa', 
 export function createApp(db: DB, services: Partial<Services> = {}) {
   const svc: Services = { chain: null, storageDir: config.storageDir, publicBaseUrl: config.publicBaseUrl, ...services };
   const app = express();
+  if (config.trustProxy) app.set('trust proxy', 1); // behind Caddy/nginx: real client IP for rate limits
+  app.disable('x-powered-by');
+  app.use((_req, res, next) => {
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('Referrer-Policy', 'same-origin');
+    res.setHeader('X-Frame-Options', 'DENY');
+    res.setHeader('Permissions-Policy', 'camera=(self), microphone=(), geolocation=()');
+    next();
+  });
   app.use(cors());
-  app.use(express.json());
+  app.use(express.json({ limit: '100kb' }));
 
   const rolesOf = (userId: string) =>
     (db.prepare('SELECT DISTINCT role FROM user_roles WHERE user_id = ?').pluck().all(userId) as Role[]).sort(
@@ -60,6 +71,19 @@ export function createApp(db: DB, services: Partial<Services> = {}) {
   });
 
   app.use('/api', workflowRoutes(db, svc));
+  app.use('/api', (_req, res) => res.status(404).json({ error: 'Not found' }));
+
+  // Built web app (npm run build): one port for everything in production.
+  if (fs.existsSync(path.join(config.webDist, 'index.html'))) {
+    app.use(
+      express.static(config.webDist, {
+        index: false,
+        setHeaders: (res, file) =>
+          res.setHeader('Cache-Control', file.includes(`${path.sep}assets${path.sep}`) ? 'public, max-age=31536000, immutable' : 'no-cache'),
+      }),
+    );
+    app.get('*', (_req, res) => res.setHeader('Cache-Control', 'no-cache').sendFile(path.join(config.webDist, 'index.html')));
+  }
   app.use(errorHandler);
   return app;
 }

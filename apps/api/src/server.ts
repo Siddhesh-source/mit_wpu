@@ -5,6 +5,11 @@ import { seed } from './seed.js';
 import { chainFromConfig, dbAddressStore } from './chain.js';
 import { processQueue, replayAll, type Services } from './seal.js';
 
+if (process.env.NODE_ENV === 'production' && !process.env.JWT_SECRET) {
+  console.error('Set JWT_SECRET in production (any long random string).');
+  process.exit(1);
+}
+
 const db = openDb(config.dbPath);
 if (!db.prepare('SELECT COUNT(*) FROM request_types').pluck().get()) seed(db);
 

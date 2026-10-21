@@ -368,6 +368,11 @@ export function getDetail(db: DB, id: string): RequestDetail {
   };
 }
 
+export function listAll(db: DB) {
+  const rows = db.prepare('SELECT * FROM requests ORDER BY created_at DESC').all() as RequestRow[];
+  return rows.map((r) => summarize(db, r));
+}
+
 export function listMine(db: DB, studentId: string) {
   const rows = db.prepare('SELECT * FROM requests WHERE student_id = ? ORDER BY created_at DESC').all(studentId) as RequestRow[];
   return rows.map((r) => summarize(db, r));

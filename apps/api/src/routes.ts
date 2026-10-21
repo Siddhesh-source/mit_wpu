@@ -2,7 +2,8 @@ import { Router, type NextFunction, type Request, type Response } from 'express'
 import type { DB } from './db.js';
 import { requireAuth, requireRole } from './auth.js';
 import { HttpError } from './errors.js';
-import { amendRequest, canView, decide, getDetail, inbox, listMine, listTypes, resubmitRequest, submitRequest } from './workflow.js';
+import { amendRequest, canView, decide, getDetail, inbox, listAll, listMine, listTypes, resubmitRequest, submitRequest } from './workflow.js';
+import { resetDemo } from './demo.js';
 import { issuerKey } from './keys.js';
 import { rateLimit } from './ratelimit.js';
 import { history, pdfPath, revocationInfo, revocationList, revokeRequest, sealInfo, sealRequest, verifyHash, verifyRef, type Services } from './seal.js';
@@ -67,6 +68,9 @@ export function workflowRoutes(db: DB, svc: Services) {
     amendRequest(db, req.user!.sub, req.params.id, req.body?.changes, req.body?.reason);
     res.json(detail(req.params.id));
   }));
+
+  r.get('/admin/requests', requireAuth, requireRole('admin'), (_req, res) => res.json(listAll(db)));
+  r.post('/admin/reset-demo', requireAuth, requireRole('admin'), wrap(async (_req, res) => res.json({ id: await resetDemo(db, svc) })));
 
   r.get('/inbox', requireAuth, requireRole('faculty_coordinator', 'hod', 'dean_sa', 'security'), (req, res) => res.json(inbox(db, req.user!.sub)));
 

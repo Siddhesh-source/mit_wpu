@@ -45,3 +45,7 @@
 43. **Stale = list older than 12 h or not from today (IST)**; offline VALID results then carry an amber warning.
 44. **The signed-in profile is cached for offline use**; only a 401 clears it.
 45. **`npm run dev:https -w apps/web`** (self-signed, `@vitejs/plugin-basic-ssl`) for camera and service worker on LAN phones.
+46. **Demo seed dates Riya's v1 a week ahead; the live amendment moves it to today**, so one step shows the twist's date change and a VALID gate scan, while v1 reads SUPERSEDED / NOT TODAY.
+47. **Admin reset clears the stored contract address**, so each reset gets a fresh contract and request ids restart cleanly.
+48. **One port in production**: the API serves the built web app; `tsx` is a runtime dependency of the API (no separate compile step).
+49. **End-to-end test runs the whole demo script** (`apps/api/test/demo.e2e.test.ts`) and scans every chain transaction's calldata for personal data.

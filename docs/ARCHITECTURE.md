@@ -17,7 +17,9 @@ Node 20+, TypeScript, Express, SQLite, JWT (12 h), bcrypt PINs, pdf-lib + qrcode
 
 ## Commands
 
-`npm install` · `npm run dev` (local chain :8545 + API :4000 + web :5173) · `npm test` (API + contract) · `npm run build` · `npm run seed` · `npm run compile -w contracts`.
+`npm install` · `npm run dev` (local chain :8545 + API :4000 + web :5173) · `npm run dev:https -w apps/web` (https dev server for phones) · `npm test` (API + contract) · `npm run build` · `npm start` (API + built web app on one port) · `npm run start:local` (local chain + `npm start`) · `npm run seed` (people only) · `npm run seed:demo` (demo starting point) · `npm run compile -w contracts`.
+
+Production: the API serves `apps/web/dist` (hashed assets cached for a year, `index.html` and `sw.js` no-cache) with an SPA fallback; unknown `/api/*` paths return JSON 404. `TRUST_PROXY=1` behind a reverse proxy. In `NODE_ENV=production` the API refuses to start without `JWT_SECRET`. Basic security headers are set on every response.
 
 ## Auth
 
@@ -69,6 +71,7 @@ Approve/Return/Reject require the approver's PIN. The server signs canonical JSO
 | GET | /api/verify/hash/:hash · /api/verify/ref/:rid/:v | Public |
 | GET | /api/health (includes chain network + contract) | Public |
 | GET | /api/requests/:id/history | Owner, anyone on the chain, admin |
+| GET | /api/admin/requests · POST /api/admin/reset-demo | Admin |
 | POST | /api/requests/:id/revoke `{reason, pin}` | HoD / Dean SA of the department |
 | GET | /api/revocations (signed list) | Public |
 

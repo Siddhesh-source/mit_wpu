@@ -7,7 +7,8 @@
     "dev": "tsx watch src/server.ts",
     "start": "tsx src/server.ts",
     "seed": "tsx src/seed.ts",
-    "test": "vitest run"
+    "test": "vitest run",
+    "seed:demo": "tsx src/demo.ts"
   },
   "dependencies": {
     "@plc/contracts": "*",
@@ -20,7 +21,8 @@
     "express": "^4.21.2",
     "jsonwebtoken": "^9.0.2",
     "pdf-lib": "^1.17.1",
-    "qrcode": "^1.5.4"
+    "qrcode": "^1.5.4",
+    "tsx": "^4.19.2"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
@@ -31,7 +33,6 @@
     "@types/qrcode": "^1.5.5",
     "@types/supertest": "^6.0.2",
     "supertest": "^7.0.0",
-    "tsx": "^4.19.2",
     "typescript": "^5.7.3",
     "vitest": "^2.1.8"
   }

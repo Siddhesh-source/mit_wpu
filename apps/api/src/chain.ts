@@ -60,6 +60,12 @@ export class ChainClient {
     return (await this.connect()).getAddress();
   }
 
+  /** Forget the connected contract (after the stored address was cleared); the next call connects again. */
+  reset() {
+    this.contract = null;
+    this.connecting = null;
+  }
+
   /** Point at a different RPC (used by tests to simulate an outage and recovery). */
   useRpc(rpcUrl: string) {
     this.opts = { ...this.opts, rpcUrl };

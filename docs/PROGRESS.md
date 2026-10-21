@@ -11,7 +11,7 @@
 | 7 | Twist: versioned sealing | Done | 2026-10-21 |
 | 8 | Twist: revocation | Done | 2026-10-21 |
 | 9 | Twist: offline gate check | Done | 2026-10-21 |
-| 10 | Demo hardening and release | Todo | |
+| 10 | Demo hardening and release | Done | 2026-10-21 |
 
 ## Notes
 
@@ -24,3 +24,4 @@
 - Prompt 6: amend endpoint with selective re-approval and carried approvals, return-during-amendment, v2 sealed and linked on chain; amend UI + diffs. 39 API tests.
 - Prompts 7 + 8: version history API + strip, revoke (HoD/Dean, queued, replayed), signed revocation list, shared verdict precedence; 61 API tests + 8 contract tests.
 - Prompt 9: gateCheck (7 fake-clock tests incl. the known gap), gate PWA with sync bar and help sheet, offline session, HTTPS dev mode. 68 API tests.
+- Prompt 10: demo e2e test (a–h + no personal data on chain), seed:demo + Admin reset/list, single-port production, security headers, DEMO.md, README. Offline gate verified in a headless browser against the production build (reload and scan with network off). 72 API tests.

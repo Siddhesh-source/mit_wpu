@@ -4,13 +4,13 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { homeFor, type Role } from '@plc/shared';
 import { SessionProvider, useSession } from './lib/session';
 import Login from './pages/Login';
-import Home from './pages/Home';
 import Verify from './pages/Verify';
 import StudentHome from './pages/StudentHome';
 import NewRequest from './pages/NewRequest';
 import RequestPage from './pages/RequestPage';
 import AmendPage from './pages/AmendPage';
 import Gate from './pages/Gate';
+import Admin from './pages/Admin';
 import Inbox from './pages/Inbox';
 import { Toaster } from './components/ui';
 import './index.css';
@@ -60,7 +60,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
  <Route path="/requests/:id/amend" element={<Guard roles={['student']}><AmendPage /></Guard>} />
           <Route path="/inbox" element={<Guard roles={['faculty_coordinator', 'hod', 'dean_sa', 'security']}><Inbox /></Guard>} />
           <Route path="/gate" element={<Guard roles={['security']}><Gate /></Guard>} />
-          <Route path="/admin" element={<Guard roles={['admin']}><Home cta="All requests" hint="Every request and its status." /></Guard>} />
+          <Route path="/admin" element={<Guard roles={['admin']}><Admin /></Guard>} />
           <Route path="*" element={<Root />} />
         </Routes>
       </BrowserRouter>
