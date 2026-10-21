@@ -156,7 +156,8 @@ export default function SendDocument() {
           <h2 className="text-base font-semibold">Documents ({selected.length} selected)</h2>
           <DocumentLibrary docs={docs} onChanged={reload} selected={selected} onSelect={setSelected} compact />
           <button className="cta w-full" disabled={busy || !to || !selected.length || !title.trim()}>
-            {busy ? 'Sending…' : to ? `Send to ${to.name}` : 'Send'}
+            {/* The label says what is still missing, so the disabled state explains itself */}
+            {busy ? 'Sending…' : !to ? 'Choose who to send it to' : !selected.length ? 'Add a document' : !title.trim() ? 'Give it a title' : `Send to ${to.name}`}
           </button>
           <p className="text-center text-xs text-faint">They sign with their PIN; the signed result is recorded on chain and verifiable.</p>
         </aside>
