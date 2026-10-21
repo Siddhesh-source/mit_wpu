@@ -1,74 +1,145 @@
-# Live demo script
+# Demo script
 
-About 8 minutes. Shows the original workflow (submit → route by role → sign → seal → verify) and every part of "The Plan Changed": amendment, versioned sealing, revocation and the offline gate check.
+**10 minutes for the main path**, plus optional extras. Lines in *italics* are what to say. The order is deliberate:
+the real form first (the moment people remember), then proof that it cannot be faked, then how it copes when plans
+change, then the tools that make a department run on it.
 
-## Before you start
+> **One-line pitch:** *CampusSign turns every signature-chasing form on campus into one tap: the student sends the
+> university's own form, the right people sign it in order, their signatures land exactly where the form asks, and
+> anyone can verify the result in seconds because its fingerprint is on a blockchain.*
 
-1. `npm install`, then `npm run build`.
-2. Start the chain and the app on one port: `npm run start:local` (local chain + API serving the web app on :4000). Or use the deployed https site (`docs/DEPLOY_AWS.md`).
-3. Reset to the starting point: `npm run seed:demo`, or **Admin → Reset demo**. Riya now has **Robotics fest, Hall B, 120 students** approved and **sealed as v1**, dated **one week from today**.
-4. Phones: the gate needs **https** for the live camera and offline mode. Use the deployed site, or on a LAN run `npm run dev:https -w apps/web` (accept the certificate warning) next to `npm run dev`. Set `PUBLIC_BASE_URL` to the address phones use **before** sealing, because it is printed into each QR.
-5. Open the gate once on the guard's phone **online** (Mr. Pawar, PIN 1234) so it installs, caches the issuer key and syncs the list.
+## Before you start (10 minutes, once)
 
-Demo accounts (all password **demo1234**, signing PIN **1234**): `riya@campus.example` (student), `mehta@`, `kulkarni@` (HoD), `rao@` (Dean), `security@`, `registrar@` (admin), all `@campus.example`. Two browser windows (or a laptop + a phone) make switching quick.
+1. Open **https://campussign.duckdns.org** on the laptop and on one phone (https is needed for the phone camera and
+   the offline gate).
+2. **Reset** the starting point: sign in as `registrar@campus.example` → **Admin → Reset demo**. Riya now has
+   **Robotics fest, Hall B, 120 students**, approved and **signed as v1**, dated a week from today. (Locally:
+   `npm run start:local`, then `npm run seed:demo`.)
+3. On the phone, open **/gate** once **online** as `security@campus.example` so it installs, caches the issuer key and
+   syncs the revocation list.
+4. Keep these windows ready: **laptop** = student, **second browser window or private window** = faculty,
+   **phone** = faculty or the guard. Email notifications arrive in the configured inbox (Admin → Emails lists them).
+5. Have a **text editor** ready for the tamper step, and the downloads folder open.
 
-## 0. Live sign-up with the audience (2 min)
+### Accounts (password `demo1234`, signing PIN `1234`)
 
-1. Hand a phone to a volunteer: **I'm staff / administrator → Sign up** → name, email, password, a 4-digit PIN, department, designation (e.g. **Faculty**; "More details" is optional) → they land on their inbox.
-2. On the laptop: **I'm a student → Sign up** → you land on the student workspace.
-3. **Add a teacher** → type the volunteer's name → **+ Add**. On their phone: **Accept** under "Students who want to add you". Their block appears on your dashboard.
-4. **Drag a PDF** onto "My documents" → on their block, **Send document** → type what it is in your own words → **Send**.
-5. On their phone: **Review next** → the card shows the file and your note → **Approve** + their PIN. Your request turns **Sealed**; Download the PDF and verify it on /verify.
-6. Variations: send to **another student** (Students tab) who signs from "waiting for your signature"; a volunteer who signs up as **HoD** immediately receives the next bonafide/event request in their department.
+| Who | Email | Has |
+| --- | --- | --- |
+| Prof. Dr. Minal Barhate, Guide, AIDS | `minal.barhate@campus.example` | Stored signature |
+| Dr. Shital Parag Dongre, HoD, AIDS | `shital.dongre@campus.example` | Stored signature |
+| Riya, student, CSE | `riya@campus.example` | Robotics fest (signed v1) |
+| Prof. Mehta, Faculty coordinator, CSE | `mehta@campus.example` | |
+| Prof. Kulkarni, HoD, CSE | `kulkarni@campus.example` | |
+| Dr. Rao, Dean Student Affairs | `rao@campus.example` | |
+| Mr. Pawar, Security | `security@campus.example` | Gate |
+| Registrar | `registrar@campus.example` | Admin, impact, audit |
 
-## A. The original workflow (1 min)
+## 0. The problem (30 s)
 
-1. **Riya** (`riya@campus.example`) → Robotics fest → the chain shows Faculty coordinator → HoD ‖ Security (in parallel) → Dean SA, all green, "Approved and sealed". *"Routed by role, signed with a PIN, sealed on chain."*
-2. **Download PDF** → open **/verify** → **Upload PDF** → **Verified**, with each role and time. *"Only the SHA-256 is on chain; no personal data."*
-3. Optional, live: Riya → New request → Bonafide → Prof. Kulkarni approves → Dr. Rao approves → Sealed in seconds.
+Hold up a printed FF 180. *"Project Registration, FF No. 180. Eight pages, three signatures: guide, coordinator,
+HoD. Today that is a printout, a queue outside two cabins, and a paper copy nobody can check. Here is the same form
+on CampusSign."*
 
-## B. The plan changed: amend (1.5 min)
+## 1. A real form, signed in place (3 min) — the hero
 
-4. **Riya** → Robotics fest → **Amend** → date: **today**, venue: **Main Auditorium**, reason "Hall B under repair". The preview reads **"Goes back to: Faculty coordinator, HoD · Kept: Security, Dean Student Affairs"** → Send amendment. *"Same request, no fresh submission; v1 stays valid while v2 is reviewed."*
-5. **Mr. Pawar** and **Dr. Rao** → inbox → **All clear**. *"Security and the Dean are skipped."*
-6. **Prof. Mehta** → Review next → the card shows the old date and venue struck through, new ones in bold → Approve + PIN.
-7. **Prof. Kulkarni** → Approve + PIN.
+**Student (laptop).** Sign up live: **I'm a student → Sign up**, your name, email, a password, a 4-digit signing PIN, department
+**Artificial Intelligence and Data Science**. *"Open sign-up; the department decides who signs."*
 
-## C. Versioned sealing (1 min)
+1. **New request → VIT forms, signed in place → Project Registration & Progress Review (FF No. 180).** Fill the
+   group, project title, area and members → **Create the form**. *"The form is generated in the university's
+   format, filled with my details, and it already knows where each signature goes."*
+2. The send page opens with the PDF on the left and three signature boxes on page 1. On the right:
+   - **Guide:** tap **Prof. Dr. Minal Barhate** (suggested in one tap).
+   - **Head of Department:** tap **Dr. Shital Parag Dongre**.
+   - **Project Coordinator:** leave it; the bar says its box stays empty.
+3. Drag a box a little, resize it, to show it is yours to place. Give it a title → **Send to Barhate + 1** (the bar
+   at the bottom). *"They sign in this order. Each signature will land in its box."*
 
-8. **Riya** → **v1 Superseded → v2 Active**. Tap v2: coordinator and HoD "signed v2"; Security and Dean "signed v1, carried". *"Every signature says which version it approved."*
-9. **Download PDF** (v2). On /verify upload the **v1** PDF → **Superseded by v2** → **Check v2** → **Verified**. *"v2 is linked on chain to v1; an outdated PDF can never show Verified."*
+**Guide (phone or second window, `minal.barhate@`).**
 
-## D. Offline gate check (2 min)
+4. The dashboard: **1 waiting for your signature**, and **My signature** in the side column. *"Faculty save their
+   signature once: draw it, type it or upload a photo."*
+5. **Review next** → the card shows the form with **her box highlighted** and "goes in 1 place". **Approve and sign**
+   → PIN. *"PIN-confirmed, signed by the server with Ed25519, and the signature image is captured at this moment."*
 
-10. Guard's phone (Mr. Pawar, /gate) → **Sync now** → turn on **airplane mode**. The bar shows "· offline".
-11. **Scan pass** on the v2 QR → **VALID · Offline check**, with event, student, venue, today's date. *"Signature checked on the phone; the date window is today only."*
-12. Scan the **v1** QR → **SUPERSEDED** (it is on the signed list; its date is also a week away, so even an unsynced phone says NOT TODAY).
+**Student (laptop).** Open the request: **her signature is now sitting in the Guide box** on the form; the HoD's box
+waits. *"I can watch it fill up."*
 
-## E. Revocation (1.5 min)
+**HoD (`shital.dongre@`).** Review next → Approve and sign → PIN.
 
-13. **Prof. Kulkarni** → Robotics fest → **Revoke approval** (red link) → reason "Event cancelled" + PIN. Toast: tell Security to sync.
-14. /verify → upload v2 → **Revoked** ("Cancelled by the HoD on …"); upload v1 → **Revoked** too.
-15. Gate phone still in airplane mode → scan v2 → **VALID**. *"This is the one offline gap: a revocation after the last sync. Exposure is limited to the event day, the sync time is always visible, and staff are prompted to tell the gate."* (`docs/OFFLINE_GATE.md`)
-16. Airplane mode off → **Sync now** → scan v2 → **REVOKED**.
+6. Student → **Download signed PDF**. Open it. *"This is the original form, page for page. Signatures exactly in the
+   boxes, a caption under each one with who, as what and when, a verify line on every page, and one certificate page
+   at the end with the signers, the original file's fingerprint and a QR."*
 
-## F. Tamper (30 s)
+**Variation (1 min, if they ask "does it work with our own PDFs?"):** Send a document → choose any PDF in
+**My documents** → add Barhate as **Guide** and Dongre as **Head of Department** → **Find sign spots**. *"It reads
+the form's own words, 'Guide', 'Head of Department', 'Signature of Guide:', and puts the boxes there."*
 
-17. Open the v2 PDF in a text editor, change one character, save → /verify → Upload → **Tampered**. *"Change one character and the proof breaks."*
+## 2. It cannot be faked (1 min)
 
-## G. Operations (optional, 2 min)
+7. **Verify** (top bar) → **Upload PDF** → the signed FF 180 → **Verified**, with every signer and time. *"Only the
+   SHA-256 fingerprint is on chain. No personal data."*
+8. Open the PDF in a text editor, change one character, save → upload again → **Tampered**. *"Change one character
+   and the proof breaks. A scanned wet signature can't do that."*
 
-18. **Attachments:** Riya → New request → Bonafide → "+ Add a file" (a PDF) → Submit. Prof. Kulkarni's card shows the file; the sealed PDF lists it with its fingerprint.
-19. **No-dues:** Riya → No-dues clearance → four approvers at once (Ms. Iyer, Mr. Shaikh, Mr. Patil, Mrs. Desai), then the HoD. Use **Approve several** if a person has many.
-20. **Delegation:** Prof. Kulkarni → inbox → **Away? Set a delegate** → Prof. Joshi, today → Prof. Joshi's inbox now holds the HoD items; his card says "signing for Prof. Kulkarni".
-21. **Deadlines:** start with `SLA_MINUTES=1`; leave a request untouched for a minute → **Overdue**, two minutes → **Escalated** (or Admin → Run deadline check).
-22. **Admin:** Impact (approvals sealed, paper and CO2e saved, where approvals wait), Audit log (every action), Emails (every notification; "sent" once SES is on).
+## 3. The plan changed (4 min)
 
-23. **Return and discuss:** Prof. Kulkarni returns a request ("Which hall exactly?"). Riya replies in **Discussion**, edits and sees "Goes back to: HoD · Kept: Faculty coordinator, Security" before resubmitting. A rejected request can be **reopened** by the approver, HoD or Dean.
+Riya's **Robotics fest** is already signed as v1 (Faculty coordinator → HoD ‖ Security → Dean SA).
+
+9. **Amend** (`riya@`) → Robotics fest → **Amend** → date **today**, venue **Main Auditorium**, reason "Hall B under
+   repair". The preview: **"Goes back to: Faculty coordinator, HoD · Kept: Security, Dean Student Affairs"** → Send.
+   *"Only the people the change affects sign again. v1 stays valid meanwhile."*
+10. `mehta@` → the card shows the old date and venue struck through → Approve + PIN. `kulkarni@` → Approve + PIN.
+11. **Versions:** Riya → **v1 Superseded → v2 Active**; v2 lists coordinator and HoD "signed v2", Security and Dean
+    "signed v1, carried". On Verify, upload the **v1** PDF → **Superseded by v2** → **Check v2** → **Verified**.
+12. **Offline gate:** phone as `security@` → /gate → **Sync now** → **airplane mode** → **Scan pass** on the v2 QR →
+    **VALID · offline check**. Scan v1 → **SUPERSEDED**. *"The signature is checked on the phone; the pass is valid
+    only on the event date."*
+13. **Revoke:** `kulkarni@` → Robotics fest → **Revoke approval** → reason, PIN. Verify: v2 and v1 now say
+    **Revoked**. The phone, still offline, says **VALID** (the honest gap: a revocation after the last sync, limited to
+    the event day, with the sync time on screen). Airplane mode off → **Sync now** → **REVOKED**.
+
+## 4. A department runs on it (optional, 2 min)
+
+- **Faculty dashboard** (`kulkarni@`): Review next, the waiting list (open any one), recent decisions, **History**
+  (filters, search, Export CSV), **Approve several** with one PIN.
+- **Away? Set a delegate:** Prof. Kulkarni → Prof. Joshi for today; Joshi's card says "signing for Prof. Kulkarni",
+  and so does the PDF.
+- **Classes:** Barhate → **People → Classes → New class** → invite the student's registered email → the code arrives
+  by email → the student enters it under **My teachers → Classes**. *"Only the account it was sent to can join."*
+- **Custom request:** New request → **Write your own request** → pick who signs by designation, in order.
+- **Return and discuss:** a return needs a comment; the student replies in **Discussion**, edits, and sees who signs
+  again before resubmitting. A rejection can be **reopened**.
+- **Reminders and escalation:** start the server with `SLA_MINUTES=1`; untouched steps show **Reminder sent**, then
+  **Escalated** to the next authority (or Admin → Run deadline check).
+- **Registrar:** **Impact** (approvals signed, paper and CO2e saved, where approvals wait), **Audit log** (every
+  action), **Emails** (every notification).
+
+## Close (20 s)
+
+*"One form in, signed by the right people in order, signatures where the form asks for them, verifiable by anyone in
+seconds, and it still works at the gate with no network. FF 180 today; any form the university uses tomorrow: the
+template library already has leave, internship NOC and industrial visit forms."*
+
+## Questions you will get
+
+| Question | Answer |
+| --- | --- |
+| Is this a legal e-signature? | It is a PIN-confirmed, server-signed (Ed25519) approval with a tamper-evident record on chain. Aadhaar eSign is the natural next step for documents that legally require it. |
+| What is on the blockchain? | Only the document's SHA-256, the issuing college ID, request ID, version and status. No names, no form data. |
+| What if the chain or internet is down? | Signing continues; anchoring queues and retries. Verify never says Verified before the record is on chain. The gate works fully offline. |
+| Can someone reuse a faculty member's signature? | The image is only placed by an approval made with that person's PIN; the image used is stored with that approval, and the whole document is hashed. A copied image on another PDF fails verification. |
+| What does it cost to run? | One small cloud server; email per message on AWS SES. No per-signature fees. |
+| Does it need our forms rebuilt? | No. Upload the PDF as it is; place boxes or let Find sign spots do it. Templates are a shortcut, not a requirement. |
 
 ## If something goes wrong
 
-- **No network in the room:** run everything on the laptop with `npm run start:local`; the local chain needs no internet. Use "Scan from photo" if the camera is blocked.
-- **Chain stopped:** seals and revocations queue and anchor automatically when it is back; verify shows "Sealing in progress", never a false Verified.
-- **Need to start over:** Admin → **Reset demo** (or `npm run seed:demo`).
-- **Phone camera does not open:** use the phone's own camera app on the PDF's QR (opens /verify directly), or "Scan from photo".
+- **No network in the room:** run locally with `npm run start:local` (the local chain needs no internet), then
+  `npm run seed:demo`. Use **Scan from photo** if the camera is blocked.
+- **A signer has no signature saved:** the card says so; **Add it now** opens the pad (Draw is fastest).
+- **The send button says what is missing** (document, signer, title); follow it.
+- **Chain stopped:** signing queues and anchors when it is back; Verify shows "Signing in progress", never a false
+  Verified.
+- **Start over:** Admin → **Reset demo**. The AIDS guide and HoD, with their signatures, are restored too.
+- **Phone camera does not open:** point the phone's own camera app at the QR (it opens Verify directly), or use
+  Scan from photo.
