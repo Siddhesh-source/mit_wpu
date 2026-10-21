@@ -7,6 +7,7 @@ import { VersionStrip } from '../components/VersionStrip';
 import { AttachmentList, AttachmentPicker } from '../components/Attachments';
 import type { AttachmentInfo, RequestType } from '@plc/shared';
 import { Discussion } from '../components/Discussion';
+import { SignedDocument } from '../components/SignedDocument';
 import { Timeline } from '../components/Timeline';
 import { FieldList, FormFields, type FormValues } from '../components/FormFields';
 import { api, download } from '../lib/api';
@@ -282,6 +283,13 @@ export default function RequestPage() {
           )}
           {mine && !canReopen && <p className="mt-2 text-ink/70">Disagree? Ask in the discussion below; the approver, HoD or Dean can reopen it.</p>}
         </div>
+      )}
+
+      {r.signing && (
+        <section className="mb-8">
+          <h2 className="mb-3 text-base font-semibold">The document</h2>
+          <SignedDocument requestId={r.id} signing={r.signing} />
+        </section>
       )}
 
       {versions && versions.length > 1 && <VersionStrip requestId={r.id} versions={versions} onError={toast} />}

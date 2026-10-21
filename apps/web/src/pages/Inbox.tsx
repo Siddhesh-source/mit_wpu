@@ -5,6 +5,8 @@ import { PersonBlock } from '../components/PersonBlock';
 import { DecisionList } from '../components/Decisions';
 import { Empty, Page, PageHeader, PinPad, SectionHead, Sheet, StatStrip, Tick, toast } from '../components/ui';
 import { Icon } from '../components/Icon';
+import { MySignature, SignatureSheet } from '../components/SignaturePad';
+import { SignedDocument } from '../components/SignedDocument';
 import { FieldList } from '../components/FormFields';
 import { Timeline } from '../components/Timeline';
 import { AttachmentList } from '../components/Attachments';
@@ -109,6 +111,9 @@ export default function Inbox() {
   const [delegating, setDelegating] = useState(false);
   const [busy, setBusy] = useState(false);
   const [resetPin, setResetPin] = useState(0);
+  // Sign in place: my saved signature (needed when the document has boxes for me)
+  const { data: mySig, reload: reloadSig } = useLive<{ dataUrl: string | null }>('/api/me/signature', 120_000);
+  const [sigOpen, setSigOpen] = useState(false);
 
   const isStudent = !!me?.roles.includes('student');
   const { data: conns, reload: reloadConns } = useLive<Connection[]>(isStudent ? null : '/api/connections', 8000);
@@ -125,6 +130,7 @@ export default function Inbox() {
   const item = items?.find((i) => i.approvalId === current) ?? items?.[0];
   const count = items?.length ?? 0;
   const mine = item?.timeline.find((s) => s.approvalId === item.approvalId);
+  const myBoxes = item?.signing?.fields.filter((f) => f.step === mine?.stepNo).length ?? 0;
 
   async function decide(pin: string) {
     if (!item || !choice) return;
@@ -354,7 +360,10 @@ export default function Inbox() {
 
             {/* Side column: plain sections divided by hairlines, no cards */}
             <aside className="flex flex-col divide-y divide-rule border-t border-rule lg:border-t-0">
-              <section className="py-5 lg:pt-0">
+              <div className="lg:-mt-5">
+                <MySignature compact />
+              </div>
+              <section className="py-5">
                 <SectionHead title="Away from campus?" />
                 <p className="text-sm text-muted">
                   {away ? (
@@ -472,9 +481,28 @@ export default function Inbox() {
               See full chain{item.commentCount ? ` · Discussion (${item.commentCount})` : ' · Ask the student'}
             </Link>
           </p>
+          {myBoxes > 0 && (
+            <div className={`mb-4 rounded-xl px-3 py-3 text-sm ${mySig?.dataUrl ? 'bg-panel' : 'bg-warn-bg'}`}>
+              {mySig?.dataUrl ? (
+                <div className="flex items-center gap-3">
+                  <img src={mySig.dataUrl} alt="Your signature" className="h-10 max-w-[45%] object-contain" />
+                  <span className="text-muted">
+                    Goes in <b className="text-ink">{myBoxes} place{myBoxes > 1 ? 's' : ''}</b> on this document when you approve.
+                  </span>
+                </div>
+              ) : (
+                <p>
+                  <b className="text-warn">Add your signature to sign this document.</b>{' '}
+                  <button className="link font-semibold" onClick={() => setSigOpen(true)}>
+                    Add it now
+                  </button>
+                </p>
+              )}
+            </div>
+          )}
           <div className="grid grid-cols-2 gap-3">
-            <button className="rounded-xl bg-ok py-4 text-lg font-semibold text-white active:scale-[0.98]" onClick={() => setChoice('approved')}>
-              Approve
+            <button className="rounded-xl bg-ok py-4 text-lg font-semibold text-white active:scale-[0.98]" onClick={() => (myBoxes > 0 && !mySig?.dataUrl ? setSigOpen(true) : setChoice('approved'))}>
+              {myBoxes > 0 ? 'Approve and sign' : 'Approve'}
             </button>
             <button className="rounded-xl border-2 border-ink py-4 text-lg font-semibold active:scale-[0.98]" onClick={() => setChoice('returned')}>
               Return
@@ -484,11 +512,19 @@ export default function Inbox() {
             Reject
           </button>
         </article>
-        <section className="hidden lg:block lg:rounded-3xl lg:border lg:border-rule lg:p-6">
-          <h2 className="mb-3 text-base font-semibold">Approval chain</h2>
-          <Timeline steps={item.timeline} />
-        </section>
+        {item.signing ? (
+          <section className="mt-8 lg:mt-0">
+            <h2 className="mb-3 text-base font-semibold">The document {myBoxes > 0 && <span className="font-normal text-muted">· your boxes are highlighted</span>}</h2>
+            <SignedDocument requestId={item.id} signing={item.signing} highlight={mine?.stepNo} />
+          </section>
+        ) : (
+          <section className="hidden lg:block lg:rounded-2xl lg:border lg:border-rule lg:p-6">
+            <h2 className="mb-3 text-base font-semibold">Approval chain</h2>
+            <Timeline steps={item.timeline} />
+          </section>
+        )}
       </div>
+      <SignatureSheet open={sigOpen} onClose={() => setSigOpen(false)} onSaved={() => reloadSig()} />
 
       <Sheet open={!!choice} onClose={() => !busy && (setChoice(null), setComment(''))}>
         <h2 className="text-lg font-bold">
@@ -501,6 +537,11 @@ export default function Inbox() {
           value={comment}
           onChange={(e) => setComment(e.target.value)}
         />
+        {choice === 'approved' && myBoxes > 0 && mySig?.dataUrl && (
+          <p className="mb-3 flex items-center justify-center gap-2 text-sm text-muted">
+            <img src={mySig.dataUrl} alt="" className="h-7 object-contain" /> will be placed in {myBoxes} box{myBoxes > 1 ? 'es' : ''}
+          </p>
+        )}
         <p className="mb-3 text-center text-sm text-muted">Enter your PIN to sign</p>
         <PinPad onComplete={decide} busy={busy} reset={resetPin} />
       </Sheet>

@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ROLE_LABEL, type AttachmentInfo, type RequestDetail, type RequestType, type Role } from '@plc/shared';
+import { ROLE_LABEL, type AttachmentInfo, type FormTemplate, type RequestDetail, type RequestType, type Role } from '@plc/shared';
+import { useLive } from '../lib/hooks';
 import { AttachmentPicker } from '../components/Attachments';
 import { Page, PageHeader, SectionHead, toast } from '../components/ui';
 import { Icon } from '../components/Icon';
@@ -13,6 +14,7 @@ const BLURB: Record<string, string> = {
   bonafide: 'Proof you study here',
   no_dues: 'Library, labs, hostel, accounts at once',
   document_signature: 'Send files to anyone to sign',
+  sign_document: 'Any PDF: choose who signs and mark where',
 };
 
 /** Designations a student can ask to sign a custom request, in the order they are offered. */
@@ -70,6 +72,7 @@ function SignerChain({ value, onChange }: { value: Role[]; onChange: (v: Role[])
 export default function NewRequest() {
   const nav = useNavigate();
   const [types, setTypes] = useState<RequestType[]>([]);
+  const { data: templates } = useLive<FormTemplate[]>('/api/templates', 600_000);
   const [type, setType] = useState<RequestType | null>(null);
   const [values, setValues] = useState<FormValues>({});
   const [files, setFiles] = useState<AttachmentInfo[]>([]);
@@ -82,7 +85,7 @@ export default function NewRequest() {
   }, []);
 
   function pick(t: RequestType) {
-    if (t.code === 'document_signature') return nav('/student/send');
+    if (t.code === 'document_signature' || t.code === 'sign_document') return nav('/student/send');
     setType(t);
     setValues({});
     setFiles([]);
@@ -126,11 +129,32 @@ export default function NewRequest() {
               <Icon name="chevron" className="h-5 w-5 text-accent" />
             </button>
           )}
+          {/* VIT forms: generated with my details, sign spots already placed, then sent for signature */}
+          <section>
+            <SectionHead title="VIT forms, signed in place" />
+            <ul className="divide-y divide-rule overflow-hidden rounded-2xl border border-rule">
+              {templates?.map((t) => (
+                <li key={t.code}>
+                  <button onClick={() => nav(`/student/send?template=${t.code}`)} className={row}>
+                    <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-panel text-muted transition-colors group-hover:text-accent">
+                      <Icon name="pen" className="h-5 w-5" />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block font-semibold">{t.name}</span>
+                      <span className="block text-sm text-muted">{t.format}</span>
+                      <span className="mt-0.5 block text-xs leading-snug text-faint">Signed by: {t.signers.join(' → ')}</span>
+                    </span>
+                    <Icon name="chevron" className="h-5 w-5 text-faint transition-colors group-hover:text-accent" />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </section>
           <section>
             <SectionHead title="Ready-made forms" />
             <ul className="divide-y divide-rule overflow-hidden rounded-2xl border border-rule">
               {types
-                .filter((t) => t.code !== 'custom')
+                .filter((t) => t.code !== 'custom' && t.code !== 'document_signature')
                 .map((t) => (
                   <li key={t.code}>
                     <button onClick={() => pick(t)} className={row}>

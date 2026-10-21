@@ -10,6 +10,7 @@ Role-routed digital approvals for Indian universities: a student submits once, t
 
 - **Open sign-up and log in** as a student or as staff / administrator (designation decides the home), with a profile page.
 - **Student workspace**: documents with drag and drop, teachers as blocks (search, connect, accept), and **send a document to anyone** (staff or student) to sign.
+- **Sign in place**: upload any PDF (or generate a VIT form such as FF No. 180), choose who signs in order, mark where each one signs; their saved signatures land in those boxes and the signed copy verifies on chain.
 - **Submit → route by role → sign → seal → verify** for event permission (coordinator → HoD ‖ Security → Dean SA), on-duty and bonafide requests.
 - **Amend a sealed approval**: only the approvers affected by the change sign again (a date or venue change goes back to the coordinator and HoD; Security and the Dean are carried).
 - **Versioned sealing**: v2 is linked on chain to v1; v1 then verifies as "Superseded by v2". Full history of who approved which version.

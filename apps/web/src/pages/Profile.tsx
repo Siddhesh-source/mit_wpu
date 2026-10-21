@@ -3,6 +3,7 @@ import { ROLE_LABEL, homeFor } from '@plc/shared';
 import { Page, toast } from '../components/ui';
 import { api } from '../lib/api';
 import { useSession } from '../lib/session';
+import { MySignature } from '../components/SignaturePad';
 
 const input = 'w-full rounded-xl border border-rule bg-bg px-4 py-3 text-base outline-none focus:border-accent focus:ring-2 focus:ring-accent/20';
 
@@ -49,6 +50,9 @@ export default function Profile() {
           </p>
           <p className="text-xs text-faint">{me.email}</p>
         </div>
+      </div>
+      <div className="mb-8 rounded-2xl border border-rule p-4">
+        <MySignature />
       </div>
       <form onSubmit={save} className="flex flex-col gap-4">
         {row('Full name', 'name', { required: true })}
