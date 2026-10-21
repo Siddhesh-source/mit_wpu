@@ -1,3 +1,5 @@
+export * from './crypto';
+
 export const ROLES = ['student', 'faculty_coordinator', 'hod', 'dean_sa', 'security', 'admin'] as const;
 export type Role = (typeof ROLES)[number];
 
@@ -31,4 +33,69 @@ export function homeFor(roles: Role[]): string {
   if (roles.includes('security')) return '/gate';
   if (roles.includes('admin')) return '/admin';
   return '/inbox';
+}
+
+// ---------- requests ----------
+
+export type RequestStatus = 'in_review' | 'approved' | 'rejected' | 'returned';
+export type Decision = 'waiting' | 'pending' | 'approved' | 'rejected' | 'returned' | 'cancelled' | 'carried';
+
+export const STATUS_LABEL: Record<RequestStatus, string> = {
+  in_review: 'In review',
+  approved: 'Approved',
+  rejected: 'Rejected',
+  returned: 'Returned',
+};
+
+export interface FieldDef {
+  key: string;
+  label: string;
+  type: 'text' | 'date' | 'number' | 'textarea';
+  required: boolean;
+}
+
+export interface RequestType {
+  code: string;
+  name: string;
+  fields: FieldDef[];
+  chain: { stepNo: number; role: Role }[];
+}
+
+export interface TimelineStep {
+  approvalId: number;
+  stepNo: number;
+  role: Role;
+  roleLabel: string;
+  assignee: { id: string; name: string };
+  decision: Decision;
+  comment: string | null;
+  signedAt: string | null;
+  version: number;
+}
+
+export interface RequestSummary {
+  id: string;
+  type: string;
+  typeName: string;
+  title: string;
+  status: RequestStatus;
+  version: number;
+  student: { id: string; name: string; title: string };
+  department: string;
+  createdAt: string;
+  updatedAt: string;
+  /** Who has it right now, and since when (pending approvals only). */
+  withNow: { role: Role; roleLabel: string; name: string; since: string }[];
+}
+
+export interface RequestDetail extends RequestSummary {
+  form: Record<string, string | number>;
+  fields: FieldDef[];
+  timeline: TimelineStep[];
+  lastComment: { role: Role; decision: Decision; comment: string } | null;
+}
+
+export interface InboxItem extends RequestDetail {
+  approvalId: number;
+  myRole: Role;
 }

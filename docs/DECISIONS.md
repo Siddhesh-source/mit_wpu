@@ -7,3 +7,8 @@
 5. **Ed25519 (`@noble/ed25519`) for approval signatures and the QR payload**, so the browser can verify offline with the same code.
 6. **Chain: real `DocumentRegistry` contract; local Hardhat node by default, Polygon Amoy via `CHAIN_MODE=amoy`**, so demos do not depend on testnet uptime.
 7. **API runs TypeScript directly with `tsx`** (no compile step); `packages/shared` is consumed as TS source by both apps.
+8. **Approval rows for the whole round are created up front** (`waiting` → `pending` → decided). Advancing is a status flip, parallel steps are rows with the same `step_no`, and amendments reuse the same function with a subset of steps.
+9. **Resubmit after Return reuses the same version and bumps `round`**: a version only becomes immutable once sealed; versions are reserved for post-seal amendments.
+10. **Return and Reject require a comment**, so the student always sees why.
+11. **No draft state**: a request exists from submit. Keeps the student flow to one screen.
+12. **Request IDs `PLC-YYYY-NNNN`**, readable for students and approvers.

@@ -4,6 +4,7 @@ import bcrypt from 'bcryptjs';
 import type { Me, Profile, Role } from '@plc/shared';
 import type { DB } from './db.js';
 import { requireAuth, signToken } from './auth.js';
+import { errorHandler, workflowRoutes } from './routes.js';
 
 const initials = (name: string) =>
   name
@@ -52,5 +53,7 @@ export function createApp(db: DB) {
     res.json(me);
   });
 
+  app.use('/api', workflowRoutes(db));
+  app.use(errorHandler);
   return app;
 }
