@@ -2,7 +2,8 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ROLE_LABEL, type AttachmentInfo, type RequestDetail, type RequestType, type Role } from '@plc/shared';
 import { AttachmentPicker } from '../components/Attachments';
-import { Page, toast } from '../components/ui';
+import { Page, PageHeader, SectionHead, toast } from '../components/ui';
+import { Icon } from '../components/Icon';
 import { FormFields, type FormValues } from '../components/FormFields';
 import { api } from '../lib/api';
 
@@ -108,25 +109,45 @@ export default function NewRequest() {
 
   if (!type) {
     const own = types.find((t) => t.code === 'custom');
+    const row = 'group flex w-full items-center gap-4 px-4 py-4 text-left transition-colors hover:bg-panel md:px-5';
     return (
-      <Page back="/student" wide>
-        <h1 className="mb-4 text-2xl font-bold md:mb-8 md:text-3xl">What do you need?</h1>
-        {own && (
-          <button onClick={() => pick(own)} className="mb-4 w-full rounded-2xl border-2 border-dashed border-accent p-5 text-left hover:bg-panel md:p-8">
-            <p className="text-lg font-semibold text-accent">+ Write your own request</p>
-            <p className="text-sm text-muted">Not in the list? Describe what you need and choose who signs it, in order.</p>
-          </button>
-        )}
-        <p className="mb-3 text-sm font-semibold text-muted">Or pick a ready-made form</p>
-        <div className="flex flex-col gap-3 md:grid md:grid-cols-2 md:gap-4 lg:grid-cols-3">
-          {types
-            .filter((t) => t.code !== 'custom')
-            .map((t) => (
-              <button key={t.code} onClick={() => pick(t)} className="rounded-2xl border border-rule bg-panel p-5 text-left hover:border-accent/40 active:bg-rule md:p-8">
-                <p className="text-lg font-semibold">{t.name}</p>
-                <p className="text-sm text-muted">{BLURB[t.code] ?? ''}</p>
-              </button>
-            ))}
+      <Page back="/student">
+        <PageHeader title="What do you need?" subtitle="Pick a form, or write your own and choose who signs it." />
+        <div className="flex flex-col gap-8">
+          {own && (
+            <button onClick={() => pick(own)} className={`${row} rounded-2xl border border-accent/30 bg-accent/5 hover:bg-accent/10`}>
+              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-accent text-white">
+                <Icon name="pen" className="h-5 w-5" />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block font-semibold text-accent">Write your own request</span>
+                <span className="block text-sm text-muted">Describe what you need and choose who signs it, in order</span>
+              </span>
+              <Icon name="chevron" className="h-5 w-5 text-accent" />
+            </button>
+          )}
+          <section>
+            <SectionHead title="Ready-made forms" />
+            <ul className="divide-y divide-rule overflow-hidden rounded-2xl border border-rule">
+              {types
+                .filter((t) => t.code !== 'custom')
+                .map((t) => (
+                  <li key={t.code}>
+                    <button onClick={() => pick(t)} className={row}>
+                      <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-panel text-muted transition-colors group-hover:text-accent">
+                        <Icon name={t.code === 'document_signature' ? 'send' : 'file'} className="h-5 w-5" />
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block font-semibold">{t.name}</span>
+                        <span className="block text-sm text-muted">{BLURB[t.code] ?? ''}</span>
+                        {t.chain.length > 0 && t.code !== 'document_signature' && <span className="mt-0.5 block truncate text-xs text-faint">Goes to: {chainText(t.chain)}</span>}
+                      </span>
+                      <Icon name="chevron" className="h-5 w-5 text-faint transition-colors group-hover:text-accent" />
+                    </button>
+                  </li>
+                ))}
+            </ul>
+          </section>
         </div>
       </Page>
     );
