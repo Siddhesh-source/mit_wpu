@@ -5,6 +5,7 @@ import { useSession } from '../lib/session';
 import { useLive } from '../lib/hooks';
 import { ThemeToggle } from './ThemeToggle';
 import { Icon, type IconName } from './Icon';
+import { Logo } from './Logo';
 
 const PILL: Record<RequestStatus, string> = {
   in_review: 'bg-panel text-accent',
@@ -90,11 +91,8 @@ export function Page({ children, back, wide = false }: { children: ReactNode; ba
       <header className="sticky top-0 z-30 border-b border-rule bg-bg/95 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 md:px-8">
           <div className="flex min-w-0 items-center gap-6">
-            <Link to="/" className="flex shrink-0 items-center gap-2 text-lg font-bold">
-              <span className="grid h-8 w-8 place-items-center rounded-lg bg-accent text-white">
-                <Icon name="check" className="h-5 w-5" />
-              </span>
-              <span>CampusSign</span>
+            <Link to="/" className="shrink-0" aria-label="CampusSign home">
+              <Logo />
             </Link>
             {back && (
               <Link to={back} className="link -ml-2 shrink-0 text-base lg:hidden">

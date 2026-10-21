@@ -44,7 +44,7 @@ if (import.meta.env.PROD && 'serviceWorker' in navigator) {
       // Also cache what this first visit already loaded (scripts, styles, fonts), so the next visit works offline.
       const urls = performance.getEntriesByType('resource').map((e) => e.name)
         .filter((u) => (u.startsWith(location.origin) && !u.includes('/api/')) || u.includes('fonts.g'));
-      const cache = await caches.open('plc-shell-v2');
+      const cache = await caches.open('plc-shell-v3');
       await Promise.all(urls.map((u) => cache.add(u).catch(() => undefined)));
     } catch {
       /* offline support is best effort */

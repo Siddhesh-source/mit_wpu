@@ -5,6 +5,7 @@ import { api } from '../lib/api';
 import { useSession } from '../lib/session';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { Icon } from '../components/Icon';
+import { Logo } from '../components/Logo';
 
 type Kind = 'student' | 'staff';
 const KIND = 'plc.kind';
@@ -75,11 +76,10 @@ export default function Login() {
     <main className="relative mx-auto flex min-h-screen max-w-md flex-col px-4 py-10 md:max-w-2xl md:justify-center">
       <ThemeToggle className="absolute right-4 top-4" />
       <header className="mb-10 flex flex-col items-center text-center">
-        <span className="mb-4 grid h-12 w-12 place-items-center rounded-xl bg-accent text-white">
-          <Icon name="check" className="h-6 w-6" />
-        </span>
-        <h1 className="text-3xl font-bold md:text-4xl">CampusSign</h1>
-        <p className="mt-2 text-muted">No queues. No paper. No forged signatures.</p>
+        <h1>
+          <Logo size="lg" />
+        </h1>
+        <p className="mt-3 text-muted">No queues. No paper. No forged signatures.</p>
       </header>
 
       {!kind ? (

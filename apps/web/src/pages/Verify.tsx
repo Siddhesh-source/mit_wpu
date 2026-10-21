@@ -7,6 +7,7 @@ import { QrScanner, decodeQrImage } from '../components/QrScanner';
 import { checkFile, checkHash, checkQr, type Check } from '../lib/verify';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { fmtDate } from '../lib/hooks';
+import { Logo } from '../components/Logo';
 
 type Tone = 'ok' | 'bad' | 'warn' | 'muted';
 
@@ -263,11 +264,8 @@ export default function Verify() {
     <div className="flex min-h-screen flex-col">
       <header className="border-b border-rule">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 md:px-8">
-          <Link to="/" className="flex items-center gap-2 text-lg font-bold">
-            <span className="grid h-7 w-7 place-items-center rounded-lg bg-accent text-white">
-              <Tick className="h-4 w-4" />
-            </span>
-            CampusSign
+          <Link to="/" aria-label="CampusSign home">
+            <Logo />
           </Link>
           <span className="flex items-center gap-4">
             <ThemeToggle />

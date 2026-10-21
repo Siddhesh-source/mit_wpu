@@ -1,6 +1,6 @@
 // CampusSign service worker: makes the app shell (and so the gate check) load with no network.
 // API calls are never cached here; the gate keeps its signed revocation list and issuer key in local storage.
-const CACHE = 'plc-shell-v2';
+const CACHE = 'plc-shell-v3';
 const SHELL = ['/', '/manifest.webmanifest', '/icon.svg'];
 const FONTS = ['fonts.googleapis.com', 'fonts.gstatic.com'];
 

@@ -114,3 +114,4 @@ Camera note: browsers allow live camera only on https or localhost. On plain htt
 - **Surfaces:** sections divided by hairlines, lists as divided rows in one bordered box; no cards inside cards. Dashed borders only for drop zones. Empty states are a quiet panel with an icon.
 - **States:** global `:focus-visible` ring in the accent; no permanently disabled primary buttons (hide them, or label what is missing); 44 px targets on phones.
 - **People:** staff avatars are rounded squares (accent), students circles (green).
+- **Logo:** `components/Logo.tsx` (`LogoMark`, `Logo`). A handwritten loop that flows into a check, written on a signature line, white on an accent tile (theme-aware). Wordmark "Campus" in ink + "Sign" in the accent. `public/icon.svg` (favicon, home-screen icon) is the same drawing.
