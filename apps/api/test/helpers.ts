@@ -25,7 +25,10 @@ const workerKey = HDNodeWallet.fromPhrase(
 export async function setup(opts: { rpcUrl?: string; chain?: (db: ReturnType<typeof openDb>) => ChainClient } = {}) {
   const db = openDb();
   seed(db);
-  const chain = opts.chain?.(db) ?? new ChainClient({ network: 'local', rpcUrl: opts.rpcUrl ?? rpcUrl(), privateKey: workerKey });
+  // Remember the contract address like production does (in the database), so reconnects reuse it.
+  let address: string | undefined;
+  const store = { get: () => address, set: (a: string) => void (address = a) };
+  const chain = opts.chain?.(db) ?? new ChainClient({ network: 'local', rpcUrl: opts.rpcUrl ?? rpcUrl(), privateKey: workerKey, store });
   const svc: Services = { chain, storageDir: fs.mkdtempSync(path.join(os.tmpdir(), 'plc-')), publicBaseUrl: 'http://verify.test' };
   const app = createApp(db, svc);
   const tokens: Record<string, string> = {};

@@ -1,18 +1,23 @@
 import { useState, type FormEvent } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { ROLE_LABEL, type RequestDetail } from '@plc/shared';
-import { Page, StatusPill, Tick, toast } from '../components/ui';
+import { ROLE_LABEL, type RequestDetail, type VersionHistory } from '@plc/shared';
+import { Page, PinPad, Sheet, StatusPill, Tick, toast } from '../components/ui';
+import { VersionStrip } from '../components/VersionStrip';
 import { Timeline } from '../components/Timeline';
 import { FieldList, FormFields, type FormValues } from '../components/FormFields';
 import { api, download } from '../lib/api';
-import { useLive } from '../lib/hooks';
+import { fmtDate, useLive } from '../lib/hooks';
 import { useSession } from '../lib/session';
 
 export default function RequestPage() {
   const { id } = useParams();
   const { me } = useSession();
   const { data: r, error, reload } = useLive<RequestDetail>(`/api/requests/${id}`);
+  const { data: versions, reload: reloadVersions } = useLive<VersionHistory[]>(`/api/requests/${id}/history`, 8000);
   const [editing, setEditing] = useState<FormValues | null>(null);
+  const [revoking, setRevoking] = useState(false);
+  const [revokeReason, setRevokeReason] = useState('');
+  const [resetPin, setResetPin] = useState(0);
   const [busy, setBusy] = useState(false);
   const back = me?.roles.includes('student') ? '/student' : me?.roles.includes('admin') ? '/admin' : '/inbox';
 
@@ -23,6 +28,30 @@ export default function RequestPage() {
   const finished = r.status === 'approved' || r.status === 'sealing' || r.status === 'sealed';
   const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
   const canAmend = mine && r.status === 'sealed' && !(r.type === 'event_permission' && String(r.form.date) < today);
+  const canRevoke = !!me?.roles.some((x) => x === 'hod' || x === 'dean_sa') && (r.status === 'sealed' || r.status === 'amending');
+
+  async function revoke(pin: string) {
+    if (!revokeReason.trim()) {
+      toast('Give a reason for the record');
+      setResetPin((n) => n + 1);
+      return;
+    }
+    setBusy(true);
+    try {
+      await api(`/api/requests/${r!.id}/revoke`, { method: 'POST', json: { reason: revokeReason, pin } });
+      setRevoking(false);
+      setRevokeReason('');
+      toast('Revoked. Every copy now verifies as Revoked. Tell Security to sync the gate list.');
+      reload();
+      reloadVersions();
+    } catch (e) {
+      toast((e as Error).message);
+      setResetPin((n) => n + 1);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   const amendReturned = r.status === 'sealed' && r.lastComment && r.lastComment.version > r.version && r.lastComment.decision !== 'approved' ? r.lastComment : null;
   const getPdf = () => download(`/api/requests/${r.id}/pdf`, `${r.id}-v${r.seal?.version ?? 1}.pdf`).catch((e) => toast(e.message));
 
@@ -72,6 +101,16 @@ export default function RequestPage() {
       </div>
       {!mine && <p className="text-sm text-muted">{r.student.name} · {r.student.title}</p>}
 
+      {r.revocation && (
+        <p className="mt-4 rounded-2xl bg-bad-bg p-4 text-sm text-bad">
+          <span className="font-semibold">
+            Revoked by {r.revocation.roleLabel} ({r.revocation.name}) on {fmtDate(r.revocation.at)}:
+          </span>{' '}
+          “{r.revocation.reason}”
+          <br />
+          <span className="text-ink/70">Every version of this approval now verifies as Revoked.</span>
+        </p>
+      )}
       {r.status === 'amending' && r.amendment && (
         <p className="mt-4 rounded-2xl bg-warn-bg p-4 text-sm">
           <span className="font-semibold text-warn">Amendment v{r.version} in review</span> · {r.amendment.reason}
@@ -107,7 +146,7 @@ export default function RequestPage() {
 
       {(finished || r.seal) && (
         <section className="mb-6 flex flex-col items-center gap-3">
-          {mine ? (
+          {mine && r.status !== 'revoked' ? (
             <>
               <button className="cta w-full" disabled={!r.seal} onClick={getPdf}>
                 {r.seal ? (r.status === 'amending' ? `Download v${r.seal.version} PDF (still valid)` : 'Download PDF') : 'Preparing PDF…'}
@@ -121,11 +160,11 @@ export default function RequestPage() {
           ) : (
             r.seal && (
               <button className="link text-base" onClick={getPdf}>
-                Download sealed PDF
+                {r.status === 'revoked' ? 'Download PDF (revoked, for records)' : 'Download sealed PDF'}
               </button>
             )
           )}
-          {r.seal?.anchor === 'anchored' ? (
+          {r.status === 'revoked' ? null : r.seal?.anchor === 'anchored' ? (
             <p className="flex items-center gap-2 text-sm text-ok">
               <span className="grid h-5 w-5 place-items-center rounded-full bg-ok text-white"><Tick className="h-3 w-3" /></span>
               Sealed on chain · v{r.seal.version}
@@ -149,6 +188,13 @@ export default function RequestPage() {
         </p>
       )}
 
+      {versions && versions.length > 1 && <VersionStrip requestId={r.id} versions={versions} onError={toast} />}
+
+      {canRevoke && (
+        <button className="mb-6 text-sm font-semibold text-bad underline-offset-4 hover:underline" onClick={() => setRevoking(true)}>
+          Revoke approval
+        </button>
+      )}
       </div>
       <section className="lg:rounded-3xl lg:border lg:border-rule lg:p-6">
         <h2 className="mb-3 text-sm font-semibold text-muted">Approval chain</h2>
@@ -156,6 +202,20 @@ export default function RequestPage() {
         <Timeline steps={r.timeline} done={finished && (r.status === 'sealed' ? 'sealed' : 'approved')} />
       </section>
       </div>
+
+      <Sheet open={revoking} onClose={() => !busy && setRevoking(false)}>
+        <h2 className="text-lg font-bold text-bad">Revoke “{r.title}”?</h2>
+        <p className="mt-1 text-sm text-muted">Cancels the approval entirely. Every copy, old or new, will verify as Revoked. This cannot be undone.</p>
+        <textarea
+          rows={2}
+          placeholder="Reason (required, kept in the record)"
+          className="my-4 w-full rounded-xl border border-rule px-4 py-3 outline-none focus:border-bad"
+          value={revokeReason}
+          onChange={(e) => setRevokeReason(e.target.value)}
+        />
+        <p className="mb-3 text-center text-sm text-muted">Enter your PIN to revoke</p>
+        <PinPad onComplete={revoke} busy={busy} reset={resetPin} />
+      </Sheet>
     </Page>
   );
 }

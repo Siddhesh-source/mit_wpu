@@ -32,3 +32,10 @@
 30. **`purpose` sends the amendment to the faculty coordinator**, so every field change reaches at least one approver and nothing gets re-sealed without a signature.
 31. **A returned or rejected amendment ends only the amendment** and restores `current_version` and round to the sealed version; the abandoned round stays in the history.
 32. **v2 is sealed through the same pipeline with `prevHash` = v1**, so the on-chain link and v1 → Superseded happen in prompt 6 already; prompt 7 adds history and UI on top.
+33. **One verdict function in `packages/shared`** (`verdictFor`), so the API, verify page and gate cannot disagree on precedence.
+34. **A genuine document checked before its date reads Verified (with "valid from …")**, not "not valid"; only the gate turns that into NOT TODAY. Past the window it reads Expired.
+35. **Revocation is per request, applied to every version.** Revoking v2 also makes the old v1 read Revoked (Revoked beats Superseded), so no copy of a cancelled approval can pass.
+36. **The database revocation counts immediately; the chain write is queued.** A revoked document never reads Verified during a chain outage.
+37. **Public verify exposes the revoking role and date, not the reason or name** (no personal data in public answers).
+38. **Revocation list includes superseded versions**, so an old v1 QR is caught offline even if it carried a still-valid-looking date.
+39. **Test chain clients remember their contract address** (like production's `kv`), so reconnects after a simulated outage reuse the same contract.

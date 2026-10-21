@@ -8,6 +8,8 @@ import { fmtDate } from '../lib/hooks';
 
 type Tone = 'ok' | 'bad' | 'warn' | 'muted';
 
+const day = (unix: number) => new Date(unix * 1000).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Kolkata' });
+
 /** One verdict per check. Never "Verified" unless the live chain status is Active. */
 function verdict(c: Check): { tone: Tone; title: string; detail: string } {
   if (c.kind === 'pass' && !c.signatureOk)
@@ -19,11 +21,25 @@ function verdict(c: Check): { tone: Tone; title: string; detail: string } {
       : { tone: 'muted', title: 'Offline', detail: 'Connect to the internet to check this file.' };
   switch (live.status) {
     case 'verified':
-      return { tone: 'ok', title: 'Verified', detail: 'Matches the record sealed on chain.' };
+      return {
+        tone: 'ok',
+        title: 'Verified',
+        detail: live.notYetValid && live.validFrom
+          ? `Matches the record sealed on chain. Valid from ${day(live.validFrom)}${live.validUntil && live.validUntil - live.validFrom < 86400 * 2 ? ' (that day only)' : ''}.`
+          : 'Matches the record sealed on chain.',
+      };
     case 'superseded':
       return { tone: 'warn', title: `Superseded by v${live.latest?.version ?? (live.version ?? 1) + 1}`, detail: 'This version was amended. Only the latest version is valid.' };
     case 'revoked':
-      return { tone: 'bad', title: 'Revoked', detail: 'This approval was cancelled and is no longer valid.' };
+      return {
+        tone: 'bad',
+        title: 'Revoked',
+        detail: live.revokedBy
+          ? `Cancelled by the ${live.revokedBy.roleLabel} on ${new Date(live.revokedBy.at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}. No longer valid.`
+          : 'This approval was cancelled and is no longer valid.',
+      };
+    case 'expired':
+      return { tone: 'warn', title: 'Expired', detail: 'Genuine, but its validity window has ended.' };
     case 'pending':
       return { tone: 'muted', title: 'Sealing in progress', detail: 'Approved, but not on chain yet. Check again in a minute.' };
     default:
@@ -40,7 +56,6 @@ const TONE: Record<Tone, { box: string; dot: string }> = {
   muted: { box: 'bg-panel text-muted', dot: 'bg-faint' },
 };
 
-const day = (unix: number) => new Date(unix * 1000).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Kolkata' });
 
 function Result({ check, onAgain, onCheckLatest }: { check: Check; onAgain: () => void; onCheckLatest: (v: VerifyResult) => void }) {
   const v = verdict(check);

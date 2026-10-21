@@ -35,6 +35,7 @@ Node 20+, TypeScript, Express, SQLite, JWT (12 h), bcrypt PINs, pdf-lib + qrcode
 | `request_versions (request_id, version, form_json, form_hash, reason)` | Form per version; `form_hash` = SHA-256 of canonical JSON |
 | `approvals (request_id, version, round, step_no, role, assignee_id, decision, comment, opened_at, signed_at, signature, carried_from)` | One row per role per round |
 | `audit_log (request_id, actor_id, action, version, details_json, at)` | Every state change |
+| `revocations (request_id, version, doc_hash, role, actor_id, reason, reason_code, signature, anchor_status, tx_hash, …)` | One per revoked request; see `docs/TRUST.md` |
 | `seals (request_id, version, doc_hash, prev_hash, roles_hash, pass, pdf_path, valid_from, valid_until, anchor_status, chain_status, tx_hash, attempts, last_error)` | One per sealed version; see `docs/TRUST.md` |
 
 ## Routing engine (`apps/api/src/workflow.ts`)
@@ -67,6 +68,9 @@ Approve/Return/Reject require the approver's PIN. The server signs canonical JSO
 | GET | /api/requests/:id/pdf `?v=n` | Owner, anyone on the chain, admin |
 | GET | /api/verify/hash/:hash · /api/verify/ref/:rid/:v | Public |
 | GET | /api/health (includes chain network + contract) | Public |
+| GET | /api/requests/:id/history | Owner, anyone on the chain, admin |
+| POST | /api/requests/:id/revoke `{reason, pin}` | HoD / Dean SA of the department |
+| GET | /api/revocations (signed list) | Public |
 
 Errors: `{error}` with 400 / 401 / 403 / 404 / 409 / 422 via `HttpError`.
 
@@ -76,4 +80,4 @@ API tests start one Hardhat node (`test/global-setup.ts`, port 8621); each `setu
 
 ## Request state machine
 
-in_review → approved | rejected | returned; returned → (resubmit) in_review; approved → sealing (PDF built, anchor pending) → sealed (on chain); sealed → (amend) amending → approved → sealing → sealed as v(n+1), or amending → (return/reject) sealed at v(n). Later: superseded | revoked (prompts 7, 8). There is no draft state: a request is created on submit. `GET /api/requests/:id` includes `seal` (latest version's hash, anchor state, tx, validity).
+in_review → approved | rejected | returned; returned → (resubmit) in_review; approved → sealing (PDF built, anchor pending) → sealed (on chain); sealed → (amend) amending → approved → sealing → sealed as v(n+1), or amending → (return/reject) sealed at v(n); sealed | amending → (revoke) revoked. Later: superseded | revoked (prompts 7, 8). There is no draft state: a request is created on submit. `GET /api/requests/:id` includes `seal` (latest version's hash, anchor state, tx, validity).

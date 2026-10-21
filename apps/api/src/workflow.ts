@@ -363,6 +363,7 @@ export function getDetail(db: DB, id: string): RequestDetail {
     timeline,
     lastComment: last ?? null,
     seal: null,
+    revocation: null,
     amendment,
   };
 }

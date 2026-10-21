@@ -161,6 +161,13 @@ describe('chain restart', () => {
       await processQueue(ctx.db, ctx.svc);
       expect((await ctx.chain.get(hash)).status).toBe('active');
       expect(ctx.db.prepare('SELECT anchor_status FROM seals WHERE request_id = ?').pluck().get(id)).toBe('anchored');
+
+      // A revocation survives a second restart too: seals replay first, then revocations.
+      expect((await ctx.as('u_kulkarni').post(`/api/requests/${id}/revoke`, { reason: 'Cancelled', pin: '1234' })).status).toBe(200);
+      await node.stop();
+      node = await startLocalNode(8631);
+      await processQueue(ctx.db, ctx.svc);
+      expect((await ctx.chain.get(hash)).status).toBe('revoked');
     } finally {
       await node.stop();
     }

@@ -66,3 +66,10 @@ Camera note: browsers allow live camera only on https or localhost. On plain htt
 - Returned amendment: amber banner with the approver's comment; the earlier version is still valid.
 - Approver card: amber "Amendment to vN: reason" + the same struck-through diff.
 - Timeline: carried approvals show an outlined green tick and "Carried from vN".
+
+## Versions and revocation UI
+
+- Request page: **Versions** strip "v1 Superseded → v2 Active" (`components/VersionStrip.tsx`) when there is more than one version; tap a version to see each role, person, "signed vN (carried)" and time, plus that version's hash and PDF download.
+- HoD / Dean SA on a sealed or amending request: red text link **Revoke approval** (never a primary CTA) → sheet with a required reason and PIN. Toast reminds them to have Security sync the gate list.
+- Revoked request: red banner "Revoked by HoD (name) on date: reason"; Amend disappears; the PDF is still downloadable as a record.
+- Verify page adds **Expired** (amber) and shows "Cancelled by the HoD on date" for Revoked; Verified shows "Valid from <date> (that day only)" for a future event.

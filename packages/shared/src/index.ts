@@ -1,5 +1,6 @@
 export * from './crypto';
 export * from './pass';
+export * from './status';
 
 export const ROLES = ['student', 'faculty_coordinator', 'hod', 'dean_sa', 'security', 'admin'] as const;
 export type Role = (typeof ROLES)[number];
@@ -38,7 +39,7 @@ export function homeFor(roles: Role[]): string {
 
 // ---------- requests ----------
 
-export type RequestStatus = 'in_review' | 'approved' | 'rejected' | 'returned' | 'sealing' | 'sealed' | 'amending';
+export type RequestStatus = 'in_review' | 'approved' | 'rejected' | 'returned' | 'sealing' | 'sealed' | 'amending' | 'revoked';
 export type Decision = 'waiting' | 'pending' | 'approved' | 'rejected' | 'returned' | 'cancelled' | 'carried';
 
 export const STATUS_LABEL: Record<RequestStatus, string> = {
@@ -49,6 +50,7 @@ export const STATUS_LABEL: Record<RequestStatus, string> = {
   sealing: 'Sealing',
   sealed: 'Sealed',
   amending: 'Amending',
+  revoked: 'Revoked',
 };
 
 export interface FieldDef {
@@ -108,7 +110,7 @@ export interface SealInfo {
   validUntil: number;
 }
 
-export type VerifyStatus = 'verified' | 'superseded' | 'revoked' | 'pending' | 'not_found';
+export type VerifyStatus = 'verified' | 'superseded' | 'revoked' | 'expired' | 'pending' | 'not_found';
 
 /** Public verify response. No personal data. */
 export interface VerifyResult {
@@ -125,6 +127,9 @@ export interface VerifyResult {
   supersededBy?: { version: number; docHash: string } | null;
   latest?: { version: number; docHash: string } | null;
   revokeReason?: number;
+  revokedBy?: { role: Role; roleLabel: string; at: string } | null;
+  /** True when the document is genuine and current but its validity window has not started yet. */
+  notYetValid?: boolean;
   txHash?: string | null;
   txUrl?: string | null;
   network?: string;
@@ -137,8 +142,22 @@ export interface RequestDetail extends RequestSummary {
   timeline: TimelineStep[];
   lastComment: { role: Role; decision: Decision; comment: string; version: number } | null;
   seal: SealInfo | null;
+  revocation: { version: number; role: Role; roleLabel: string; name: string; reason: string; at: string; anchored: boolean } | null;
   /** Present when the current version amends an earlier one. */
   amendment: { fromVersion: number; reason: string; previous: Record<string, string | number>; changed: string[] } | null;
+}
+
+export interface VersionHistory {
+  version: number;
+  reason: string | null;
+  createdAt: string;
+  /** sealed versions: chain state; otherwise in_review (current amendment) or abandoned (returned/rejected amendment) */
+  state: 'active' | 'superseded' | 'revoked' | 'sealing' | 'in_review' | 'abandoned';
+  docHash: string | null;
+  txHash: string | null;
+  txUrl: string | null;
+  sealedAt: string | null;
+  approvals: { role: Role; roleLabel: string; name: string; decision: Decision; signedVersion: number; carried: boolean; signedAt: string | null }[];
 }
 
 export interface InboxItem extends RequestDetail {

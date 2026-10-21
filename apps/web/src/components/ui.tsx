@@ -11,6 +11,7 @@ const PILL: Record<RequestStatus, string> = {
   sealing: 'bg-panel text-accent',
   sealed: 'bg-ok-bg text-ok',
   amending: 'bg-warn-bg text-warn',
+  revoked: 'bg-bad-bg text-bad',
 };
 
 export function StatusPill({ status }: { status: RequestStatus }) {

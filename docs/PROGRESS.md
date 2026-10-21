@@ -8,8 +8,8 @@
 | 4 | Seal: PDF, SHA-256, chain, signed QR | Done | 2026-10-21 |
 | 5 | Verify page | Done | 2026-10-21 |
 | 6 | Twist: amendment | Done | 2026-10-21 |
-| 7 | Twist: versioned sealing | Todo | |
-| 8 | Twist: revocation | Todo | |
+| 7 | Twist: versioned sealing | Done | 2026-10-21 |
+| 8 | Twist: revocation | Done | 2026-10-21 |
 | 9 | Twist: offline gate check | Todo | |
 | 10 | Demo hardening and release | Todo | |
 
@@ -22,3 +22,4 @@
 - Prompt 4: DocumentRegistry (8 contract tests), sealing pipeline, PDF with signed QR (decodes from the rendered page), queue-and-retry, chain-restart replay, per-DB contract. 29 API tests. UI: Download PDF + "Sealed on chain" badge.
 - Prompt 5: verify page (scan / upload / photo / link), rate-limited verify API; 31 API tests.
 - Prompt 6: amend endpoint with selective re-approval and carried approvals, return-during-amendment, v2 sealed and linked on chain; amend UI + diffs. 39 API tests.
+- Prompts 7 + 8: version history API + strip, revoke (HoD/Dean, queued, replayed), signed revocation list, shared verdict precedence; 61 API tests + 8 contract tests.

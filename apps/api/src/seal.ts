@@ -1,6 +1,11 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { ROLE_LABEL, canonicalJson, encodePass, passUrl, sha256Hex, validityFor, type PassPayload, type Role, type SealInfo, type VerifyResult } from '@plc/shared';
+import bcrypt from 'bcryptjs';
+import {
+  ROLE_LABEL, canonicalJson, encodePass, passUrl, sha256Hex, signJson, validityFor, verdictFor,
+  type Decision, type PassPayload, type RequestDetail, type RevocationEntry, type RevocationList, type Role, type SealInfo, type VerifyResult, type VersionHistory,
+} from '@plc/shared';
+import { HttpError } from './errors.js';
 import type { DB } from './db.js';
 import type { ChainClient } from './chain.js';
 import { issuerKey } from './keys.js';
@@ -202,11 +207,14 @@ export async function processQueue(db: DB, svc: Services) {
   if (svc.chain && db.prepare('SELECT 1 FROM seals LIMIT 1').get()) await svc.chain.get('00'.repeat(32)).catch(() => undefined);
   const rows = db.prepare("SELECT request_id, version FROM seals WHERE anchor_status = 'pending' ORDER BY created_at, rowid").all() as { request_id: string; version: number }[];
   for (const r of rows) await anchor(db, svc, r.request_id, r.version);
+  const revs = db.prepare("SELECT request_id FROM revocations WHERE anchor_status = 'pending' ORDER BY created_at").pluck().all() as string[];
+  for (const id of revs) await anchorRevocation(db, svc, id);
 }
 
 /** After a fresh contract deploy (local node restarted), queue every seal again so the chain matches the database. */
 export function replayAll(db: DB) {
   db.prepare("UPDATE seals SET anchor_status = 'pending', attempts = 0").run();
+  db.prepare("UPDATE revocations SET anchor_status = 'pending', attempts = 0").run();
 }
 
 export function sealInfo(db: DB, svc: Services, requestId: string): SealInfo | null {
@@ -234,8 +242,6 @@ export function pdfPath(db: DB, requestId: string, version?: number) {
   return row && fs.existsSync(row.pdf_path) ? row : null;
 }
 
-const STATUS_FROM_CHAIN = { active: 'verified', superseded: 'superseded', revoked: 'revoked' } as const;
-
 /** Public verification by document hash. The chain is the source of truth; the database fills in labels. */
 export async function verifyHash(db: DB, svc: Services, rawHash: string): Promise<VerifyResult> {
   const docHash = rawHash.replace(/^0x/, '').toLowerCase();
@@ -259,7 +265,8 @@ export async function verifyHash(db: DB, svc: Services, rawHash: string): Promis
   }
 
   if (!s) return { status: 'not_found', docHash };
-  if (!chainStatus) return { status: s.anchor_status === 'pending' ? 'pending' : 'not_found', docHash, requestId: s.request_id, version: s.version };
+  const revocation = db.prepare('SELECT role, created_at FROM revocations WHERE request_id = ?').get(s.request_id) as { role: Role; created_at: string } | undefined;
+  if (!chainStatus && !revocation) return { status: s.anchor_status === 'pending' ? 'pending' : 'not_found', docHash, requestId: s.request_id, version: s.version };
 
   const type = db.prepare('SELECT r.type, t.name FROM requests r JOIN request_types t ON t.code = r.type WHERE r.id = ?').get(s.request_id) as { type: string; name: string };
   const next = onChainNext ?? (db.prepare('SELECT doc_hash FROM seals WHERE prev_hash = ?').pluck().get(docHash) as string | undefined) ?? null;
@@ -275,8 +282,18 @@ export async function verifyHash(db: DB, svc: Services, rawHash: string): Promis
     carried: x.decision === 'carried',
   }));
 
+  const supersededInDb = !!db.prepare("SELECT 1 FROM seals WHERE request_id = ? AND version > ? AND anchor_status = 'anchored'").get(s.request_id, s.version);
+  const verdict = verdictFor({
+    revoked: !!revocation || chainStatus === 'revoked',
+    superseded: chainStatus === 'superseded' || supersededInDb,
+    validFrom: s.valid_from,
+    validUntil: s.valid_until,
+    now: Math.floor(Date.now() / 1000),
+  });
   return {
-    status: STATUS_FROM_CHAIN[chainStatus],
+    status: verdict === 'not_yet_valid' ? 'verified' : verdict,
+    notYetValid: verdict === 'not_yet_valid',
+    revokedBy: revocation ? { role: revocation.role, roleLabel: ROLE_LABEL[revocation.role], at: revocation.created_at } : null,
     docHash,
     requestId: s.request_id,
     version: s.version,
@@ -299,4 +316,152 @@ export async function verifyHash(db: DB, svc: Services, rawHash: string): Promis
 export async function verifyRef(db: DB, svc: Services, requestId: string, version: number): Promise<VerifyResult> {
   const hash = db.prepare('SELECT doc_hash FROM seals WHERE request_id = ? AND version = ?').pluck().get(requestId, version) as string | undefined;
   return hash ? verifyHash(db, svc, hash) : { status: 'not_found', requestId, version };
+}
+
+// ---------- revocation ----------
+
+const REASON_CODE: Partial<Record<Role, number>> = { hod: 1, dean_sa: 2 };
+
+/**
+ * HoD or Dean SA of the request's department revokes the approval entirely. The latest sealed version is
+ * revoked on chain; every version of the request then verifies as Revoked. A pending amendment is cancelled.
+ */
+export async function revokeRequest(db: DB, svc: Services, userId: string, requestId: string, reason: unknown, pin: unknown) {
+  const req = db.prepare('SELECT * FROM requests WHERE id = ?').get(requestId) as
+    | { id: string; department_id: string; status: string; current_version: number; round: number }
+    | undefined;
+  if (!req) throw new HttpError(404, 'Request not found');
+  const role = db
+    .prepare("SELECT role FROM user_roles WHERE user_id = ? AND department_id = ? AND role IN ('hod', 'dean_sa') ORDER BY role DESC LIMIT 1")
+    .pluck()
+    .get(userId, req.department_id) as Role | undefined;
+  if (!role) throw new HttpError(403, 'Only the HoD or Dean can revoke an approval');
+  if (req.status === 'revoked') throw new HttpError(409, 'Already revoked');
+  if (req.status !== 'sealed' && req.status !== 'amending') throw new HttpError(409, 'Only a sealed approval can be revoked');
+  const user = db.prepare('SELECT pin_hash FROM users WHERE id = ?').get(userId) as { pin_hash: string };
+  if (typeof pin !== 'string' || !bcrypt.compareSync(pin, user.pin_hash)) throw new HttpError(401, 'Wrong PIN');
+  if (typeof reason !== 'string' || !reason.trim()) throw new HttpError(400, 'Give a reason for the record');
+
+  const seal = db.prepare('SELECT version, doc_hash, anchor_status FROM seals WHERE request_id = ? ORDER BY version DESC LIMIT 1').get(req.id) as
+    | { version: number; doc_hash: string; anchor_status: string }
+    | undefined;
+  if (!seal) throw new HttpError(409, 'Only a sealed approval can be revoked');
+  if (seal.anchor_status !== 'anchored') throw new HttpError(409, 'Still sealing on chain, try again in a moment');
+
+  const at = new Date().toISOString();
+  const { privateKey } = await issuerKey(db);
+  const note = reason.trim().slice(0, 500);
+  const signature = await signJson({ requestId: req.id, version: seal.version, docHash: seal.doc_hash, role, actorId: userId, reason: note, at }, privateKey);
+
+  db.transaction(() => {
+    db.prepare(
+      'INSERT INTO revocations (request_id, version, doc_hash, role, actor_id, reason, reason_code, signature, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    ).run(req.id, seal.version, seal.doc_hash, role, userId, note, REASON_CODE[role] ?? 0, signature, at);
+    if (req.status === 'amending') {
+      // The amendment in review dies with the approval.
+      db.prepare("UPDATE approvals SET decision = 'cancelled' WHERE request_id = ? AND round = ? AND decision IN ('pending', 'waiting')").run(req.id, req.round);
+      const sealedRound = db.prepare('SELECT MAX(round) FROM approvals WHERE request_id = ? AND version = ?').pluck().get(req.id, seal.version);
+      db.prepare('UPDATE requests SET current_version = ?, round = ? WHERE id = ?').run(seal.version, sealedRound, req.id);
+    }
+    db.prepare("UPDATE requests SET status = 'revoked', updated_at = ? WHERE id = ?").run(at, req.id);
+    db.prepare("UPDATE seals SET chain_status = 'revoked' WHERE doc_hash = ?").run(seal.doc_hash);
+    audit(db, req.id, userId, 'revoked', seal.version, { role, reason: note });
+  })();
+
+  await anchorRevocation(db, svc, req.id);
+}
+
+/** Write a pending revocation to the chain. Never throws; failures are retried by processQueue. */
+export async function anchorRevocation(db: DB, svc: Services, requestId: string) {
+  const r = db.prepare('SELECT doc_hash, reason_code, anchor_status FROM revocations WHERE request_id = ?').get(requestId) as
+    | { doc_hash: string; reason_code: number; anchor_status: string }
+    | undefined;
+  if (!r || r.anchor_status !== 'pending' || !svc.chain) return;
+  const done = (txHash: string | null) =>
+    db.transaction(() => {
+      db.prepare("UPDATE revocations SET anchor_status = 'anchored', tx_hash = COALESCE(?, tx_hash), anchored_at = ?, last_error = NULL WHERE request_id = ?").run(txHash, new Date().toISOString(), requestId);
+      audit(db, requestId, null, 'revocation_anchored', null, { txHash });
+    })();
+  try {
+    done(await svc.chain.revoke(r.doc_hash, r.reason_code));
+  } catch (e) {
+    const already = await svc.chain.get(r.doc_hash).then((x) => x.status === 'revoked').catch(() => false);
+    if (already) return done(null);
+    db.prepare('UPDATE revocations SET attempts = attempts + 1, last_error = ? WHERE request_id = ?').run(((e as Error).message ?? '').slice(0, 300), requestId);
+  }
+}
+
+export function revocationInfo(db: DB, requestId: string): RequestDetail['revocation'] {
+  const r = db
+    .prepare('SELECT r.version, r.role, r.reason, r.created_at, r.anchor_status, u.name FROM revocations r JOIN users u ON u.id = r.actor_id WHERE r.request_id = ?')
+    .get(requestId) as { version: number; role: Role; reason: string; created_at: string; anchor_status: string; name: string } | undefined;
+  return r ? { version: r.version, role: r.role, roleLabel: ROLE_LABEL[r.role], name: r.name, reason: r.reason, at: r.created_at, anchored: r.anchor_status === 'anchored' } : null;
+}
+
+/**
+ * Everything a gate device must refuse offline: every version of a revoked request, and every version that a
+ * newer anchored version has superseded. Signed with the issuer key so a tampered list is detected.
+ */
+export async function revocationList(db: DB): Promise<{ list: RevocationList; signature: string }> {
+  const revoked = db
+    .prepare('SELECT s.request_id AS rid, s.version AS v, s.doc_hash AS hash, r.created_at AS at FROM seals s JOIN revocations r ON r.request_id = s.request_id ORDER BY s.request_id, s.version')
+    .all() as Omit<RevocationEntry, 'status'>[];
+  const superseded = db
+    .prepare(
+      `SELECT s.request_id AS rid, s.version AS v, s.doc_hash AS hash, n.anchored_at AS at
+         FROM seals s JOIN seals n ON n.request_id = s.request_id AND n.version = s.version + 1 AND n.anchor_status = 'anchored'
+        WHERE s.request_id NOT IN (SELECT request_id FROM revocations)
+        ORDER BY s.request_id, s.version`,
+    )
+    .all() as Omit<RevocationEntry, 'status'>[];
+  const list: RevocationList = {
+    issuedAt: new Date().toISOString(),
+    entries: [...revoked.map((e) => ({ ...e, status: 'revoked' as const })), ...superseded.map((e) => ({ ...e, status: 'superseded' as const }))],
+  };
+  const { privateKey } = await issuerKey(db);
+  return { list, signature: await signJson(list, privateKey) };
+}
+
+// ---------- version history ----------
+
+/** Every version of a request: its chain state and who approved it (and on which version they actually signed). */
+export function history(db: DB, svc: Services, requestId: string): VersionHistory[] {
+  const req = db.prepare('SELECT status, current_version FROM requests WHERE id = ?').get(requestId) as { status: string; current_version: number };
+  const revokedHash = db.prepare('SELECT doc_hash FROM revocations WHERE request_id = ?').pluck().get(requestId) as string | undefined;
+  const versions = db.prepare('SELECT version, reason, created_at FROM request_versions WHERE request_id = ? ORDER BY version').all(requestId) as {
+    version: number; reason: string | null; created_at: string;
+  }[];
+  return versions.map((v) => {
+    const s = db.prepare('SELECT * FROM seals WHERE request_id = ? AND version = ?').get(requestId, v.version) as SealRow | undefined;
+    const rows = db
+      .prepare(
+        `SELECT a.role, a.decision, a.signed_at, a.version, u.name, src.version AS src_version, src.signed_at AS src_signed_at
+           FROM approvals a JOIN users u ON u.id = a.assignee_id LEFT JOIN approvals src ON src.id = a.carried_from
+          WHERE a.request_id = ? AND a.version = ? AND a.round = (SELECT MAX(round) FROM approvals WHERE request_id = ? AND version = ?)
+          ORDER BY a.step_no, a.id`,
+      )
+      .all(requestId, v.version, requestId, v.version) as { role: Role; decision: Decision; signed_at: string | null; version: number; name: string; src_version: number | null; src_signed_at: string | null }[];
+    let state: VersionHistory['state'];
+    if (s) state = revokedHash ? 'revoked' : s.anchor_status === 'pending' ? 'sealing' : s.chain_status;
+    else state = v.version === req.current_version && req.status !== 'revoked' ? 'in_review' : 'abandoned';
+    return {
+      version: v.version,
+      reason: v.reason,
+      createdAt: v.created_at,
+      state,
+      docHash: s?.doc_hash ?? null,
+      txHash: s?.tx_hash ?? null,
+      txUrl: svc.chain?.txUrl(s?.tx_hash ?? null) ?? null,
+      sealedAt: s?.anchored_at ?? s?.created_at ?? null,
+      approvals: rows.map((a) => ({
+        role: a.role,
+        roleLabel: ROLE_LABEL[a.role],
+        name: a.name,
+        decision: a.decision,
+        signedVersion: a.decision === 'carried' ? a.src_version! : a.version,
+        carried: a.decision === 'carried',
+        signedAt: a.decision === 'carried' ? a.src_signed_at : a.signed_at,
+      })),
+    };
+  });
 }

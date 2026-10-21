@@ -5,7 +5,7 @@ import { HttpError } from './errors.js';
 import { amendRequest, canView, decide, getDetail, inbox, listMine, listTypes, resubmitRequest, submitRequest } from './workflow.js';
 import { issuerKey } from './keys.js';
 import { rateLimit } from './ratelimit.js';
-import { pdfPath, sealInfo, sealRequest, verifyHash, verifyRef, type Services } from './seal.js';
+import { history, pdfPath, revocationInfo, revocationList, revokeRequest, sealInfo, sealRequest, verifyHash, verifyRef, type Services } from './seal.js';
 
 type Handler = (req: Request, res: Response) => unknown;
 const wrap = (fn: Handler) => async (req: Request, res: Response, next: NextFunction) => {
@@ -18,7 +18,8 @@ const wrap = (fn: Handler) => async (req: Request, res: Response, next: NextFunc
 
 export function workflowRoutes(db: DB, svc: Services) {
   const r = Router();
-  const detail = (id: string) => ({ ...getDetail(db, id), seal: sealInfo(db, svc, id) });
+  const verifyLimit = rateLimit({ max: svc.verifyRateLimit ?? 60, windowMs: 60_000 });
+  const detail = (id: string) => ({ ...getDetail(db, id), seal: sealInfo(db, svc, id), revocation: revocationInfo(db, id) });
 
   r.get('/request-types', (_req, res) => res.json(listTypes(db)));
   r.get('/issuer-public-key', wrap(async (_req, res) => res.json({ publicKey: (await issuerKey(db)).publicKey })));
@@ -42,7 +43,6 @@ export function workflowRoutes(db: DB, svc: Services) {
     res.download(file.pdf_path, `${req.params.id}-v${file.version}.pdf`);
   }));
 
-  const verifyLimit = rateLimit({ max: svc.verifyRateLimit ?? 60, windowMs: 60_000 });
   r.get('/verify/hash/:hash', verifyLimit, wrap(async (req, res) => res.json(await verifyHash(db, svc, req.params.hash))));
   r.get('/verify/ref/:rid/:v', verifyLimit, wrap(async (req, res) => res.json(await verifyRef(db, svc, req.params.rid, Number(req.params.v)))));
 
@@ -50,6 +50,18 @@ export function workflowRoutes(db: DB, svc: Services) {
     resubmitRequest(db, req.user!.sub, req.params.id, req.body?.form);
     res.json(detail(req.params.id));
   }));
+
+  r.get('/requests/:id/history', requireAuth, wrap((req, res) => {
+    if (!canView(db, req.user!.sub, req.user!.roles, req.params.id)) throw new HttpError(403, 'Not your request');
+    res.json(history(db, svc, req.params.id));
+  }));
+
+  r.post('/requests/:id/revoke', requireAuth, requireRole('hod', 'dean_sa'), wrap(async (req, res) => {
+    await revokeRequest(db, svc, req.user!.sub, req.params.id, req.body?.reason, req.body?.pin);
+    res.json(detail(req.params.id));
+  }));
+
+  r.get('/revocations', verifyLimit, wrap(async (_req, res) => res.json(await revocationList(db))));
 
   r.post('/requests/:id/amend', requireAuth, requireRole('student'), wrap((req, res) => {
     amendRequest(db, req.user!.sub, req.params.id, req.body?.changes, req.body?.reason);

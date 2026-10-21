@@ -58,3 +58,25 @@ Helpers in `packages/shared/src/pass.ts`: `encodePass`, `decodePass`, `verifyPas
 ## Switching to Polygon Amoy
 
 Set `CHAIN_MODE=amoy`, `AMOY_PRIVATE_KEY` (funded test wallet), optionally `AMOY_RPC_URL`. The first seal deploys the contract and stores its address. `txUrl` links to `amoy.polygonscan.com`.
+
+## Version chain (prompt 7)
+
+- Amended versions are sealed with `prevHash` = previous version's `docHash`; the contract marks the previous one **Superseded** and sets `supersededBy[prev] = new`. A link from a non-Active version is refused (`PrevNotActive`).
+- The v2 PDF says "v2 · Amends v1 (hash…) - reason" and each signer line says which version they approved ("approved v1, carried to v2").
+- `GET /api/requests/:id/history` (owner, chain members, admin): every version with `state` (active / superseded / revoked / sealing / in_review / abandoned), hash, tx, reason, and per-role approvals with `signedVersion` and `carried`.
+
+## Revocation (prompt 8)
+
+- `POST /api/requests/:id/revoke {reason, pin}`: HoD or Dean SA **of the request's department** only; request must be `sealed` or `amending`; latest seal must be anchored. Wrong PIN 401, no reason 400, others 403, twice 409.
+- Effects: `revocations` row (signed by the issuer key over `{requestId, version, docHash, role, actorId, reason, at}`), request `revoked`, a pending amendment is cancelled, `DocumentRegistry.revoke(docHash, reasonCode)` with reason code 1 = HoD, 2 = Dean SA.
+- Revocations are queued like seals (`anchor_status`, retried by `processQueue` after seals; replayed after a chain restart). **Verify reads the database revocation first**, so a document reads Revoked immediately, even while the chain write is still pending.
+- Every version of a revoked request verifies as **Revoked** (also an older, already superseded v1).
+- Public verify shows the revoking role and date only; the free-text reason and the person's name stay private.
+
+## Verdict precedence (`packages/shared/src/status.ts`)
+
+`verdictFor({revoked, superseded, validFrom, validUntil, now})` → **revoked > superseded > not_yet_valid / expired > verified**. Used by the verify API (and the gate in prompt 9). The verify API reports `not_yet_valid` as `verified` + `notYetValid: true` (a genuine document checked before its date), and `expired` as its own status; the gate treats both as NOT TODAY.
+
+## Signed revocation list (for offline gates)
+
+`GET /api/revocations` (public, rate limited) → `{ list: { issuedAt, entries: [{rid, v, hash, status: revoked|superseded, at}] }, signature }`; `signature` = issuer Ed25519 over the canonical JSON of `list`. Contains every version of each revoked request and every version superseded by a newer **anchored** version. Untouched approvals are not listed.
