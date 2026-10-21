@@ -3,16 +3,16 @@ import { useNavigate } from 'react-router-dom';
 import { homeFor, ROLE_LABEL, type Profile } from '@plc/shared';
 import { api } from '../lib/api';
 import { useSession } from '../lib/session';
+import { PinPad } from '../components/ui';
 
 const LAST = 'plc.lastProfile';
-const KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '', '0', '⌫'];
 
 export default function Login() {
   const { me, login } = useSession();
   const nav = useNavigate();
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [picked, setPicked] = useState<Profile | null>(null);
-  const [pin, setPin] = useState('');
+  const [reset, setReset] = useState(0);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
 
@@ -34,17 +34,12 @@ export default function Login() {
   }
   const ordered = last ? [...profiles].sort((a, b) => (a.id === last ? -1 : b.id === last ? 1 : 0)) : profiles;
 
-  async function press(k: string) {
+  async function enter(pin: string) {
     if (busy || !picked) return;
-    if (k === '⌫') return setPin((p) => p.slice(0, -1));
-    if (!k) return;
-    const next = (pin + k).slice(0, 4);
-    setPin(next);
-    setError('');
-    if (next.length < 4) return;
     setBusy(true);
+    setError('');
     try {
-      const m = await login(picked.id, next);
+      const m = await login(picked.id, pin);
       try {
         localStorage.setItem(LAST, picked.id);
       } catch {
@@ -53,7 +48,7 @@ export default function Login() {
       nav(homeFor(m.roles), { replace: true });
     } catch (e) {
       setError((e as Error).message);
-      setPin('');
+      setReset((n) => n + 1);
     } finally {
       setBusy(false);
     }
@@ -90,27 +85,10 @@ export default function Login() {
           <p className="mt-3 text-lg font-semibold">{picked.name}</p>
           <p className="text-sm text-muted">{picked.title}</p>
 
-          <div className="my-6 flex gap-3" aria-label="PIN">
-            {[0, 1, 2, 3].map((i) => (
-              <span key={i} className={`h-4 w-4 rounded-full border-2 border-accent ${i < pin.length ? 'bg-accent' : ''}`} />
-            ))}
-          </div>
-          <p className="h-5 text-sm text-bad">{error}</p>
+          <p className="mb-2 mt-6 h-5 text-sm text-bad">{error}</p>
+          <PinPad onComplete={enter} busy={busy} reset={reset} />
 
-          <div className="mt-2 grid w-full max-w-xs grid-cols-3 gap-3">
-            {KEYS.map((k, i) => (
-              <button
-                key={i}
-                onClick={() => press(k)}
-                disabled={!k || busy}
-                className={`h-16 rounded-2xl text-2xl font-semibold ${k ? 'bg-panel active:bg-rule' : 'invisible'}`}
-              >
-                {k}
-              </button>
-            ))}
-          </div>
-
-          <button className="link mt-6" onClick={() => (setPicked(null), setPin(''), setError(''))}>
+          <button className="link mt-6" onClick={() => (setPicked(null), setError(''))}>
             Not you? Pick another profile
           </button>
         </div>

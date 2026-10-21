@@ -22,11 +22,23 @@ Motifs: horizontal step track with hollow accent rings and a filled green tick a
 
 Mobile-first, `max-w-md` column, big tap targets, no nested menus, no modals except a bottom confirm sheet. Shared classes: `.cta` (primary button), `.link`.
 
-| Screen | Route | Central CTA |
-| --- | --- | --- |
-| Login | /login | Profile card → PIN pad |
-| Student home | /student | New request |
-| Approver inbox | /inbox | Review next (n) |
-| Gate | /gate | Scan pass |
-| Admin | /admin | All requests |
-| Verify (public) | /verify | Scan QR |
+| Screen | Route | Central CTA | File |
+| --- | --- | --- | --- |
+| Login | /login | Profile card → PIN pad | `pages/Login.tsx` |
+| Student home | /student | New request (+ my requests list with "With: role (since)") | `pages/StudentHome.tsx` |
+| New request | /student/new | Type tile → form → Submit for approval | `pages/NewRequest.tsx` |
+| Request page | /requests/:id | Returned: Edit and resubmit · Approved: Download PDF (enabled in prompt 4) | `pages/RequestPage.tsx` |
+| Approver inbox | /inbox | Review next (n) → phone card: Approve / Return / Reject → sheet with comment + PIN; auto-advances; "All clear" at zero | `pages/Inbox.tsx` |
+| Gate | /gate | Scan pass (prompt 9); secondary link to inbox, since Security is also an approver | `pages/Home.tsx` |
+| Admin | /admin | All requests (prompt 10) | `pages/Home.tsx` |
+| Verify (public) | /verify | Scan QR (prompt 5) | `pages/Verify.tsx` |
+
+## Components (`apps/web/src/components`)
+
+- `ui.tsx`: `Page` (header with name/back + Switch profile), `StatusPill`, `PinPad`, `Sheet` (the only overlay), `toast`/`Toaster`, `Tick`, `Cross`.
+- `Timeline.tsx`: vertical role chain; same `stepNo` side by side labelled "In parallel". Dots: pending = hollow accent ring, waiting/cancelled = grey ring, approved = filled green tick, carried = outlined green tick, rejected = red cross, returned = amber.
+- `FormFields.tsx`: `FormFields` (inputs from the type's field defs), `FieldList` (read-only two-column).
+
+## Live updates
+
+`useLive(url)` in `lib/hooks.ts` refetches every 5 s while the tab is visible and on focus, so the student timeline, request list and approver inbox update on their own without a refresh.

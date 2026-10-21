@@ -12,3 +12,5 @@
 10. **Return and Reject require a comment**, so the student always sees why.
 11. **No draft state**: a request exists from submit. Keeps the student flow to one screen.
 12. **Request IDs `PLC-YYYY-NNNN`**, readable for students and approvers.
+13. **Live updates by polling** (`useLive`, 5 s, visible tab only) instead of websockets: zero server changes, good enough for a campus app; swap for SSE later if needed.
+14. **Security's home stays /gate** with a secondary link to /inbox, because Security is both the gate checker and a parallel approver on event permissions.

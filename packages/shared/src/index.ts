@@ -69,6 +69,7 @@ export interface TimelineStep {
   assignee: { id: string; name: string };
   decision: Decision;
   comment: string | null;
+  openedAt: string | null;
   signedAt: string | null;
   version: number;
 }

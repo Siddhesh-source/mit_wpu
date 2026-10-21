@@ -267,6 +267,7 @@ export function getDetail(db: DB, id: string): RequestDetail {
     assignee: { id: a.assignee_id, name: a.assignee_name },
     decision: a.decision,
     comment: a.comment,
+    openedAt: a.opened_at,
     signedAt: a.signed_at,
     version: a.version,
   }));
