@@ -485,7 +485,7 @@ export default function Inbox() {
           </button>
         </article>
         <section className="hidden lg:block lg:rounded-3xl lg:border lg:border-rule lg:p-6">
-          <h2 className="mb-3 text-sm font-semibold text-muted">Approval chain</h2>
+          <h2 className="mb-3 text-base font-semibold">Approval chain</h2>
           <Timeline steps={item.timeline} />
         </section>
       </div>

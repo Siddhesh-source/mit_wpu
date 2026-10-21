@@ -19,7 +19,7 @@ export function VersionStrip({ requestId, versions, onError }: { requestId: stri
   const sel = versions.find((v) => v.version === open);
   return (
     <section className="mb-6">
-      <h2 className="mb-2 text-sm font-semibold text-muted">Versions</h2>
+      <h2 className="mb-2 text-base font-semibold">Versions</h2>
       <div className="flex flex-wrap items-center gap-2">
         {versions.map((v, i) => (
           <span key={v.version} className="flex items-center gap-2">

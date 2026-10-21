@@ -74,7 +74,7 @@ export default function SendDocument() {
         <div className="flex flex-col gap-8">
           {/* 1. To */}
           <section>
-            <h2 className="mb-3 text-sm font-semibold text-muted">To</h2>
+            <h2 className="mb-3 text-base font-semibold">To</h2>
             {to ? (
               <div className="max-w-sm">
                 <PersonBlock p={to}>
@@ -88,17 +88,21 @@ export default function SendDocument() {
                 <div className="mb-3 flex flex-wrap items-center gap-2">
                   <div className="flex gap-1 rounded-xl bg-panel p-1">
                     {(['all', 'staff', 'student'] as Tab[]).map((t) => (
-                      <button type="button" key={t} onClick={() => setTab(t)} className={`rounded-lg px-3 py-1.5 text-sm font-semibold ${tab === t ? 'bg-bg shadow-sm' : 'text-muted'}`}>
+                      <button type="button" key={t} onClick={() => setTab(t)} className={`min-h-[40px] rounded-lg px-3 text-sm font-semibold ${tab === t ? 'bg-bg shadow-sm' : 'text-muted hover:text-ink'}`}>
                         {t === 'all' ? 'All' : t === 'staff' ? 'Staff' : 'Students'}
                       </button>
                     ))}
                   </div>
-                  <input
-                    className="min-w-[12rem] flex-1 rounded-xl border border-rule px-4 py-2.5 outline-none focus:border-accent"
-                    placeholder="Search name, designation, department"
-                    value={q}
-                    onChange={(e) => setQ(e.target.value)}
-                  />
+                  <label className="relative block min-w-[12rem] flex-1">
+                    <span className="sr-only">Search people</span>
+                    <Icon name="search" className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-faint" />
+                    <input
+                      className="w-full rounded-xl border border-rule py-2.5 pl-10 pr-4 outline-none focus:border-accent"
+                      placeholder="Name, designation or department"
+                      value={q}
+                      onChange={(e) => setQ(e.target.value)}
+                    />
+                  </label>
                 </div>
                 <div className="grid max-h-[28rem] gap-3 overflow-y-auto pr-1 sm:grid-cols-2 xl:grid-cols-3">
                   {sorted.map((p) => (
@@ -114,13 +118,17 @@ export default function SendDocument() {
 
           {/* 3. What */}
           <section className="flex flex-col gap-3">
-            <h2 className="text-sm font-semibold text-muted">What is it?</h2>
+            <h2 className="text-base font-semibold">What is it?</h2>
+            <label className="text-sm font-semibold" htmlFor="send-title">
+              Title
+            </label>
             <input
+              id="send-title"
               required
               list="past-titles"
               maxLength={200}
               className="w-full rounded-xl border border-rule px-4 py-3 outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
-              placeholder="Describe the document in your own words"
+              placeholder="e.g. Internship completion letter"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
             />
@@ -129,10 +137,14 @@ export default function SendDocument() {
                 <option key={t} value={t} />
               ))}
             </datalist>
+            <label className="mt-1 text-sm font-semibold" htmlFor="send-note">
+              Note for the recipient <span className="font-normal text-faint">(optional)</span>
+            </label>
             <textarea
+              id="send-note"
               rows={2}
-              className="w-full rounded-xl border border-rule px-4 py-3 outline-none focus:border-accent"
-              placeholder="Note for the recipient (optional)"
+              className="w-full resize-none rounded-xl border border-rule px-4 py-3 outline-none focus:border-accent"
+              placeholder="Anything they should know before signing"
               value={note}
               onChange={(e) => setNote(e.target.value)}
             />
@@ -141,7 +153,7 @@ export default function SendDocument() {
 
         {/* 2. Documents + send */}
         <aside className="flex flex-col gap-3 lg:sticky lg:top-6">
-          <h2 className="text-sm font-semibold text-muted">Documents ({selected.length} selected)</h2>
+          <h2 className="text-base font-semibold">Documents ({selected.length} selected)</h2>
           <DocumentLibrary docs={docs} onChanged={reload} selected={selected} onSelect={setSelected} compact />
           <button className="cta w-full" disabled={busy || !to || !selected.length || !title.trim()}>
             {busy ? 'Sending…' : to ? `Send to ${to.name}` : 'Send'}
