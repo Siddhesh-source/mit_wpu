@@ -1,0 +1,13 @@
+{
+  "name": "PaperLess Campus",
+  "short_name": "PaperLess",
+  "description": "Role-routed approvals, sealed on chain. Gate check works offline.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#FFFFFF",
+  "theme_color": "#1D4F91",
+  "icons": [
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

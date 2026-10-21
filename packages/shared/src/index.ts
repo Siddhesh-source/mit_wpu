@@ -1,6 +1,7 @@
 export * from './crypto';
 export * from './pass';
 export * from './status';
+export * from './gate';
 
 export const ROLES = ['student', 'faculty_coordinator', 'hod', 'dean_sa', 'security', 'admin'] as const;
 export type Role = (typeof ROLES)[number];

@@ -10,6 +10,7 @@ import StudentHome from './pages/StudentHome';
 import NewRequest from './pages/NewRequest';
 import RequestPage from './pages/RequestPage';
 import AmendPage from './pages/AmendPage';
+import Gate from './pages/Gate';
 import Inbox from './pages/Inbox';
 import { Toaster } from './components/ui';
 import './index.css';
@@ -28,6 +29,23 @@ function Root() {
   return <Navigate to={me ? homeFor(me.roles) : '/login'} replace />;
 }
 
+// Offline support (installable app, gate works without network). Production builds only, so dev reloads stay simple.
+if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+  window.addEventListener('load', async () => {
+    try {
+      await navigator.serviceWorker.register('/sw.js');
+      await navigator.serviceWorker.ready;
+      // Also cache what this first visit already loaded (scripts, styles, fonts), so the next visit works offline.
+      const urls = performance.getEntriesByType('resource').map((e) => e.name)
+        .filter((u) => (u.startsWith(location.origin) && !u.includes('/api/')) || u.includes('fonts.g'));
+      const cache = await caches.open('plc-shell-v1');
+      await Promise.all(urls.map((u) => cache.add(u).catch(() => undefined)));
+    } catch {
+      /* offline support is best effort */
+    }
+  });
+}
+
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <SessionProvider>
@@ -41,7 +59,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
           <Route path="/requests/:id" element={<Guard roles={['student', 'faculty_coordinator', 'hod', 'dean_sa', 'security', 'admin']}><RequestPage /></Guard>} />
  <Route path="/requests/:id/amend" element={<Guard roles={['student']}><AmendPage /></Guard>} />
           <Route path="/inbox" element={<Guard roles={['faculty_coordinator', 'hod', 'dean_sa', 'security']}><Inbox /></Guard>} />
-          <Route path="/gate" element={<Guard roles={['security']}><Home cta="Scan pass" hint="Checks the QR on the spot, even offline." secondary={{ to: '/inbox', label: 'Approvals waiting for me' }} /></Guard>} />
+          <Route path="/gate" element={<Guard roles={['security']}><Gate /></Guard>} />
           <Route path="/admin" element={<Guard roles={['admin']}><Home cta="All requests" hint="Every request and its status." /></Guard>} />
           <Route path="*" element={<Root />} />
         </Routes>

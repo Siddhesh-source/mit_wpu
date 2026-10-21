@@ -72,7 +72,7 @@ export default function Inbox() {
           {error && <p className="text-sm text-bad">{error}</p>}
           {me?.roles.includes('security') && (
             <Link to="/gate" className="link mt-4 text-base">
-              Gate check
+              Back to gate
             </Link>
           )}
         </section>

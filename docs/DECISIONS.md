@@ -39,3 +39,9 @@
 37. **Public verify exposes the revoking role and date, not the reason or name** (no personal data in public answers).
 38. **Revocation list includes superseded versions**, so an old v1 QR is caught offline even if it carried a still-valid-looking date.
 39. **Test chain clients remember their contract address** (like production's `kv`), so reconnects after a simulated outage reuse the same contract.
+40. **Gate decision is one pure function in `packages/shared` (`gateCheck`)**, tested under a fake clock in the API test suite; the gate page only adds storage, sync and the camera.
+41. **Revocation list and issuer key live in the phone's local storage**, the app shell in a hand-written service worker (no extra PWA plugin). Service worker registers in production builds only.
+42. **Live status is tried for 2.5 s per scan and wins over the cache**; a slow network never blocks the guard.
+43. **Stale = list older than 12 h or not from today (IST)**; offline VALID results then carry an amber warning.
+44. **The signed-in profile is cached for offline use**; only a 401 clears it.
+45. **`npm run dev:https -w apps/web`** (self-signed, `@vitejs/plugin-basic-ssl`) for camera and service worker on LAN phones.
