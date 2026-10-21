@@ -11,7 +11,12 @@ import type { DB } from './db.js';
 import type { ChainClient } from './chain.js';
 import { issuerKey } from './keys.js';
 import { buildApprovalPdf, istDay } from './pdf.js';
-import { audit, getType } from './workflow.js';
+import { audit, getType, labelsOf } from './workflow.js';
+import { stampDocument } from './stamp.js';
+import { PDFDocument } from 'pdf-lib';
+
+const istStamp = (iso: string) =>
+  `${new Date(iso).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' })} IST`;
 
 export interface Services {
   chain: ChainClient | null;
@@ -55,7 +60,7 @@ const now = () => new Date().toISOString();
 function signersFor(db: DB, requestId: string, version: number) {
   return db
     .prepare(
-      `SELECT a.role, a.decision, a.signed_at, a.signature, a.version, u.name,
+      `SELECT a.id, a.step_no, a.carried_from, a.role, a.decision, a.signed_at, a.signature, a.version, u.name,
               src.version AS src_version, src.signed_at AS src_signed_at, src.signature AS src_signature,
               COALESCE(ob.name, sob.name) AS on_behalf_name,
               su.name AS src_name
@@ -70,6 +75,9 @@ function signersFor(db: DB, requestId: string, version: number) {
         ORDER BY a.step_no, a.id`,
     )
     .all(requestId, version, requestId, version) as {
+    id: number;
+    step_no: number;
+    carried_from: number | null;
     role: Role;
     decision: string;
     signed_at: string | null;
@@ -107,11 +115,13 @@ export async function sealRequest(db: DB, svc: Services, requestId: string) {
     ? (db.prepare('SELECT doc_hash FROM seals WHERE request_id = ? AND version = ?').pluck().get(req.id, req.current_version - 1) as string | undefined) ?? null
     : null;
 
-  const signers = signersFor(db, req.id, req.current_version).map((s) => {
+  const labels = labelsOf(db, req.id);
+  const rows = signersFor(db, req.id, req.current_version);
+  const signers = rows.map((s) => {
     const carried = s.decision === 'carried';
     return {
       role: s.role,
-      roleLabel: ROLE_LABEL[s.role],
+      roleLabel: labels.get(s.step_no) ?? ROLE_LABEL[s.role],
       name: carried ? (s.src_name ?? s.name) : s.name,
       onBehalfOf: s.on_behalf_name,
       signedAt: (carried ? s.src_signed_at : s.signed_at)!,
@@ -147,7 +157,13 @@ export async function sealRequest(db: DB, svc: Services, requestId: string) {
       ? `${istDay(String(form.date))}, 00:00 to 23:59 IST only`
       : `Until ${new Date(vu * 1000).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', day: 'numeric', month: 'short', year: 'numeric' })}`;
 
+  // Sign in place: the signed copy is the student's own PDF with each signature in its boxes, then the certificate.
+  const boxes = db.prepare('SELECT attachment_id, step_no, page, x, y, w, h FROM sign_fields WHERE request_id = ? ORDER BY id').all(req.id) as {
+    attachment_id: string; step_no: number; page: number; x: number; y: number; w: number; h: number;
+  }[];
+  const original = boxes.length ? fs.readFileSync(db.prepare('SELECT path FROM attachments WHERE id = ?').pluck().get(boxes[0].attachment_id) as string) : null;
   const pdf = await buildApprovalPdf({
+    signedCopy: original ? { pages: (await PDFDocument.load(original, { ignoreEncryption: true })).getPageCount() } : null,
     requestId: req.id,
     version: req.current_version,
     prevHash: prev,
@@ -166,10 +182,29 @@ export async function sealRequest(db: DB, svc: Services, requestId: string) {
     qrUrl: passUrl(svc.publicBaseUrl, pass),
     issuedAt: issued,
   });
-  const docHash = sha256Hex(pdf);
+  let finalPdf = pdf;
+  if (original) {
+    const stamps = boxes.flatMap((b) => {
+      const s = rows.find((x) => x.step_no === b.step_no);
+      const png = s ? (db.prepare('SELECT png FROM approval_signatures WHERE approval_id = ?').pluck().get(s.carried_from ?? s.id) as Buffer | undefined) : undefined;
+      if (!s || !png) return [];
+      const signer = signers.find((x) => x.role === s.role)!;
+      const by = signer.onBehalfOf ? `${signer.name} for ${signer.onBehalfOf}` : signer.name;
+      return [{ ...b, png, caption: [`Digitally signed by ${by}`, `${signer.roleLabel}, ${istStamp(signer.signedAt)}`] as [string, string] }];
+    });
+    const base = svc.publicBaseUrl.replace(/\/$/, '');
+    finalPdf = await stampDocument(
+      original,
+      stamps,
+      `CampusSign ${req.id} v${req.current_version} - signed copy, ${rows.length} signature(s) - verify at ${base}/verify`,
+      pdf,
+      issued,
+    );
+  }
+  const docHash = sha256Hex(finalPdf);
   fs.mkdirSync(svc.storageDir, { recursive: true });
   const file = path.join(svc.storageDir, `${req.id}-v${req.current_version}.pdf`);
-  fs.writeFileSync(file, pdf);
+  fs.writeFileSync(file, finalPdf);
 
   db.transaction(() => {
     db.prepare(

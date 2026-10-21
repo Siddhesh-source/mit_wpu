@@ -1,7 +1,7 @@
 import { config } from './config.js';
 import { openDb } from './db.js';
 import { createApp } from './app.js';
-import { seed, syncCatalog } from './seed.js';
+import { seed, syncCatalog, syncDemoPeople } from './seed.js';
 import { chainFromConfig, dbAddressStore } from './chain.js';
 import { processQueue, replayAll, type Services } from './seal.js';
 import { mailerFromConfig, processOutbox } from './notify.js';
@@ -14,7 +14,7 @@ if (process.env.NODE_ENV === 'production' && !process.env.JWT_SECRET) {
 
 const db = openDb(config.dbPath);
 if (!db.prepare('SELECT COUNT(*) FROM request_types').pluck().get()) seed(db);
-else syncCatalog(db);
+else (syncCatalog(db), syncDemoPeople(db));
 
 const chain = chainFromConfig(config, (network) => dbAddressStore(db, network), () => {
   replayAll(db);

@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import request from 'supertest';
 import express from 'express';
 import { openDb } from '../src/db.js';
-import { seed, DEMO_PIN, PEOPLE } from '../src/seed.js';
+import { seed, DEMO_PIN, PEOPLE, SIGNING_PEOPLE } from '../src/seed.js';
 import { createApp } from '../src/app.js';
 import { requireAuth, requireRole } from '../src/auth.js';
 
@@ -24,7 +24,7 @@ describe('directory', () => {
     expect((await request(app).get('/api/people')).status).toBe(401);
     const token = (await login('u_riya')).body.token;
     const people = (await request(app).get('/api/people').set('Authorization', `Bearer ${token}`)).body;
-    expect(people.length).toBe(PEOPLE.length - 1); // everyone but me
+    expect(people.length).toBe(PEOPLE.length + SIGNING_PEOPLE.length - 1); // everyone but me
     expect(people.find((p: any) => p.id === 'u_kulkarni')).toMatchObject({ name: 'Prof. Kulkarni', kind: 'staff', role: 'hod', roleLabel: 'HoD', initials: 'K' });
     expect(JSON.stringify(people)).not.toMatch(/pin|password|\$2[aby]\$|@campus/i);
   });

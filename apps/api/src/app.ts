@@ -33,7 +33,9 @@ export function createApp(db: DB, services: Partial<Services> = {}) {
     next();
   });
   app.use(cors());
-  app.use(express.json({ limit: '100kb' }));
+  // Small JSON bodies everywhere; the signature upload has its own larger limit (routes.ts).
+  const smallJson = express.json({ limit: '100kb' });
+  app.use((req, res, next) => (req.path === '/api/me/signature' ? next() : smallJson(req, res, next)));
 
   app.get('/api/health', async (_req, res) => {
     const contract = await svc.chain?.address().catch(() => null);

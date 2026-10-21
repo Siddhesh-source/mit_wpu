@@ -61,6 +61,17 @@ export const CATALOG: {
     steps: [{ stepNo: 1, role: 'recipient', affectedBy: ['title', 'purpose', 'attachments'] }],
   },
   {
+    // Sign in place (docs/SIGN_IN_PLACE.md): one PDF, signers picked by name in order, each with "signs as" and
+    // signature boxes on the document. The chain and the boxes are stored per request; `steps` here is empty.
+    code: 'sign_document',
+    name: 'Document for signature',
+    fields: [
+      { key: 'title', label: 'What is it?', type: 'text', required: true },
+      { key: 'purpose', label: 'Note for the signers', type: 'textarea', required: false },
+    ],
+    steps: [],
+  },
+  {
     // Written by the student: their own title and details, and the signers they choose (designations, in order).
     // The chain is stored per request (request_routes); `steps` here is empty.
     code: 'custom',

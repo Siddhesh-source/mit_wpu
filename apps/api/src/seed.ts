@@ -1,4 +1,7 @@
 import bcrypt from 'bcryptjs';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import type { Role } from '@plc/shared';
 import type { DB } from './db.js';
 import { CATALOG } from './catalog.js';
@@ -12,7 +15,15 @@ export const DEPARTMENTS = [
   ['mech', 'Mechanical Engineering'],
   ['civil', 'Civil Engineering'],
   ['mgmt', 'Management Studies'],
+  ['aids', 'Artificial Intelligence and Data Science'],
 ] as const;
+
+/** AIDS department: the project guide and the Head of Department, each with a stored signature (assets/signatures). */
+export const SIGNING_PEOPLE: { id: string; name: string; title: string; role: Role; email: string; dept: string }[] = [
+  { id: 'u_barhate', name: 'Prof. Dr. Minal Barhate', title: 'Professor, AIDS (project guide)', role: 'faculty', email: 'minal.barhate@campus.example', dept: 'aids' },
+  { id: 'u_dongre', name: 'Dr. Shital Parag Dongre', title: 'Head of Department, AIDS', role: 'hod', email: 'shital.dongre@campus.example', dept: 'aids' },
+];
+const SIGNATURES = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'assets', 'signatures');
 
 export const PEOPLE: { id: string; name: string; title: string; role: Role; email: string }[] = [
   { id: 'u_riya', name: 'Riya', title: 'CSE, 2nd year', role: 'student', email: 'riya@campus.example' },
@@ -34,7 +45,7 @@ export function seed(db: DB) {
   const passwordHash = bcrypt.hashSync(DEMO_PASSWORD, 8);
   const t = new Date(Date.now() - 86400_000).toISOString(); // demo people joined "yesterday": live sign-ups are newer
   db.transaction(() => {
-    db.exec(`DELETE FROM classroom_members; DELETE FROM classrooms; DELETE FROM request_routes; DELETE FROM connections; DELETE FROM comments; DELETE FROM outbox; DELETE FROM delegations; DELETE FROM attachments; DELETE FROM revocations; DELETE FROM seals; DELETE FROM audit_log; DELETE FROM approvals; DELETE FROM request_versions; DELETE FROM requests;
+    db.exec(`DELETE FROM approval_signatures; DELETE FROM sign_fields; DELETE FROM user_signatures; DELETE FROM classroom_members; DELETE FROM classrooms; DELETE FROM request_routes; DELETE FROM connections; DELETE FROM comments; DELETE FROM outbox; DELETE FROM delegations; DELETE FROM attachments; DELETE FROM revocations; DELETE FROM seals; DELETE FROM audit_log; DELETE FROM approvals; DELETE FROM request_versions; DELETE FROM requests;
              DELETE FROM route_steps; DELETE FROM request_types;
              DELETE FROM user_roles; DELETE FROM users; DELETE FROM departments;`);
     for (const [id, name] of DEPARTMENTS) db.prepare('INSERT INTO departments (id, name) VALUES (?, ?)').run(id, name);
@@ -51,6 +62,25 @@ export function seed(db: DB) {
     for (const t of CATALOG) {
       type.run(t.code, t.name, JSON.stringify(t.fields));
       for (const s of t.steps) step.run(t.code, s.stepNo, s.role, JSON.stringify(s.affectedBy), s.slaHours ?? 48);
+    }
+  })();
+  syncDemoPeople(db);
+}
+
+/** Add the AIDS department and its people (with their signatures) when missing. Keeps all data; runs on start. */
+export function syncDemoPeople(db: DB) {
+  const t = new Date(Date.now() - 86400_000).toISOString();
+  db.transaction(() => {
+    for (const [id, name] of DEPARTMENTS) db.prepare('INSERT OR IGNORE INTO departments (id, name) VALUES (?, ?)').run(id, name);
+    for (const p of SIGNING_PEOPLE) {
+      if (db.prepare('SELECT 1 FROM users WHERE id = ? OR lower(email) = ?').get(p.id, p.email)) continue;
+      db.prepare(
+        "INSERT INTO users (id, name, title, department_id, pin_hash, email, password_hash, kind, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, 'staff', ?)",
+      ).run(p.id, p.name, p.title, p.dept, bcrypt.hashSync(DEMO_PIN, 8), p.email, bcrypt.hashSync(DEMO_PASSWORD, 8), t);
+      db.prepare('INSERT INTO user_roles (user_id, role, department_id) VALUES (?, ?, ?)').run(p.id, p.role, p.dept);
+      const png = path.join(SIGNATURES, `${p.id}.png`);
+      if (fs.existsSync(png))
+        db.prepare("INSERT OR REPLACE INTO user_signatures (user_id, png, kind, updated_at) VALUES (?, ?, 'uploaded', ?)").run(p.id, fs.readFileSync(png), t);
     }
   })();
 }

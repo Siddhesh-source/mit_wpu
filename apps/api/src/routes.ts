@@ -1,6 +1,7 @@
 import express, { Router, type NextFunction, type Request, type Response } from 'express';
 import { APPROVER_ROLES } from '@plc/shared';
 import { ALLOWED, attachmentFor, saveUpload } from './attachments.js';
+import { TEMPLATES, generateTemplate, type Person } from './templates.js';
 import { auditLog, batchApprove, colleagues, createDelegation, endDelegation, myDelegations, outbox, runSla, staffDashboard, stats } from './ops.js';
 import type { DB } from './db.js';
 import { requireAuth, requireRole } from './auth.js';
@@ -29,7 +30,10 @@ export function workflowRoutes(db: DB, svc: Services) {
   r.get('/issuer-public-key', wrap(async (_req, res) => res.json({ publicKey: (await issuerKey(db)).publicKey })));
 
   r.post('/requests', requireAuth, requireRole('student'), wrap((req, res) => {
-    const id = submitRequest(db, req.user!.sub, req.body?.type, req.body?.form, req.body?.attachments, req.body?.recipientId, req.body?.chain);
+    const id = submitRequest(db, req.user!.sub, req.body?.type, req.body?.form, req.body?.attachments, req.body?.recipientId, req.body?.chain, {
+      signers: req.body?.signers,
+      fields: req.body?.fields,
+    });
     res.status(201).json(detail(id));
   }));
 
@@ -121,6 +125,54 @@ export function workflowRoutes(db: DB, svc: Services) {
   r.post('/admin/run-sla', requireAuth, requireRole('admin'), (_req, res) => res.json(runSla(db, Date.now(), svc.slaMinutes ?? null)));
   r.get('/admin/requests', requireAuth, requireRole('admin'), (_req, res) => res.json(listAll(db)));
   r.post('/admin/reset-demo', requireAuth, requireRole('admin'), wrap(async (_req, res) => res.json({ id: await resetDemo(db, svc) })));
+
+  // VIT form templates: generate the PDF into my documents, with its sign spots already placed.
+  r.get('/templates', requireAuth, (_req, res) => res.json(TEMPLATES));
+  r.post('/templates/:code', requireAuth, requireRole('student'), wrap(async (req, res) => {
+    const me = db
+      .prepare('SELECT u.name, u.email, u.phone, u.roll_no AS rollNo, u.year, d.name AS department FROM users u JOIN departments d ON d.id = u.department_id WHERE u.id = ?')
+      .get(req.user!.sub) as Person;
+    const { pdf, spots, template } = await generateTemplate(req.params.code, req.body?.values, me);
+    const document = saveUpload(db, svc.storageDir, req.user!.sub, 'application/pdf', `${template.format} ${template.name}.pdf`, pdf);
+    res.status(201).json({ document, spots, signers: template.signers });
+  }));
+
+  // My signature (sign in place): a transparent PNG, at most 300 KB.
+  r.get('/me/signature', requireAuth, (req, res) => {
+    const row = db.prepare('SELECT png, kind, updated_at FROM user_signatures WHERE user_id = ?').get(req.user!.sub) as { png: Buffer; kind: string; updated_at: string } | undefined;
+    res.json(row ? { dataUrl: `data:image/png;base64,${row.png.toString('base64')}`, kind: row.kind, updatedAt: row.updated_at } : { dataUrl: null });
+  });
+  r.put('/me/signature', requireAuth, express.json({ limit: '600kb' }), wrap((req, res) => {
+    const m = /^data:image\/png;base64,([A-Za-z0-9+/=]+)$/.exec(String(req.body?.dataUrl ?? ''));
+    const png = m ? Buffer.from(m[1], 'base64') : null;
+    if (!png || png.length < 33 || png.readUInt32BE(0) !== 0x89504e47) throw new HttpError(400, 'Send the signature as a PNG');
+    if (png.length > 300 * 1024) throw new HttpError(413, 'Signature image too large (max 300 KB)');
+    const [w, h] = [png.readUInt32BE(16), png.readUInt32BE(20)];
+    if (!w || !h || w > 2400 || h > 1200) throw new HttpError(400, 'Signature image size looks wrong');
+    const kind = ['drawn', 'typed', 'uploaded'].includes(req.body?.kind) ? req.body.kind : 'drawn';
+    const t = new Date().toISOString();
+    db.prepare('INSERT INTO user_signatures (user_id, png, kind, updated_at) VALUES (?, ?, ?, ?) ON CONFLICT (user_id) DO UPDATE SET png = excluded.png, kind = excluded.kind, updated_at = excluded.updated_at').run(req.user!.sub, png, kind, t);
+    res.json({ dataUrl: `data:image/png;base64,${png.toString('base64')}`, kind, updatedAt: t });
+  }));
+  r.delete('/me/signature', requireAuth, (req, res) => {
+    db.prepare('DELETE FROM user_signatures WHERE user_id = ?').run(req.user!.sub);
+    res.json({ dataUrl: null });
+  });
+
+  // The signature captured when a step was signed (shown in its boxes on the request page).
+  r.get('/requests/:id/signatures/:step', requireAuth, wrap((req, res) => {
+    if (!canView(db, req.user!.sub, req.user!.roles, req.params.id)) throw new HttpError(403, 'Not your request');
+    const png = db
+      .prepare(
+        `SELECT s.png FROM approvals a JOIN requests r ON r.id = a.request_id
+           JOIN approval_signatures s ON s.approval_id = COALESCE(a.carried_from, a.id)
+          WHERE a.request_id = ? AND a.step_no = ? AND a.decision IN ('approved', 'carried') AND a.round = r.round`,
+      )
+      .pluck()
+      .get(req.params.id, Number(req.params.step)) as Buffer | undefined;
+    if (!png) throw new HttpError(404, 'Not signed yet');
+    res.type('png').setHeader('Cache-Control', 'private, max-age=3600').send(png);
+  }));
 
   // Anyone can hold an approval (a student can be sent a document to sign), so the inbox is open to every user.
   r.get('/inbox', requireAuth, (req, res) => res.json(inbox(db, req.user!.sub)));

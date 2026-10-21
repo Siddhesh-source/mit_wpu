@@ -19,6 +19,8 @@ export interface PdfInput {
   attachments: { name: string; sha256: string; size: number }[];
   collegeId: string;
   validity: string;
+  /** Sign in place: this page is the certificate appended to the student's own signed document. */
+  signedCopy?: { pages: number } | null;
   qrUrl: string;
   issuedAt: Date;
 }
@@ -94,7 +96,8 @@ export async function buildApprovalPdf(p: PdfInput): Promise<Uint8Array> {
   // Fields panel
   const shown = p.fields.filter((f) => f.key !== 'title' && p.form[f.key] !== undefined);
   const rows: [string, string][] = shown.map((f) => [f.label, f.type === 'date' ? istDay(String(p.form[f.key])) : String(p.form[f.key])]);
-  rows.push(['Valid', p.validity]);
+  if (p.signedCopy) rows.push(['Signed copy', `Signatures placed on the original document (${p.signedCopy.pages} page${p.signedCopy.pages > 1 ? 's' : ''}) before this certificate`]);
+  else rows.push(['Valid', p.validity]);
   const rowH = rows.map(([, v]) => 18 + 14 * wrap(v, reg, 11.5, W - 170).length);
   const panelH = rowH.reduce((a, b) => a + b, 0) + 16;
   page.drawRectangle({ x: L, y: y - panelH, width: W, height: panelH, color: C.panel });
@@ -144,7 +147,7 @@ export async function buildApprovalPdf(p: PdfInput): Promise<Uint8Array> {
   const q = 132;
   page.drawImage(img, { x: R - q, y: 70, width: q, height: q });
   text('Scan to verify', R - q, 56, bold, 9, C.ink);
-  text('Works offline at the gate', R - q, 45, reg, 8.5, C.muted);
+  text(p.signedCopy ? 'Or upload this PDF on Verify' : 'Works offline at the gate', R - q, 45, reg, 8.5, C.muted);
 
   const foot = [
     `Issued ${ist(p.issuedAt)} IST by CampusSign.`,

@@ -63,14 +63,60 @@ export function getType(db: DB, code: string) {
 }
 
 /** The signer chain of a request: the catalogue chain of its type, or the one the student chose for a custom request. */
-export function stepsOf(db: DB, req: { id: string; type: string }) {
-  const own = db.prepare('SELECT step_no, role, affected_by_json FROM request_routes WHERE request_id = ? ORDER BY step_no').all(req.id) as {
+export function stepsOf(db: DB, req: { id: string; type: string }): Step[] {
+  const own = db.prepare('SELECT step_no, role, affected_by_json, assignee_id, label FROM request_routes WHERE request_id = ? ORDER BY step_no').all(req.id) as {
     step_no: number;
     role: Role;
     affected_by_json: string;
+    assignee_id: string | null;
+    label: string | null;
   }[];
   if (!own.length) return getType(db, req.type).steps;
-  return own.map((s) => ({ stepNo: s.step_no, role: s.role, affectedBy: JSON.parse(s.affected_by_json) as string[] }));
+  return own.map((s) => ({ stepNo: s.step_no, role: s.role, affectedBy: JSON.parse(s.affected_by_json) as string[], assignee: s.assignee_id, label: s.label }));
+}
+
+/** A step of a signer chain. `assignee` names the exact person (documents for signature); otherwise the role resolves to one. */
+export type Step = { stepNo: number; role: Role; affectedBy: string[]; assignee?: string | null; label?: string | null };
+
+const MAX_SIGNERS = 6;
+const MAX_FIELDS = 40;
+const frac = (v: unknown) => typeof v === 'number' && Number.isFinite(v) && v >= 0 && v <= 1;
+
+/**
+ * Sign in place: validate the people who sign (in order, each with a "signs as" label) and the signature boxes.
+ * Each signer's step takes their own designation as its role, so the chain stays role-based for history and PDFs;
+ * two signers may therefore not share a designation in one request.
+ */
+function signingPlan(db: DB, studentId: string, fields: FieldDef[], signersIn: unknown, boxesIn: unknown) {
+  if (!Array.isArray(signersIn) || !signersIn.length) throw new HttpError(400, 'Choose who signs');
+  if (signersIn.length > MAX_SIGNERS) throw new HttpError(400, `At most ${MAX_SIGNERS} signers`);
+  const all = [...fields.map((f) => f.key), 'attachments'];
+  const steps: Step[] = signersIn.map((x, i) => {
+    const userId = (x as { userId?: unknown })?.userId;
+    if (typeof userId !== 'string' || userId === studentId) throw new HttpError(400, 'Pick someone else to sign');
+    const u = db.prepare('SELECT kind FROM users WHERE id = ?').get(userId) as { kind: string } | undefined;
+    if (!u) throw new HttpError(400, 'Unknown signer');
+    const role: Role =
+      u.kind === 'student'
+        ? 'recipient'
+        : ((db.prepare('SELECT role FROM user_roles WHERE user_id = ? ORDER BY rowid LIMIT 1').pluck().get(userId) as Role | undefined) ?? 'faculty');
+    const raw = (x as { label?: unknown }).label;
+    const label = typeof raw === 'string' && raw.trim() ? raw.trim().slice(0, 40) : ROLE_LABEL[role];
+    return { stepNo: i + 1, role, affectedBy: all, assignee: userId, label };
+  });
+  if (new Set(steps.map((s) => s.assignee)).size !== steps.length) throw new HttpError(400, 'Each person signs once');
+  const dup = steps.find((s, i) => steps.findIndex((o) => o.role === s.role) !== i);
+  if (dup) throw new HttpError(400, `Two signers are both ${ROLE_LABEL[dup.role]}; send to them in separate requests`);
+  const boxes = boxesIn === undefined || boxesIn === null ? [] : boxesIn;
+  if (!Array.isArray(boxes) || boxes.length > MAX_FIELDS) throw new HttpError(400, `At most ${MAX_FIELDS} signature boxes`);
+  const signFields = boxes.map((b) => {
+    const f = b as Record<string, unknown>;
+    if (!Number.isInteger(f.step) || (f.step as number) < 1 || (f.step as number) > steps.length) throw new HttpError(400, 'A signature box has no signer');
+    if (!Number.isInteger(f.page) || (f.page as number) < 1) throw new HttpError(400, 'A signature box has no page');
+    if (![f.x, f.y, f.w, f.h].every(frac) || (f.w as number) <= 0 || (f.h as number) <= 0) throw new HttpError(400, 'A signature box is off the page');
+    return { step: f.step as number, page: f.page as number, x: f.x as number, y: f.y as number, w: f.w as number, h: f.h as number };
+  });
+  return { steps, signFields };
 }
 
 /** Designations a student may pick as signers on a custom request, in order (1–6, no repeats). */
@@ -205,7 +251,7 @@ function claimAttachments(db: DB, ownerId: string, ids: unknown, requestId: stri
  * Create one approval row per role in `steps` for this round. The lowest step opens (pending); later steps wait.
  * Used for submit and resubmit now, and for amendments later with only the affected steps.
  */
-function createRound(db: DB, req: RequestRow, steps: { stepNo: number; role: Role }[]): string[] {
+function createRound(db: DB, req: RequestRow, steps: { stepNo: number; role: Role; assignee?: string | null }[]): string[] {
   const first = Math.min(...steps.map((s) => s.stepNo));
   const ins = db.prepare(
     'INSERT INTO approvals (request_id, version, round, step_no, role, assignee_id, on_behalf_of, decision, opened_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
@@ -214,14 +260,15 @@ function createRound(db: DB, req: RequestRow, steps: { stepNo: number; role: Rol
   const openNow: string[] = [];
   for (const s of steps) {
     const open = s.stepNo === first;
-    const { assignee, onBehalfOf } =
-      s.role === 'recipient'
-        ? (() => {
-            if (!req.recipient_id) throw new HttpError(400, 'Pick who to send it to');
-            const away = activeDelegate(db, req.recipient_id);
-            return away ? { assignee: away, onBehalfOf: req.recipient_id } : { assignee: req.recipient_id, onBehalfOf: null };
-          })()
-        : resolveAssignee(db, s.role, req.department_id, req.student_id);
+    // A named person (documents for signature, the single recipient) or the holder of the role in the department.
+    const named = s.assignee ?? (s.role === 'recipient' ? req.recipient_id : null);
+    if (s.role === 'recipient' && !named) throw new HttpError(400, 'Pick who to send it to');
+    const { assignee, onBehalfOf } = named
+      ? (() => {
+          const away = activeDelegate(db, named);
+          return away ? { assignee: away, onBehalfOf: named } : { assignee: named, onBehalfOf: null };
+        })()
+      : resolveAssignee(db, s.role, req.department_id, req.student_id);
     ins.run(req.id, req.current_version, req.round, s.stepNo, s.role, assignee, onBehalfOf, open ? 'pending' : 'waiting', open ? t : null);
     if (open) openNow.push(assignee);
   }
@@ -245,11 +292,32 @@ function askToApprove(db: DB, people: string[], requestId: string, version: numb
   );
 }
 
-export function submitRequest(db: DB, studentId: string, typeCode: string, input: unknown, attachmentIds?: unknown, recipientId?: unknown, chain?: unknown) {
+export function submitRequest(
+  db: DB,
+  studentId: string,
+  typeCode: string,
+  input: unknown,
+  attachmentIds?: unknown,
+  recipientId?: unknown,
+  chain?: unknown,
+  signing?: { signers?: unknown; fields?: unknown },
+) {
   const type = getType(db, typeCode);
   const form = cleanForm(type.fields, input);
-  const custom = type.code === 'custom' ? customChain(type.fields, chain) : null;
-  const steps = custom ?? type.steps;
+  const plan = type.code === 'sign_document' ? signingPlan(db, studentId, type.fields, signing?.signers, signing?.fields) : null;
+  const custom: Step[] | null = type.code === 'custom' ? customChain(type.fields, chain) : (plan?.steps ?? null);
+  const steps: Step[] = custom ?? type.steps;
+  // The document being signed: the first attachment, which must be a PDF when it carries signature boxes.
+  let signDoc: { sha256: string } | null = null;
+  if (plan) {
+    if (!Array.isArray(attachmentIds) || !attachmentIds.length) throw new HttpError(400, 'Attach the document to sign');
+    const first = db.prepare('SELECT sha256, mime FROM attachments WHERE id = ? AND owner_id = ? AND request_id IS NULL').get(attachmentIds[0], studentId) as
+      | { sha256: string; mime: string }
+      | undefined;
+    if (!first) throw new HttpError(400, 'Unknown document');
+    if (plan.signFields.length && first.mime !== 'application/pdf') throw new HttpError(400, 'Signature boxes need a PDF');
+    signDoc = first;
+  }
   const direct = type.steps.some((s) => s.role === 'recipient');
   if (direct) {
     if (typeof recipientId !== 'string' || recipientId === studentId || !db.prepare('SELECT 1 FROM users WHERE id = ?').get(recipientId))
@@ -279,8 +347,13 @@ export function submitRequest(db: DB, studentId: string, typeCode: string, input
       req.id, JSON.stringify(form), formHash(form, versionAttachments(db, req.id, 1)), t,
     );
     if (custom) {
-      const route = db.prepare('INSERT INTO request_routes (request_id, step_no, role, affected_by_json) VALUES (?, ?, ?, ?)');
-      for (const s of custom) route.run(req.id, s.stepNo, s.role, JSON.stringify(s.affectedBy));
+      const route = db.prepare('INSERT INTO request_routes (request_id, step_no, role, affected_by_json, assignee_id, label) VALUES (?, ?, ?, ?, ?, ?)');
+      for (const s of custom) route.run(req.id, s.stepNo, s.role, JSON.stringify(s.affectedBy), s.assignee ?? null, s.label ?? null);
+    }
+    if (plan && signDoc && plan.signFields.length) {
+      const docId = db.prepare('SELECT id FROM attachments WHERE request_id = ? AND sha256 = ? ORDER BY rowid LIMIT 1').pluck().get(req.id, signDoc.sha256) as string;
+      const box = db.prepare('INSERT INTO sign_fields (request_id, attachment_id, step_no, page, x, y, w, h) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
+      for (const f of plan.signFields) box.run(req.id, docId, f.step, f.page, f.x, f.y, f.w, f.h);
     }
     askToApprove(db, createRound(db, req, steps), req.id, 1);
     audit(db, req.id, studentId, 'submitted', 1, { type: type.code, attachments: files });
@@ -340,6 +413,11 @@ export async function decide(db: DB, userId: string, approvalId: number, decisio
   const note = typeof comment === 'string' && comment.trim() ? comment.trim().slice(0, 1000) : null;
   if (decision !== 'approved' && !note) throw new HttpError(400, 'Add a short comment so the student knows why');
 
+  // Sign in place: whoever signs a step with boxes on the document needs a saved signature; it is captured now.
+  const hasBoxes = !!db.prepare('SELECT 1 FROM sign_fields WHERE request_id = ? AND step_no = ?').get(a.request_id, a.step_no);
+  const savedSignature = hasBoxes && decision === 'approved' ? (db.prepare('SELECT png FROM user_signatures WHERE user_id = ?').pluck().get(userId) as Buffer | undefined) : undefined;
+  if (hasBoxes && decision === 'approved' && !savedSignature) throw new HttpError(409, 'Add your signature first (Dashboard, My signature)');
+
   const version = db.prepare('SELECT form_hash FROM request_versions WHERE request_id = ? AND version = ?').get(a.request_id, a.version) as { form_hash: string };
   const signedAt = now();
   const { privateKey } = await issuerKey(db);
@@ -353,6 +431,7 @@ export async function decide(db: DB, userId: string, approvalId: number, decisio
 
   return db.transaction(() => {
     db.prepare('UPDATE approvals SET decision = ?, comment = ?, signed_at = ?, signature = ? WHERE id = ?').run(decision, note, signedAt, signature, a.id);
+    if (savedSignature) db.prepare('INSERT OR REPLACE INTO approval_signatures (approval_id, png) VALUES (?, ?)').run(a.id, savedSignature);
     audit(db, a.request_id, userId, decision, a.version, { role: a.role, comment: note });
     const round = 'request_id = ? AND round = ?';
     if (decision !== 'approved') {
@@ -561,11 +640,12 @@ export function getDetail(db: DB, id: string): RequestDetail {
         WHERE a.request_id = ? AND a.round = ? ORDER BY a.step_no, a.id`,
     )
     .all(r.id, r.round) as (ApprovalRow & { assignee_name: string; src_version: number | null; on_behalf_of: string | null; on_behalf_name: string | null; nudged_at: string | null; escalated_at: string | null })[];
+  const labels = labelsOf(db, r.id);
   const timeline: TimelineStep[] = rows.map((a) => ({
     approvalId: a.id,
     stepNo: a.step_no,
     role: a.role,
-    roleLabel: ROLE_LABEL[a.role],
+    roleLabel: labels.get(a.step_no) ?? ROLE_LABEL[a.role],
     assignee: { id: a.assignee_id, name: a.assignee_name },
     onBehalfOf: a.on_behalf_of ? { id: a.on_behalf_of, name: a.on_behalf_name! } : null,
     overdue: a.decision === 'pending' && !!a.nudged_at,
@@ -609,6 +689,31 @@ export function getDetail(db: DB, id: string): RequestDetail {
     commentCount: db.prepare('SELECT COUNT(*) FROM comments WHERE request_id = ?').pluck().get(r.id) as number,
     amendment,
     chain: stepsOf(db, r),
+    signing: signingOf(db, r, timeline),
+  };
+}
+
+/** "Signs as" labels of a request's own chain, by step. */
+export function labelsOf(db: DB, requestId: string) {
+  const rows = db.prepare('SELECT step_no, label FROM request_routes WHERE request_id = ? AND label IS NOT NULL').all(requestId) as { step_no: number; label: string }[];
+  return new Map(rows.map((x) => [x.step_no, x.label]));
+}
+
+/** Sign in place: the document, its boxes and who signs where (null when the request has no boxes). */
+function signingOf(db: DB, r: RequestRow, timeline: TimelineStep[]): RequestDetail['signing'] {
+  const fields = db.prepare('SELECT attachment_id, step_no, page, x, y, w, h FROM sign_fields WHERE request_id = ? ORDER BY id').all(r.id) as {
+    attachment_id: string; step_no: number; page: number; x: number; y: number; w: number; h: number;
+  }[];
+  if (!fields.length) return null;
+  const steps = stepsOf(db, r);
+  return {
+    attachmentId: fields[0].attachment_id,
+    fields: fields.map((f) => ({ step: f.step_no, page: f.page, x: f.x, y: f.y, w: f.w, h: f.h })),
+    signers: steps.map((s) => {
+      const t = timeline.find((x) => x.stepNo === s.stepNo);
+      const name = s.assignee ? ((db.prepare('SELECT name FROM users WHERE id = ?').pluck().get(s.assignee) as string) ?? '') : (t?.assignee.name ?? '');
+      return { step: s.stepNo, label: s.label ?? ROLE_LABEL[s.role], name, userId: s.assignee ?? t?.assignee.id ?? '', signed: t?.decision === 'approved' || t?.decision === 'carried' };
+    }),
   };
 }
 

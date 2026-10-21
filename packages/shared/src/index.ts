@@ -127,7 +127,7 @@ export interface RequestType {
   name: string;
   fields: FieldDef[];
   /** affectedBy = fields whose change sends this step back for re-approval on amendment. */
-  chain: { stepNo: number; role: Role; affectedBy: string[] }[];
+  chain: { stepNo: number; role: Role; affectedBy: string[]; assignee?: string | null; label?: string | null }[];
 }
 
 export interface TimelineStep {
@@ -280,6 +280,35 @@ export interface RequestDetail extends RequestSummary {
   amendment: { fromVersion: number; reason: string; previous: Record<string, string | number>; changed: string[] } | null;
   /** This request's signer chain (the type's, or the one chosen for a custom request). */
   chain: RequestType['chain'];
+  /** Sign in place: the PDF being signed and where each signer signs. Null for other requests. */
+  signing: SigningInfo | null;
+}
+
+/** A signature box: page (1-based) and a box as fractions of the page, top-left origin. `step` = the signer's step. */
+export interface SignField {
+  step: number;
+  page: number;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+export interface SigningInfo {
+  attachmentId: string;
+  fields: SignField[];
+  signers: { step: number; label: string; name: string; userId: string; signed: boolean }[];
+}
+
+/** Ready-made forms (VIT Pune formats) with their sign spots already placed. */
+export interface FormTemplate {
+  code: string;
+  name: string;
+  format: string;
+  description: string;
+  /** "Signs as" labels, in signing order. */
+  signers: string[];
+  inputs: { key: string; label: string; type: 'text' | 'date' | 'textarea'; required: boolean; placeholder?: string }[];
 }
 
 export interface VersionHistory {
