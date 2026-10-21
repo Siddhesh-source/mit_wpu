@@ -306,13 +306,13 @@ describe('email notifications', () => {
   });
 
   it('the SES mailer sends a plain-text email from the configured sender, honouring the redirect address', async () => {
-    const ses = mailerFromConfig({ provider: 'ses', from: 'PaperLess Campus <no-reply@college.example>', sesRegion: 'ap-south-1', redirectAll: 'demo-inbox@college.example', publicBaseUrl: '' })!;
+    const ses = mailerFromConfig({ provider: 'ses', from: 'CampusSign <no-reply@college.example>', sesRegion: 'ap-south-1', redirectAll: 'demo-inbox@college.example', publicBaseUrl: '' })!;
     expect(ses.name).toBe('ses');
     await ses.send({ to: 'riya@campus.example', subject: 'Approved and sealed: Robotics fest', text: 'Hello' });
     expect(sesCalls).toHaveLength(1);
     expect(sesCalls[0].cfg).toEqual({ region: 'ap-south-1' });
     expect(sesCalls[0].input).toEqual({
-      FromEmailAddress: 'PaperLess Campus <no-reply@college.example>',
+      FromEmailAddress: 'CampusSign <no-reply@college.example>',
       Destination: { ToAddresses: ['demo-inbox@college.example'] },
       Content: { Simple: { Subject: { Data: 'Approved and sealed: Robotics fest', Charset: 'UTF-8' }, Body: { Text: { Data: 'Hello', Charset: 'UTF-8' } } } },
     });

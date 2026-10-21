@@ -1,5 +1,5 @@
 {
-  "name": "paperless-campus",
+  "name": "campussign",
   "private": true,
   "workspaces": [
     "packages/*",

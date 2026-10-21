@@ -1,5 +1,5 @@
 [Unit]
-Description=PaperLess Campus (API + web app)
+Description=CampusSign (API + web app)
 After=network-online.target paperless-chain.service
 Wants=network-online.target
 

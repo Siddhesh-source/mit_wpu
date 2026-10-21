@@ -14,7 +14,7 @@ const day = (unix: number) => new Date(unix * 1000).toLocaleDateString('en-IN', 
 /** One verdict per check. Never "Verified" unless the live chain status is Active. */
 function verdict(c: Check): { tone: Tone; title: string; detail: string } {
   if (c.kind === 'pass' && !c.signatureOk)
-    return { tone: 'bad', title: 'Invalid QR', detail: 'This code was not issued by PaperLess Campus, or it was altered.' };
+    return { tone: 'bad', title: 'Invalid QR', detail: 'This code was not issued by CampusSign, or it was altered.' };
   const live = c.live;
   if (!live)
     return c.kind === 'pass'
@@ -157,7 +157,7 @@ export default function Verify() {
   const fileRef = useRef<HTMLInputElement>(null);
   const photoRef = useRef<HTMLInputElement>(null);
 
-  const run = useCallback(async (job: () => Promise<Check | null>, notFound = 'No PaperLess Campus QR code found.') => {
+  const run = useCallback(async (job: () => Promise<Check | null>, notFound = 'No CampusSign QR code found.') => {
     setBusy(true);
     setError('');
     try {
@@ -194,7 +194,7 @@ export default function Verify() {
       <header className="md:border-b md:border-rule">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-4 pt-5 md:px-8 md:py-4">
           <Link to="/" className="text-lg font-bold">
-            PaperLess Campus
+            CampusSign
           </Link>
           <span className="flex items-center gap-4 text-sm text-muted">
             Verify
@@ -220,7 +220,7 @@ export default function Verify() {
         ) : (
           <section className="flex flex-1 flex-col items-center justify-center gap-4 text-center">
             <h1 className="text-2xl font-bold md:text-4xl">Verify a document</h1>
-            <p className="max-w-xs text-sm text-muted">Scan the QR on a PaperLess Campus approval, or upload the PDF.</p>
+            <p className="max-w-xs text-sm text-muted">Scan the QR on a CampusSign approval, or upload the PDF.</p>
             <button className="cta mt-2 w-full max-w-xs" onClick={() => (setError(''), setMode('camera'))} disabled={busy}>
               {busy ? 'Checking…' : 'Scan QR'}
             </button>

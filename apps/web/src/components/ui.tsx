@@ -39,7 +39,7 @@ export function Page({ children, back, wide = false }: { children: ReactNode; ba
         <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-4 pt-5 md:px-8 md:py-4">
           <div className="flex items-center gap-6">
             <Link to="/" className="hidden text-lg font-bold md:block">
-              PaperLess Campus
+              CampusSign
             </Link>
             {back ? (
               <Link to={back} className="link -ml-1 text-base">

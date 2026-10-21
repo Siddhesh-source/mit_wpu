@@ -30,7 +30,7 @@ The app already sends notifications; by default it only **logs** them (console +
 | Variable | Default | Meaning |
 | --- | --- | --- |
 | `EMAIL_PROVIDER` | `log` | `log` (no real email), `ses` (AWS SES) or `off` |
-| `EMAIL_FROM` | `PaperLess Campus <no-reply@campus.example>` | Sender; must be a verified SES identity |
+| `EMAIL_FROM` | `CampusSign <no-reply@campus.example>` | Sender; must be a verified SES identity |
 | `SES_REGION` | `ap-south-1` | SES region (falls back to `AWS_REGION`) |
 | `EMAIL_REDIRECT_ALL` | empty | If set, **every** email goes to this one address (SES sandbox, demos) |
 
@@ -64,7 +64,7 @@ Demo profiles have placeholder addresses (`riya@campus.example`, …). For real 
    ```bash
    sudo nano /opt/paperless/.env
    # EMAIL_PROVIDER=ses
-   # EMAIL_FROM=PaperLess Campus <you@yourdomain.com>
+   # EMAIL_FROM=CampusSign <you@yourdomain.com>
    # SES_REGION=ap-south-1
    # EMAIL_REDIRECT_ALL=you@yourdomain.com      # while in the sandbox
    sudo systemctl restart paperless

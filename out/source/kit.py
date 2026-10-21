@@ -262,7 +262,7 @@ def sha(txt):
     return hashlib.sha256(txt.encode()).hexdigest()
 
 
-SAMPLE = "PaperLess Campus | Internship NOC | Req PLC-2026-0412 | Approved: Guide, T&P Officer, HoD"
+SAMPLE = "CampusSign | Internship NOC | Req PLC-2026-0412 | Approved: Guide, T&P Officer, HoD"
 SAMPLE_EDIT = SAMPLE.replace("0412", "0413")
 H_OK, H_BAD = sha(SAMPLE), sha(SAMPLE_EDIT)
 

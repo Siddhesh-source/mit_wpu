@@ -1,6 +1,6 @@
 # Deploy on AWS (free tier)
 
-One small EC2 instance runs everything: Caddy (automatic HTTPS) → the PaperLess Campus API, which also serves the web app → SQLite on the instance disk → the blockchain (Polygon Amoy testnet, or a local chain on the same instance). No load balancer, no RDS and no NAT gateway: those are where free-tier bills come from.
+One small EC2 instance runs everything: Caddy (automatic HTTPS) → the CampusSign API, which also serves the web app → SQLite on the instance disk → the blockchain (Polygon Amoy testnet, or a local chain on the same instance). No load balancer, no RDS and no NAT gateway: those are where free-tier bills come from.
 
 ```
 phone / laptop ──https──► Caddy :443 ──► API + web app :4000 ──► SQLite + PDFs (EBS)
@@ -146,7 +146,7 @@ Created entirely with the AWS CLI; the instance installs itself on first boot (u
 
 | Resource | Value |
 | --- | --- |
-| URL | https://13-205-194-159.sslip.io |
+| URL | https://campussign.duckdns.org (DuckDNS `campussign` → the Elastic IP; the IP never changes, so no updater runs) |
 | Instance | `i-0f226b2f18ae18e70`, t4g.micro (Arm, 1 GB + 2 GB swap), Ubuntu 24.04, CPU credits **standard**, IMDSv2 only |
 | Disk | 12 GB gp3, deleted with the instance |
 | Elastic IP | 13.205.194.159 (`eipalloc-0ab7268f5d10f2afa`) |

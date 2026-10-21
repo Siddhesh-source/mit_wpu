@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# One-time setup of PaperLess Campus on a fresh Ubuntu 24.04 EC2 instance (arm64 or x86_64).
+# One-time setup of CampusSign on a fresh Ubuntu 24.04 EC2 instance (arm64 or x86_64).
 # Usage: sudo DOMAIN=yourname.duckdns.org REPO=https://github.com/<owner>/<repo>.git BRANCH=main bash bootstrap.sh
 set -euo pipefail
 : "${DOMAIN:?set DOMAIN, e.g. yourname.duckdns.org}"
@@ -45,7 +45,7 @@ AMOY_RPC_URL=https://rpc-amoy.polygon.technology
 AMOY_PRIVATE_KEY=
 COLLEGE_ID=COLLEGE-001
 EMAIL_PROVIDER=log
-EMAIL_FROM="PaperLess Campus <no-reply@campus.example>"
+EMAIL_FROM="CampusSign <no-reply@campus.example>"
 SES_REGION=ap-south-1
 EMAIL_REDIRECT_ALL=
 ENV

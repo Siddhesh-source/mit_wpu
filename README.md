@@ -1,8 +1,10 @@
-# PaperLess Campus
+# CampusSign
 
 Role-routed digital approvals for Indian universities: a student submits once, the system routes the request to the right people by role, each approver signs with one tap and a PIN, and the final PDF is sealed by putting its SHA-256 fingerprint on a blockchain. Anyone can verify a copy by scanning its QR or uploading the file, and the security guard can check a pass at the gate with no internet.
 
 *No queues. No paper. No forged signatures.*
+
+**Live:** https://campussign.duckdns.org (demo accounts below; verify any sealed copy at `/verify`). Hosted on one AWS t4g.micro in Mumbai: see [Deploy on AWS](docs/DEPLOY_AWS.md#live-deployment-ap-south-1).
 
 ## What it does
 

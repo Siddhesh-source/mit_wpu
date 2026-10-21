@@ -24,7 +24,7 @@ function Result({ g, onNext }: { g: GateCheck; onNext: () => void }) {
     g.result === 'not_today' && p ? `Valid only on ${day(p.vf)}` :
     g.result === 'superseded' ? 'An amended version exists. Ask for the latest pass.' :
     g.result === 'revoked' ? 'This approval was cancelled. Do not allow entry.' :
-    g.result === 'invalid' ? 'Not a genuine PaperLess Campus pass.' : null;
+    g.result === 'invalid' ? 'Not a genuine CampusSign pass.' : null;
   return (
     <div className={`fixed inset-0 z-30 flex flex-col ${look.cls}`}>
       <div className="flex flex-1 flex-col items-center justify-center gap-4 px-6 text-center">

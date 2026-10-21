@@ -1,12 +1,12 @@
-# PaperLess Campus — Project Overview
+# CampusSign — Project Overview
 
 Oct 20, 2026 · @Jayesh
 
-**One line:** PaperLess Campus turns every signature-chasing paper form in an Indian university into a role-routed digital approval that is signed in one tap and verifiable forever on a blockchain.
+**One line:** CampusSign turns every signature-chasing paper form in an Indian university into a role-routed digital approval that is signed in one tap and verifiable forever on a blockchain.
 
 **Tagline:** *No queues. No paper. No forged signatures.*
 
-**Elevator pitch (30 seconds):** A typical student needs a faculty or HoD signature on roughly 15 different paper forms a year, from event permissions to bonafide certificates to no-dues clearances. Each one means waiting outside cabins, printing, re-printing and losing days. PaperLess Campus lets a student pick a request type, upload the document once, and the platform routes it automatically to the right mentor, HoD, Dean or Registrar based on their role. Approvers sign from their phone; every approval is hashed onto a blockchain so anyone, from a placement cell to another college, can verify it in seconds. We start with one university and grow into an inter-college trust network.
+**Elevator pitch (30 seconds):** A typical student needs a faculty or HoD signature on roughly 15 different paper forms a year, from event permissions to bonafide certificates to no-dues clearances. Each one means waiting outside cabins, printing, re-printing and losing days. CampusSign lets a student pick a request type, upload the document once, and the platform routes it automatically to the right mentor, HoD, Dean or Registrar based on their role. Approvers sign from their phone; every approval is hashed onto a blockchain so anyone, from a placement cell to another college, can verify it in seconds. We start with one university and grow into an inter-college trust network.
 
 **Context:** prepared as our idea submission for the no-code and AI hackathon at MIT-WPU, Pune. Everything below describes the product itself.
 
@@ -45,7 +45,7 @@ Indian universities still run approvals on wet-ink signatures, so 4.5 crore stud
 
 ## 2. Solution overview
 
-PaperLess Campus is a role-aware approval platform: the student submits once, the system knows who must sign and in what order, and every signature is sealed on a blockchain so it can never be forged or quietly changed.
+CampusSign is a role-aware approval platform: the student submits once, the system knows who must sign and in what order, and every signature is sealed on a blockchain so it can never be forged or quietly changed.
 
 **How it works in one sentence:** pick a request type → upload or auto-fill → smart routing to the right authority → one-tap e-sign → blockchain seal + QR code → verified PDF delivered to the student.
 
@@ -75,7 +75,7 @@ PaperLess Campus is a role-aware approval platform: the student submits once, th
 
 Four user groups touch every approval; each gets a view built for its job.
 
-| User | Their pain today | What PaperLess Campus gives them |
+| User | Their pain today | What CampusSign gives them |
 | --- | --- | --- |
 | Student (Riya, 2nd-year CSE, organising a tech fest) | 3 days chasing 4 signatures; misses 2 lectures | Submits in 2 minutes, tracks live, gets a QR-verified PDF |
 | Faculty / HoD (Prof. Kulkarni) | Interrupted 10+ times a day to sign slips | Batch-approves from phone with AI summaries |
@@ -84,7 +84,7 @@ Four user groups touch every approval; each gets a view built for its job.
 
 **Riya's event permission, before and after**
 
-| Step | Before (paper) | After (PaperLess Campus) |
+| Step | Before (paper) | After (CampusSign) |
 | --- | --- | --- |
 | Prepare | Type, print, reprint after format errors | Pick "Event permission", AI pre-fills details |
 | Faculty coordinator | Wait outside cabin | Notified instantly, approves on phone |
@@ -170,7 +170,7 @@ We follow a design-thinking loop (empathise → define → prototype → test) a
 
 **Key AI prompts (our prompt strategy)**
 
-- *App builder:* "Build a mobile-first web app called PaperLess Campus with three roles: student, approver, admin. Students pick a request type, fill a form, upload a PDF and see a timeline of approval steps. Approvers see an inbox with Approve, Reject and Return buttons and a comment box. Use Supabase auth and the tables I describe."
+- *App builder:* "Build a mobile-first web app called CampusSign with three roles: student, approver, admin. Students pick a request type, fill a form, upload a PDF and see a timeline of approval steps. Approvers see an inbox with Approve, Reject and Return buttons and a comment box. Use Supabase auth and the tables I describe."
 - *Classifier:* "You are a university approvals assistant. From the student's text, return JSON with request\_type (one of: event\_permission, on\_duty, bonafide, internship\_noc, no\_dues, lor), event\_date, venue, purpose, and missing\_fields. Do not invent values."
 - *Approver summary:* "Summarise this request for a busy HoD in at most 2 lines. Then list any risk flags (date clash, missing attachment, unusual request). Be factual."
 - *Verifier explainer:* "Given this blockchain record and document hash comparison, explain in one sentence to a non-technical recruiter whether the document is genuine."
@@ -218,7 +218,7 @@ These exclude toner, printer electricity and photocopies, so they understate the
 
 **SDG mapping**
 
-| SDG | Target | What PaperLess Campus changes |
+| SDG | Target | What CampusSign changes |
 | --- | --- | --- |
 | 4 Quality Education | 4.3 equal access to quality tertiary education | Students spend class time learning, not queuing; remote and differently-abled students get equal access to approvals |
 | 9 Industry, Innovation and Infrastructure | 9.c access to ICT | Shared digital approval infrastructure any college can join |
@@ -291,7 +291,7 @@ No existing tool combines campus role-mapped routing, AI assistance and public b
 - **No-code maintainable:** colleges change it themselves.
 - **Network-ready:** every college becomes a node.
 
-**Positioning:** we are complementary, not competing. PaperLess Campus is the everyday approvals layer that can later push final documents into DigiLocker and sync records with Samarth or any ERP.
+**Positioning:** we are complementary, not competing. CampusSign is the everyday approvals layer that can later push final documents into DigiLocker and sync records with Samarth or any ERP.
 
 ## 11. Security, privacy and risks
 

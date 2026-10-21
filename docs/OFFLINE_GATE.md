@@ -21,7 +21,7 @@ Precedence everywhere (shared `verdictFor`): Revoked > Superseded > outside the 
 | NOT TODAY | amber | Genuine, but valid only on the date shown |
 | SUPERSEDED | amber | An amended version exists; ask for the latest pass |
 | REVOKED | red | Cancelled by the HoD or Dean |
-| INVALID | red | Bad signature or not a PaperLess Campus pass |
+| INVALID | red | Bad signature or not a CampusSign pass |
 
 ## Offline readiness
 

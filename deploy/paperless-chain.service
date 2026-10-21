@@ -1,5 +1,5 @@
 [Unit]
-Description=PaperLess Campus local chain (only when CHAIN_MODE=local)
+Description=CampusSign local chain (only when CHAIN_MODE=local)
 After=network-online.target
 
 [Service]

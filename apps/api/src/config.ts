@@ -18,7 +18,7 @@ export const config = {
   slaMinutes: process.env.SLA_MINUTES ? Number(process.env.SLA_MINUTES) : null,
   email: {
     provider: (process.env.EMAIL_PROVIDER || 'log') as 'log' | 'ses' | 'off',
-    from: process.env.EMAIL_FROM || 'PaperLess Campus <no-reply@campus.example>',
+    from: process.env.EMAIL_FROM || 'CampusSign <no-reply@campus.example>',
     sesRegion: process.env.SES_REGION || process.env.AWS_REGION || 'ap-south-1',
     redirectAll: process.env.EMAIL_REDIRECT_ALL || '',
   },

@@ -1,4 +1,4 @@
-# PaperLess Campus — Pitch Deck Content (10 slides)
+# CampusSign — Pitch Deck Content (10 slides)
 
 Oct 20, 2026 · @Jayesh
 
@@ -41,7 +41,7 @@ The first three slides make judges feel the pain, then show it is national in si
 
 ### Slide 1 · Title
 
-- **Headline:** PaperLess Campus
+- **Headline:** CampusSign
 - **Tagline:** Every approval. One tap. Verified forever.
 - **On slide:** product name, tagline, team names, college, and the event name in small type at the foot.
 - **Visual:** a paper form crowded with signatures on the left, an arrow, and a phone showing "Approved" with a green tick and a QR code on the right.
@@ -108,7 +108,7 @@ The close builds trust (law, cryptography, comparison), then lands the impact an
 ### Slide 8 · Why we win
 
 - **Headline:** Others solve one slice; we combine all five.
-- **On slide:** a matrix. Rows: Paper · Google Forms + email · College ERP / Samarth · Generic e-sign tools · **PaperLess Campus**. Columns: Role routing · AI assist · Legal e-sign · Public verification · No-code maintainable. Ticks and crosses; our row is fully ticked and highlighted.
+- **On slide:** a matrix. Rows: Paper · Google Forms + email · College ERP / Samarth · Generic e-sign tools · **CampusSign**. Columns: Role routing · AI assist · Legal e-sign · Public verification · No-code maintainable. Ticks and crosses; our row is fully ticked and highlighted.
 - **Visual:** the matrix only.
 - **Trust cue:** one line "Complements DigiLocker and ERPs; does not replace them."
 - **Say:** "We are the everyday approvals layer that plugs into what colleges already run."

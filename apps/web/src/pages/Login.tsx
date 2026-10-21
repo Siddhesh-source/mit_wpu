@@ -74,7 +74,7 @@ export default function Login() {
     <main className="relative mx-auto flex min-h-screen max-w-md flex-col px-4 py-10 md:max-w-2xl md:justify-center">
       <ThemeToggle className="absolute right-4 top-4" />
       <header className="mb-8 text-center">
-        <h1 className="text-3xl font-bold md:text-5xl">PaperLess Campus</h1>
+        <h1 className="text-3xl font-bold md:text-5xl">CampusSign</h1>
         <p className="mt-2 text-muted md:text-lg">No queues. No paper. No forged signatures.</p>
       </header>
 

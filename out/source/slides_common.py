@@ -10,7 +10,7 @@ EVENT = "Idea submission  ·  No-code and AI Hackathon, MIT-WPU Pune"
 def title_A(d, total):
     t = d.t
     s = d.new_slide(NOTES_1)
-    text(s, ML, 2.05, CW, 1.0, "PaperLess Campus", t["head"], 56, t["ink"])
+    text(s, ML, 2.05, CW, 1.0, "CampusSign", t["head"], 56, t["ink"])
     text(s, ML, 3.1, CW, 0.5, TAGLINE, t["body"], 22, t["muted"])
     # team, college and members as one ruled table
     ty = 4.5
@@ -37,7 +37,7 @@ def title_B(d, total):
     s = d.new_slide(NOTES_1)
     text(s, ML, 0.62, 8, 0.3, TEAM, t["semi"], SMALL, t["ink"])
     text(s, ML, 0.92, 8, 0.3, MEMBERS, t["body"], SMALL, t["muted"])
-    text(s, ML, 1.95, 9.5, 1.1, "PaperLess Campus", t["head"], DISPLAY, t["ink"])
+    text(s, ML, 1.95, 9.5, 1.1, "CampusSign", t["head"], DISPLAY, t["ink"])
     text(s, ML, 3.12, 7.2, 0.9, TAGLINE, t["body"], 22, t["muted"], spacing=1.2)
     # the chain
     y = 5.15
@@ -62,7 +62,7 @@ def title_B(d, total):
 def title_C(d, total):
     t = d.t
     s = d.new_slide(NOTES_1)
-    text(s, ML, 1.75, 9.5, 1.1, "PaperLess Campus", t["head"], DISPLAY + 4, t["ink"])
+    text(s, ML, 1.75, 9.5, 1.1, "CampusSign", t["head"], DISPLAY + 4, t["ink"])
     text(s, ML, 2.95, 7.4, 0.9, TAGLINE, t["body"], 22, t["muted"], spacing=1.2)
     y = 4.45
     cw = 18 * 0.6 / 72  # Source Code Pro advance = 0.6 em
@@ -79,7 +79,7 @@ def title_C(d, total):
 TITLES = {"A": title_A, "B": title_B, "C": title_C}
 
 NOTES_1 = ("Open: Every one of us has stood outside a cabin waiting for one signature. "
-           "PaperLess Campus replaces that paper chase: a student submits once, the right people sign on their phone, "
+           "CampusSign replaces that paper chase: a student submits once, the right people sign on their phone, "
            "and anyone outside the campus can check the result is genuine. We are team budYweisers from VIT Pune: "
            "Shruti Dwivedi, Siddhesh Chaudhari and Shankar Jadhav.")
 

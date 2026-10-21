@@ -1,4 +1,4 @@
-# PaperLess Campus
+# CampusSign
 
 Before any task: read `docs/` (start with `docs/CONTEXT.md` and `docs/PROGRESS.md`) and the ground rules in `prompts.md`.
 

@@ -52,7 +52,7 @@ export function notify(db: DB, userIds: string | string[], kind: Kind, subject: 
   for (const id of ids) {
     const u = db.prepare('SELECT name, email FROM users WHERE id = ?').get(id) as { name: string; email: string | null } | undefined;
     if (!u?.email) continue;
-    ins.run(id, u.email, subject, `Hello ${u.name},\n\n${text}\n\nPaperLess Campus`, kind, requestId, t);
+    ins.run(id, u.email, subject, `Hello ${u.name},\n\n${text}\n\nCampusSign`, kind, requestId, t);
   }
 }
 

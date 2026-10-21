@@ -1,4 +1,4 @@
-# PaperLess Campus — Build Prompts
+# CampusSign — Build Prompts
 
 Ten prompts that take this repo from a pitch deck to a working product: the core workflow first (submit → route by role → sign → seal → verify), then the "Plan Changed" twist (amend, version, revoke, offline gate check).
 
@@ -6,7 +6,7 @@ Run them in order, one per session or one per turn. Each prompt is self-containe
 
 ## Ground rules (apply to every prompt)
 
-- **Source of truth for the product:** `PaperLess Campus — Project Overview.md`, `PaperLess Campus — Pitch Deck Content (10 slides).md` and the built deck `out/deck.pptx` (previews in `out/previews/`). Where the two Markdown files and the built deck disagree on visuals, the **built deck wins** (theme "Public Record" in `out/source/kit.py`).
+- **Source of truth for the product:** `CampusSign — Project Overview.md`, `CampusSign — Pitch Deck Content (10 slides).md` and the built deck `out/deck.pptx` (previews in `out/previews/`). Where the two Markdown files and the built deck disagree on visuals, the **built deck wins** (theme "Public Record" in `out/source/kit.py`).
 - **Scope is core v1 only.** No LLM/AI features, no DigiLocker, no Aadhaar eSign, no WhatsApp/email notifications, no SLA escalation, no delegation, no no-code form builder, no analytics dashboard. If something is not needed to demo the core workflow or the twist, do not build it.
 - **UI:** one primary CTA at the centre of every screen; everything else is secondary. Mobile-first, big tap targets, no nested menus, no modals except a confirm sheet. **Do not write UI tests and do not run browser checks; the user tests the UI.**
 - **Backend:** build features in bulk per prompt, then test them in bulk (`npm test`), fix until green, then commit and push. Never push red.
@@ -63,7 +63,7 @@ Visual motifs to reuse from slides 4 and 7: the horizontal step track with hollo
 ## Prompt 1 · Foundation, docs and profile login
 
 ```
-Read prompts.md (ground rules, fixed stack, design tokens, domain facts), both "PaperLess Campus — *.md" files, out/source/kit.py and the PNGs in out/previews/. Then build the foundation in one pass.
+Read prompts.md (ground rules, fixed stack, design tokens, domain facts), both "CampusSign — *.md" files, out/source/kit.py and the PNGs in out/previews/. Then build the foundation in one pass.
 
 1. Monorepo: npm workspaces with apps/api, apps/web, packages/shared, contracts. Root scripts: `npm run dev` (api + web together), `npm test`, `npm run build`, `npm run seed`. Add .gitignore (node_modules, dist, *.sqlite, .env). Add .env.example with JWT_SECRET, ISSUER_PRIVATE_KEY, CHAIN_MODE, AMOY_RPC_URL, AMOY_PRIVATE_KEY, PUBLIC_BASE_URL.
 
@@ -160,7 +160,7 @@ Read CLAUDE.md, docs/ and prompts.md. Build the trust layer in bulk, then test i
 2. Chain service (apps/api/src/chain.ts): CHAIN_MODE=local talks to a Hardhat node started by `npm run dev` (auto-deploys if no deployment file); CHAIN_MODE=amoy uses AMOY_RPC_URL and AMOY_PRIVATE_KEY and returns a Polygonscan Amoy tx link. On RPC failure, queue the anchor in a pending_anchors table and retry on an interval ("queue-and-retry anchoring" from the deck's risk register); status shows "Sealing…" until it lands.
 
 3. Sealing pipeline, run automatically when a request reaches approved:
-   - Build the PDF with pdf-lib: header "PaperLess Campus" + request type, request ID in mono, version "v1", the form fields, a signature block listing each role, person, decision time and a short signature fingerprint, and a QR code in the corner. Fonts and colours follow docs/DESIGN.md.
+   - Build the PDF with pdf-lib: header "CampusSign" + request type, request ID in mono, version "v1", the form fields, a signature block listing each role, person, decision time and a short signature fingerprint, and a QR code in the corner. Fonts and colours follow docs/DESIGN.md.
    - QR content: `${PUBLIC_BASE_URL}/verify#p=<payload>` where payload = base64url(compact JSON of {rid, v, type, title, student name, dept, date, venue, validFrom, validUntil, iat}) + "." + base64url(Ed25519 signature). validFrom/validUntil = the event date 00:00 to 23:59 Asia/Kolkata for event permission; issue date + 1 year for other types. Put encode/decode/verify in packages/shared so the browser uses the same code.
    - Hash (decided, no alternatives): the QR identifies the approval by (rid, v) and is protected by its own signature, so it does not contain the file hash (a file cannot contain its own hash). Render the PDF with the QR, then anchor SHA-256 of the final bytes. Uploading a file → hash → chain lookup catches any one-byte edit. Scanning a QR → signature check, then (online) lookup by (rid, v) → live status. Record this in docs/DECISIONS.md.
    - Save the PDF to apps/api/storage/, record the hash, tx hash and status sealed.

@@ -1,4 +1,4 @@
-"""PaperLess Campus pitch deck, 10 slides, theme A (Public Record). Every element is a native shape."""
+"""CampusSign pitch deck, 10 slides, theme A (Public Record). Every element is a native shape."""
 import sys, math
 from kit import *
 from pptx.enum.shapes import MSO_SHAPE
@@ -168,7 +168,7 @@ def slide_scale(d):
 def slide_solution(d):
     t = d.t
     s = d.new_slide(
-        "Here is the same request on PaperLess Campus. Riya picks Event permission and fills it in herself; if she wants, "
+        "Here is the same request on CampusSign. Riya picks Event permission and fills it in herself; if she wants, "
         "an optional AI helper points out a missing detail. "
         "The system sends it to the right roles, not names. Each approver signs with one tap on their phone. The final "
         "PDF is sealed with a fingerprint on a blockchain, and anyone can verify it by scanning the code. Three days "
@@ -202,7 +202,7 @@ def slide_solution(d):
     line(s, ML, by - 0.15, W - MR, by - 0.15, t["rule"], 0.75)
     label(s, t, ML, by, 4, "Time to a signed approval")
     rows = [("Paper today", 8.0, t["rule"], "2 to 4 days", t["muted"]),
-            ("PaperLess Campus", 0.55, t["ok"], "same day (target)", t["ok"])]
+            ("CampusSign", 0.55, t["ok"], "same day (target)", t["ok"])]
     for j, (lab, bw, col, val, vcol) in enumerate(rows):
         ry = by + 0.42 + j * 0.55
         text(s, ML, ry - 0.02, 2.4, 0.3, lab, t["semi"] if j else t["body"], 14, t["ink"])
@@ -238,7 +238,7 @@ def slide_arch(d):
     # platform boundary
     bx0, by0, bx1, by1 = 3.15, 2.05, 9.95, 5.95
     rect(s, bx0, by0, bx1 - bx0, by1 - by0, fill=None, line=t["rule"], lw=1.25)
-    text(s, bx0 + 0.2, by0 + 0.08, 6, 0.25, "PaperLess Campus  ·  built with no-code tools", t["semi"], 11, t["muted"])
+    text(s, bx0 + 0.2, by0 + 0.08, 6, 0.25, "CampusSign  ·  built with no-code tools", t["semi"], 11, t["muted"])
 
     def box(x, y, w, h, title, detail, dashed=False, fill=None):
         sh = rect(s, x, y, w, h, fill=fill or t["bg"], line=t["accent"] if not dashed else t["faint"], lw=1.25)
@@ -302,7 +302,7 @@ def slide_tech(d):
             ("E-signature", "OTP sign; Aadhaar eSign", "DSC tokens", "Aadhaar eSign via Leegality or Digio", "LEGAL"),
             ("Blockchain", "Polygon Amoy testnet", "Hyperledger Besu", "Document hash; consortium chain at scale", "TRUST"),
             ("PDF and alerts", "Google Docs via n8n", "PDFMonkey", "Signed PDF; email and WhatsApp alerts", "NO-CODE")]
-    cols = [(ML, 2.35, "Layer"), (ML + 2.45, 2.55, "Primary tool"), (ML + 5.1, 1.75, "Backup"), (ML + 6.95, 3.85, "Role in PaperLess Campus")]
+    cols = [(ML, 2.35, "Layer"), (ML + 2.45, 2.55, "Primary tool"), (ML + 5.1, 1.75, "Backup"), (ML + 6.95, 3.85, "Role in CampusSign")]
     y0 = 1.95
     for x, w, h in cols:
         text(s, x, y0, w, 0.28, h, t["semi"], 11.5, t["muted"])
@@ -408,7 +408,7 @@ def slide_compare(d):
     headline(s, d, "Others solve one slice; we combine all five.")
     cols = ["Role routing", "AI assist", "Legal e-sign", "Public verification", "No-code to maintain"]
     rows = [("Paper and wet ink", "nnnnn"), ("Google Forms + email", "nnnny"), ("College ERP / Samarth", "pnpnn"),
-            ("Generic e-sign tools", "nnypp"), ("PaperLess Campus", "yyyyy")]
+            ("Generic e-sign tools", "nnypp"), ("CampusSign", "yyyyy")]
     lw_ = 3.4
     cw = (CW - lw_) / 5
     y0 = 1.7
@@ -502,7 +502,7 @@ def slide_roadmap(d):
         "then university-wide once turnaround is halved, then a network of colleges verifying each other's documents. "
         "The same engine works anywhere a request climbs a ladder of signatures, from government offices to hospitals. "
         "At fifty rupees per student a year, it costs about what a campus already spends printing these forms, and NAAC "
-        "already counts e-governance. PaperLess Campus: campus approvals, signed in one tap and verifiable by anyone.")
+        "already counts e-governance. CampusSign: campus approvals, signed in one tap and verifiable by anyone.")
     header(s, d, "Roadmap and Future Scope", "From one department to every institution that runs on signatures.")
     # roadmap band
     y = 2.7

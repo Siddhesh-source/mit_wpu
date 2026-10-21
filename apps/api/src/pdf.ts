@@ -54,9 +54,9 @@ function wrap(text: string, font: PDFFont, size: number, width: number): string[
 export async function buildApprovalPdf(p: PdfInput): Promise<Uint8Array> {
   const doc = await PDFDocument.create();
   doc.setTitle(`${p.typeName} ${p.requestId} v${p.version}`);
-  doc.setAuthor('PaperLess Campus');
-  doc.setProducer('PaperLess Campus');
-  doc.setCreator('PaperLess Campus');
+  doc.setAuthor('CampusSign');
+  doc.setProducer('CampusSign');
+  doc.setCreator('CampusSign');
   doc.setCreationDate(p.issuedAt);
   doc.setModificationDate(p.issuedAt);
 
@@ -72,7 +72,7 @@ export async function buildApprovalPdf(p: PdfInput): Promise<Uint8Array> {
 
   // Header
   page.drawRectangle({ x: 0, y: 841.89 - 8, width: 595.28, height: 8, color: C.accent });
-  text('PaperLess Campus', L, y, bold, 16, C.accent);
+  text('CampusSign', L, y, bold, 16, C.accent);
   const tag = 'SEALED APPROVAL';
   text(tag, R - mono.widthOfTextAtSize(tag, 9), y + 3, mono, 9, C.muted);
   y -= 34;
@@ -147,7 +147,7 @@ export async function buildApprovalPdf(p: PdfInput): Promise<Uint8Array> {
   text('Works offline at the gate', R - q, 45, reg, 8.5, C.muted);
 
   const foot = [
-    `Issued ${ist(p.issuedAt)} IST by PaperLess Campus.`,
+    `Issued ${ist(p.issuedAt)} IST by CampusSign.`,
     'The SHA-256 fingerprint of this file is anchored on a blockchain.',
     'Any change to this file, even one character, fails verification.',
     'Hash only, no personal data on chain.',
