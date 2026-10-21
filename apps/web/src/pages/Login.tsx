@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { DESIGNATIONS, DESIGNATION_LABEL, ROLE_LABEL, homeFor, type Department } from '@plc/shared';
 import { api } from '../lib/api';
 import { useSession } from '../lib/session';
+import { ThemeToggle } from '../components/ThemeToggle';
 
 type Kind = 'student' | 'staff';
 const KIND = 'plc.kind';
@@ -70,7 +71,8 @@ export default function Login() {
   }
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-md flex-col px-4 py-10 md:max-w-2xl md:justify-center">
+    <main className="relative mx-auto flex min-h-screen max-w-md flex-col px-4 py-10 md:max-w-2xl md:justify-center">
+      <ThemeToggle className="absolute right-4 top-4" />
       <header className="mb-8 text-center">
         <h1 className="text-3xl font-bold md:text-5xl">PaperLess Campus</h1>
         <p className="mt-2 text-muted md:text-lg">No queues. No paper. No forged signatures.</p>
@@ -84,7 +86,7 @@ export default function Login() {
             <p className="mt-1 text-sm text-muted">Send documents, request approvals, track every signature.</p>
           </button>
           <button onClick={() => choose('staff')} className="rounded-3xl border-2 border-rule bg-panel p-6 text-left transition hover:border-accent active:scale-[0.99]">
-            <span className="mb-3 grid h-12 w-12 place-items-center rounded-full bg-ink text-xl text-white">🏛️</span>
+            <span className="mb-3 grid h-12 w-12 place-items-center rounded-full bg-ink text-xl text-bg">🏛️</span>
             <p className="text-xl font-bold">I'm staff / administrator</p>
             <p className="mt-1 text-sm text-muted">Faculty, HoD, Dean, Security, offices or Registrar. Review and sign.</p>
           </button>

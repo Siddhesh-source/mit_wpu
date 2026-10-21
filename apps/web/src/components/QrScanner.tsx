@@ -57,7 +57,7 @@ export function QrScanner({ onResult, onError }: { onResult: (text: string) => v
   }, [onResult, onError]);
 
   return (
-    <div className="relative mx-auto aspect-square w-full max-w-sm overflow-hidden rounded-3xl bg-ink">
+    <div className="relative mx-auto aspect-square w-full max-w-sm overflow-hidden rounded-3xl bg-black">
       <video ref={video} className="h-full w-full object-cover" playsInline muted />
       <div className="pointer-events-none absolute inset-10 rounded-2xl border-4 border-white/80" />
       {!ready && <p className="absolute inset-0 grid place-items-center text-sm text-white/80">Starting camera…</p>}

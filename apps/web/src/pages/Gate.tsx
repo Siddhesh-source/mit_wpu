@@ -34,7 +34,7 @@ function Result({ g, onNext }: { g: GateCheck; onNext: () => void }) {
         <h1 className="text-5xl font-bold tracking-tight md:text-7xl">{look.word}</h1>
         {note && <p className="text-lg font-semibold">{note}</p>}
         {p && g.result !== 'invalid' && (
-          <div className="mt-2 w-full max-w-sm rounded-2xl bg-white/95 p-5 text-left text-ink">
+          <div className="mt-2 w-full max-w-sm rounded-2xl bg-bg/95 p-5 text-left text-ink">
             <p className="text-2xl font-bold">{p.ti}</p>
             <p className="text-base">
               {p.n} · {p.d}
@@ -67,7 +67,7 @@ function Result({ g, onNext }: { g: GateCheck; onNext: () => void }) {
           </div>
         )}
       </div>
-      <button className="m-4 rounded-2xl bg-white py-5 text-xl font-bold text-ink" onClick={onNext}>
+      <button className="m-4 rounded-2xl bg-bg py-5 text-xl font-bold text-ink" onClick={onNext}>
         Scan next
       </button>
     </div>

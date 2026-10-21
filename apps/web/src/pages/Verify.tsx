@@ -4,6 +4,7 @@ import type { VerifyResult } from '@plc/shared';
 import { Cross, Tick } from '../components/ui';
 import { QrScanner, decodeQrImage } from '../components/QrScanner';
 import { checkFile, checkHash, checkQr, type Check } from '../lib/verify';
+import { ThemeToggle } from '../components/ThemeToggle';
 import { fmtDate } from '../lib/hooks';
 
 type Tone = 'ok' | 'bad' | 'warn' | 'muted';
@@ -71,7 +72,7 @@ function Result({ check, onAgain, onCheckLatest }: { check: Check; onAgain: () =
         <h1 className="text-3xl font-bold md:text-4xl">{v.title}</h1>
         <p className="max-w-sm text-sm text-ink/80">{v.detail}</p>
         {live?.status === 'superseded' && live.latest && (
-          <button className="mt-2 rounded-xl bg-ink px-5 py-3 font-semibold text-white" onClick={() => onCheckLatest(live)}>
+          <button className="mt-2 rounded-xl bg-ink px-5 py-3 font-semibold text-bg" onClick={() => onCheckLatest(live)}>
             Check v{live.latest.version}
           </button>
         )}
@@ -195,7 +196,10 @@ export default function Verify() {
           <Link to="/" className="text-lg font-bold">
             PaperLess Campus
           </Link>
-          <span className="text-sm text-muted">Verify</span>
+          <span className="flex items-center gap-4 text-sm text-muted">
+            Verify
+            <ThemeToggle />
+          </span>
         </div>
       </header>
 

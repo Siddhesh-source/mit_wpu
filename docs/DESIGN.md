@@ -97,3 +97,8 @@ Camera note: browsers allow live camera only on https or localhost. On plain htt
 - `components/DocumentLibrary.tsx`: drop zone (drag over highlights), click to pick, list with select checkbox, size, "sent n×", remove.
 - Header: your name links to the profile; "Log out" replaces "Switch profile".
 - Inbox (staff): "Students who want to add you" blocks with Accept / Decline under the central CTA. Students reach the inbox from "waiting for your signature".
+
+## Light and dark mode
+
+- A sun/moon switch sits in every header (signed-in pages, sign-up, verify, gate) (`components/ThemeToggle.tsx`). The choice is saved on the device (`plc.theme`) and applied before the first paint by a small script in `index.html`, so pages never flash. Until someone chooses, the device's light/dark setting decides.
+- Tokens are CSS variables (`src/index.css`), used through the same Tailwind names (`bg`, `panel`, `ink`, `accent`, `ok`, `bad`, `warn`, …). Dark keeps the roles: solid fills stay deep enough for white text; inverse elements (toast, tooltip, "Check v2") use `bg-ink text-bg`; the gate result card uses the theme surface; form fields take the theme surface.

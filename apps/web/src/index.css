@@ -2,8 +2,75 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * Theme tokens (RGB triplets for Tailwind's alpha syntax). Light = the deck's "Public Record" palette.
+ * Dark keeps the same roles: solid fills (accent, ok, bad, warn) stay deep enough for white text.
+ * The toggle sets data-theme on <html>; with no choice yet, the device setting decides.
+ */
+:root {
+  --bg: 255 255 255;
+  --panel: 244 246 248;
+  --rule: 225 228 232;
+  --ink: 16 20 24;
+  --muted: 90 99 112;
+  --faint: 107 116 128;
+  --accent: 29 79 145;
+  --ok: 30 122 76;
+  --ok-bg: 232 243 236;
+  --bad: 180 35 24;
+  --bad-bg: 251 234 232;
+  --warn: 181 71 8;
+  --warn-bg: 254 240 199;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --bg: 14 19 26;
+    --panel: 24 32 43;
+    --rule: 43 54 68;
+    --ink: 230 235 241;
+    --muted: 163 175 190;
+    --faint: 135 147 162;
+    --accent: 74 130 208;
+    --ok: 43 138 90;
+    --ok-bg: 18 41 31;
+    --bad: 200 65 58;
+    --bad-bg: 51 25 26;
+    --warn: 196 112 34;
+    --warn-bg: 46 34 18;
+    color-scheme: dark;
+  }
+}
+:root[data-theme='dark'] {
+  --bg: 14 19 26;
+  --panel: 24 32 43;
+  --rule: 43 54 68;
+  --ink: 230 235 241;
+  --muted: 163 175 190;
+  --faint: 135 147 162;
+  --accent: 74 130 208;
+  --ok: 43 138 90;
+  --ok-bg: 18 41 31;
+  --bad: 200 65 58;
+  --bad-bg: 51 25 26;
+  --warn: 196 112 34;
+  --warn-bg: 46 34 18;
+  color-scheme: dark;
+}
+
 body {
   @apply bg-bg text-ink font-sans antialiased;
+}
+
+/* Form fields take the theme surface (browsers otherwise paint their own grey in dark mode). */
+input:not([type='checkbox']):not([type='radio']):not([type='file']),
+textarea,
+select {
+  background-color: rgb(var(--bg));
+  color: rgb(var(--ink));
+}
+::placeholder {
+  color: rgb(var(--faint));
 }
 
 @layer components {

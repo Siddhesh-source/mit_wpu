@@ -69,3 +69,4 @@
 67. **"Document for signature" is a normal request type with a `recipient` step**, so direct sends get the same signing, sealing, verification, discussion, deadlines and audit as every other request. Sending does not require a connection; connections only put teachers on the dashboard and steer routing.
 68. **The people directory exposes name, designation, title and department only** (no email or phone).
 69. **No hard-coded document titles.** "What is it?" is free text; the only suggestions are the student's own earlier titles (browser autocomplete).
+70. **Light/dark switch for everyone, saved per device**, defaulting to the device setting. Colours are CSS-variable tokens, so every component follows the theme without per-component dark styles.

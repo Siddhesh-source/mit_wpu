@@ -77,7 +77,7 @@ function WaitBars({ rows }: { rows: Stats['byRole'] }) {
                 <span className="tabular-nums text-ink">{hours(r.avgWaitHours)}</span>
               </span>
               {hover === r.role && (
-                <span className="pointer-events-none absolute left-0 right-0 top-full z-10 mt-1 rounded-lg bg-ink px-3 py-1.5 text-xs text-white shadow md:left-[9.25rem] md:right-auto md:whitespace-nowrap">
+                <span className="pointer-events-none absolute left-0 right-0 top-full z-10 mt-1 rounded-lg bg-ink px-3 py-1.5 text-xs text-bg shadow md:left-[9.25rem] md:right-auto md:whitespace-nowrap">
                   {r.roleLabel}: {hours(r.avgWaitHours)} average · {r.decided} decided · {r.pending} waiting now
                 </span>
               )}

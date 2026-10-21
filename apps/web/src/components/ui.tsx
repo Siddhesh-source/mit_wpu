@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ROLE_LABEL, STATUS_LABEL, type RequestStatus } from '@plc/shared';
 import { useSession } from '../lib/session';
+import { ThemeToggle } from './ThemeToggle';
 
 const PILL: Record<RequestStatus, string> = {
   in_review: 'bg-panel text-accent',
@@ -48,8 +49,9 @@ export function Page({ children, back, wide = false }: { children: ReactNode; ba
               <div className="md:hidden">{who}</div>
             )}
           </div>
-          <div className="flex items-center gap-5">
+          <div className="flex items-center gap-4 md:gap-5">
             <div className="hidden md:block">{who}</div>
+            <ThemeToggle />
             <button className="link" onClick={() => (logout(), nav('/login'))}>
               Log out
             </button>
@@ -106,7 +108,7 @@ export function PinPad({ onComplete, busy, reset = 0 }: { onComplete: (pin: stri
 export function Sheet({ open, onClose, children }: { open: boolean; onClose: () => void; children: ReactNode }) {
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-40 flex items-end justify-center bg-ink/40 md:items-center" onClick={onClose}>
+    <div className="fixed inset-0 z-40 flex items-end justify-center bg-black/50 md:items-center" onClick={onClose}>
       <div className="w-full max-w-md rounded-t-3xl bg-bg px-5 pb-8 pt-5 shadow-xl md:rounded-3xl md:p-8" onClick={(e) => e.stopPropagation()}>
         <div className="mx-auto mb-4 h-1.5 w-10 rounded-full bg-rule md:hidden" />
         {children}
@@ -131,7 +133,7 @@ export function Toaster() {
   if (!msg) return null;
   return (
     <div className="fixed inset-x-0 bottom-6 z-50 flex justify-center px-4">
-      <div className="rounded-xl bg-ink px-4 py-3 text-sm text-white shadow-lg">{msg}</div>
+      <div className="rounded-xl bg-ink px-4 py-3 text-sm text-bg shadow-lg">{msg}</div>
     </div>
   );
 }

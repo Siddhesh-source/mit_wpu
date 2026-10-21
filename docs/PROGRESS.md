@@ -30,3 +30,4 @@
 - High-priority additions: attachments, no-dues (parallel), SLA reminders + escalation, delegation, batch approve, college ID on chain, impact dashboard, audit log viewer, email outbox with AWS SES ready (`docs/EMAIL_SES.md`). 88 API tests + 8 contract tests.
 - Return / reopen / discuss: selective resubmission, reopen of rejected requests, discussion thread with emails. 93 API tests + 8 contract tests.
 - Prompt 11: open sign-up / log in (student, staff / administrator), profile, live routing, teachers (search, connect, accept), document library with drag and drop, send to anyone (staff or student). 102 API tests + 8 contract tests. Live flow (sign up both sides → connect → accept → drop file → send → sign → sealed) verified headlessly on the production build.
+- Light / dark mode toggle on every screen (saved per device, follows the device until chosen). Checked rendered in both themes.
