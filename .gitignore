@@ -1,0 +1,9 @@
+node_modules/
+dist/
+*.sqlite
+*.sqlite-*
+.env
+apps/api/data/
+apps/api/storage/
+__pycache__/
+*.tsbuildinfo

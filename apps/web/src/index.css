@@ -1,0 +1,16 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  @apply bg-bg text-ink font-sans antialiased;
+}
+
+@layer components {
+  .cta {
+    @apply inline-flex items-center justify-center rounded-xl bg-accent px-8 py-5 text-lg font-semibold text-white shadow-sm transition active:scale-[0.98] disabled:opacity-40;
+  }
+  .link {
+    @apply text-sm text-accent underline-offset-4 hover:underline;
+  }
+}
