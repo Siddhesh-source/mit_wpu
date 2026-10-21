@@ -18,7 +18,7 @@ const NOTE: Record<Decision, (s: TimelineStep) => string> = {
   approved: (s) => `Approved · ${fmtDate(s.signedAt)}`,
   rejected: (s) => `Rejected · ${fmtDate(s.signedAt)}`,
   returned: (s) => `Returned · ${fmtDate(s.signedAt)}`,
-  cancelled: () => 'Not needed',
+  cancelled: () => 'Stopped',
   carried: () => 'Approval carried over',
 };
 

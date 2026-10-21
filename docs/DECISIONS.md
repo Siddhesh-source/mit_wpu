@@ -14,3 +14,5 @@
 12. **Request IDs `PLC-YYYY-NNNN`**, readable for students and approvers.
 13. **Live updates by polling** (`useLive`, 5 s, visible tab only) instead of websockets: zero server changes, good enough for a campus app; swap for SSE later if needed.
 14. **Security's home stays /gate** with a secondary link to /inbox, because Security is both the gate checker and a parallel approver on event permissions.
+15. **One responsive layout, not separate desktop screens**: `Page wide` + Tailwind `md`/`lg` breakpoints. Same CTA per screen on every size.
+16. **Only a 401 from /api/me signs the user out.** Network errors or aborted fetches keep the session (previously any failure cleared the token, which logged people out on flaky networks).

@@ -38,11 +38,11 @@ export default function NewRequest() {
 
   if (!type)
     return (
-      <Page back="/student">
-        <h1 className="mb-4 text-2xl font-bold">What do you need?</h1>
-        <div className="flex flex-col gap-3">
+      <Page back="/student" wide>
+        <h1 className="mb-4 text-2xl font-bold md:mb-8 md:text-3xl">What do you need?</h1>
+        <div className="flex flex-col gap-3 md:grid md:grid-cols-3 md:gap-4">
           {types.map((t) => (
-            <button key={t.code} onClick={() => (setType(t), setValues({}))} className="rounded-2xl border border-rule bg-panel p-5 text-left active:bg-rule">
+            <button key={t.code} onClick={() => (setType(t), setValues({}))} className="rounded-2xl border border-rule bg-panel p-5 text-left hover:border-accent/40 active:bg-rule md:p-8">
               <p className="text-lg font-semibold">{t.name}</p>
               <p className="text-sm text-muted">{BLURB[t.code] ?? ''}</p>
             </button>
@@ -59,7 +59,7 @@ export default function NewRequest() {
       <h1 className="mb-5 text-2xl font-bold">{type.name}</h1>
       <form onSubmit={submit} className="flex flex-1 flex-col">
         <FormFields fields={type.fields} values={values} onChange={setValues} />
-        <div className="mt-auto pt-8">
+        <div className="mt-auto pt-8 md:mt-0">
           <button className="cta w-full" disabled={busy}>
             {busy ? 'Submitting…' : 'Submit for approval'}
           </button>

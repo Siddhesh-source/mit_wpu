@@ -17,7 +17,7 @@ export default function RequestPage() {
   const back = me?.roles.includes('student') ? '/student' : me?.roles.includes('admin') ? '/admin' : '/inbox';
 
   if (error) return <Page back={back}><p className="text-bad">{error}</p></Page>;
-  if (!r) return <Page back={back}>{null}</Page>;
+  if (!r) return <Page back={back} wide>{null}</Page>;
 
   const mine = r.student.id === me?.id;
 
@@ -45,7 +45,7 @@ export default function RequestPage() {
         <h1 className="mb-5 text-2xl font-bold">Edit and resubmit</h1>
         <form onSubmit={resubmit} className="flex flex-1 flex-col">
           <FormFields fields={r.fields} values={editing} onChange={setEditing} />
-          <div className="mt-auto pt-8">
+          <div className="mt-auto pt-8 md:mt-0">
             <button className="cta w-full" disabled={busy}>
               {busy ? 'Sending…' : 'Resubmit for approval'}
             </button>
@@ -55,12 +55,14 @@ export default function RequestPage() {
     );
 
   return (
-    <Page back={back}>
+    <Page back={back} wide>
+      <div className="lg:grid lg:grid-cols-2 lg:items-start lg:gap-12">
+      <div>
       <p className="font-mono text-xs uppercase tracking-wide text-faint">
         {r.typeName} · {r.id}
       </p>
       <div className="mt-1 flex items-start justify-between gap-3">
-        <h1 className="text-2xl font-bold">{r.title}</h1>
+        <h1 className="text-2xl font-bold md:text-3xl">{r.title}</h1>
         <StatusPill status={r.status} />
       </div>
       {!mine && <p className="text-sm text-muted">{r.student.name} · {r.student.title}</p>}
@@ -97,8 +99,12 @@ export default function RequestPage() {
         </p>
       )}
 
-      <h2 className="mb-3 text-sm font-semibold text-muted">Approval chain</h2>
-      <Timeline steps={r.timeline} done={r.status === 'approved'} />
+      </div>
+      <section className="lg:rounded-3xl lg:border lg:border-rule lg:p-6">
+        <h2 className="mb-3 text-sm font-semibold text-muted">Approval chain</h2>
+        <Timeline steps={r.timeline} done={r.status === 'approved'} />
+      </section>
+      </div>
     </Page>
   );
 }

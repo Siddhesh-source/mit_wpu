@@ -1,4 +1,5 @@
 import type { FieldDef } from '@plc/shared';
+import { fmtDay } from '../lib/hooks';
 
 export type FormValues = Record<string, string>;
 
@@ -39,7 +40,7 @@ export function FieldList({ fields, form }: { fields: FieldDef[]; form: Record<s
         .map((f) => (
           <div key={f.key} className={f.type === 'textarea' ? 'col-span-2' : ''}>
             <dt className="text-xs text-faint">{f.label}</dt>
-            <dd className="font-medium">{String(form[f.key])}</dd>
+            <dd className="font-medium">{f.type === 'date' ? fmtDay(String(form[f.key])) : String(form[f.key])}</dd>
           </div>
         ))}
     </dl>

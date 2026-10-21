@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { ROLE_LABEL, type InboxItem } from '@plc/shared';
 import { Page, PinPad, Sheet, Tick, toast } from '../components/ui';
 import { FieldList } from '../components/FormFields';
+import { Timeline } from '../components/Timeline';
 import { api } from '../lib/api';
 import { ago, useLive } from '../lib/hooks';
 import { useSession } from '../lib/session';
@@ -78,9 +79,9 @@ export default function Inbox() {
       </Page>
     );
 
-  // Review: the phone card from deck slide 7
+  // Review: the phone card from deck slide 7; on desktop the request's chain sits beside it
   return (
-    <Page>
+    <Page wide>
       <div className="mb-3 flex items-center justify-between text-sm">
         <button className="link" onClick={() => setReviewing(false)}>
           ← Inbox
@@ -88,7 +89,8 @@ export default function Inbox() {
         <span className="text-muted">{count} pending</span>
       </div>
 
-      <article className="rounded-3xl border-2 border-ink p-5">
+      <div className="lg:grid lg:grid-cols-[1fr_1fr] lg:items-start lg:gap-12">
+      <article className="rounded-3xl border-2 border-ink p-5 md:p-7">
         <p className="font-mono text-xs uppercase tracking-wide text-accent">{item.typeName}</p>
         <h1 className="mt-1 text-2xl font-bold">{item.title}</h1>
         <p className="text-sm text-muted">
@@ -115,6 +117,11 @@ export default function Inbox() {
           Reject
         </button>
       </article>
+      <section className="hidden lg:block lg:rounded-3xl lg:border lg:border-rule lg:p-6">
+        <h2 className="mb-3 text-sm font-semibold text-muted">Approval chain</h2>
+        <Timeline steps={item.timeline} />
+      </section>
+      </div>
 
       <Sheet open={!!choice} onClose={() => !busy && (setChoice(null), setComment(''))}>
         <h2 className="text-lg font-bold">

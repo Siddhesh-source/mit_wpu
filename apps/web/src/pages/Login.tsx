@@ -55,16 +55,16 @@ export default function Login() {
   }
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-md flex-col px-4 py-10">
-      <header className="mb-8 text-center">
-        <h1 className="text-3xl font-bold">PaperLess Campus</h1>
-        <p className="mt-2 text-muted">No queues. No paper. No forged signatures.</p>
+    <main className="mx-auto flex min-h-screen max-w-md flex-col px-4 py-10 md:max-w-3xl md:justify-center md:py-16">
+      <header className="mb-8 text-center md:mb-12">
+        <h1 className="text-3xl font-bold md:text-5xl">PaperLess Campus</h1>
+        <p className="mt-2 text-muted md:text-lg">No queues. No paper. No forged signatures.</p>
       </header>
 
       {!picked ? (
         <>
           <p className="mb-3 text-sm text-muted">Who's signing in?</p>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-4">
             {ordered.map((p) => (
               <button
                 key={p.id}

@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
 import type { Me } from '@plc/shared';
-import { api, auth } from './api';
+import { api, ApiError, auth } from './api';
 
 interface Session {
   me: Me | null;
@@ -20,7 +20,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     if (!auth.token) return;
     api<Me>('/api/me')
       .then(setMe)
-      .catch(() => auth.set(null))
+      // Sign out only when the server says the session is invalid, not on a network blip or aborted fetch.
+      .catch((e) => e instanceof ApiError && e.status === 401 && auth.set(null))
       .finally(() => setLoading(false));
   }, []);
 

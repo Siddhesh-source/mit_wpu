@@ -17,12 +17,21 @@ export const auth = {
   },
 };
 
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    public status: number,
+  ) {
+    super(message);
+  }
+}
+
 export async function api<T>(path: string, init: RequestInit & { json?: unknown } = {}): Promise<T> {
   const headers: Record<string, string> = { ...(init.headers as Record<string, string>) };
   if (auth.token) headers.Authorization = `Bearer ${auth.token}`;
   if (init.json !== undefined) headers['Content-Type'] = 'application/json';
   const res = await fetch(path, { ...init, headers, body: init.json !== undefined ? JSON.stringify(init.json) : init.body });
   const body = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(body.error || `Request failed (${res.status})`);
+  if (!res.ok) throw new ApiError(body.error || `Request failed (${res.status})`, res.status);
   return body as T;
 }

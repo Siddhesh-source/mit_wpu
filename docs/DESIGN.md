@@ -20,7 +20,7 @@ Motifs: horizontal step track with hollow accent rings and a filled green tick a
 
 ## Rule: one central CTA per screen
 
-Mobile-first, `max-w-md` column, big tap targets, no nested menus, no modals except a bottom confirm sheet. Shared classes: `.cta` (primary button), `.link`.
+Mobile-first and responsive. `Page` takes `wide`: phone = one `max-w-md` column; desktop (`md`+) = header bar (product name, person, Switch profile) and either a `max-w-xl` column (forms, single-CTA screens) or a `max-w-5xl` two-column layout (student home: CTA panel | my requests; request page and approver review: details/card | approval chain at `lg`+). Type picker is 3 across; the PIN sheet becomes a centred dialog. Otherwise: big tap targets, no nested menus, no modals except a bottom confirm sheet. Shared classes: `.cta` (primary button), `.link`.
 
 | Screen | Route | Central CTA | File |
 | --- | --- | --- | --- |

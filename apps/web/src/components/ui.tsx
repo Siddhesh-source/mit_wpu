@@ -14,29 +14,48 @@ export function StatusPill({ status }: { status: RequestStatus }) {
   return <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${PILL[status]}`}>{STATUS_LABEL[status]}</span>;
 }
 
-/** Page frame: name + role on the left, back or switch-profile on the right. */
-export function Page({ children, back }: { children: ReactNode; back?: string }) {
+/**
+ * Page frame. Phone: one column with name/back on the left and Switch profile on the right.
+ * Desktop: a header bar with the product name, the signed-in person and Switch profile; content is
+ * `narrow` (forms, single CTA) or `wide` (two-column layouts).
+ */
+export function Page({ children, back, wide = false }: { children: ReactNode; back?: string; wide?: boolean }) {
   const { me, logout } = useSession();
   const nav = useNavigate();
+  const who = (
+    <div className="md:text-right">
+      <p className="font-semibold">{me?.name}</p>
+      <p className="text-xs text-muted">{me?.roles.map((r) => ROLE_LABEL[r]).join(' · ')}</p>
+    </div>
+  );
   return (
-    <main className="mx-auto flex min-h-screen max-w-md flex-col px-4 pb-10 pt-5">
-      <header className="mb-4 flex items-center justify-between">
-        {back ? (
-          <Link to={back} className="link -ml-1 text-base">
-            ← Back
-          </Link>
-        ) : (
-          <div>
-            <p className="font-semibold">{me?.name}</p>
-            <p className="text-xs text-muted">{me?.roles.map((r) => ROLE_LABEL[r]).join(' · ')}</p>
+    <div className="flex min-h-screen flex-col">
+      <header className="md:border-b md:border-rule">
+        <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-4 pt-5 md:px-8 md:py-4">
+          <div className="flex items-center gap-6">
+            <Link to="/" className="hidden text-lg font-bold md:block">
+              PaperLess Campus
+            </Link>
+            {back ? (
+              <Link to={back} className="link -ml-1 text-base">
+                ← Back
+              </Link>
+            ) : (
+              <div className="md:hidden">{who}</div>
+            )}
           </div>
-        )}
-        <button className="link" onClick={() => (logout(), nav('/login'))}>
-          Switch profile
-        </button>
+          <div className="flex items-center gap-5">
+            <div className="hidden md:block">{who}</div>
+            <button className="link" onClick={() => (logout(), nav('/login'))}>
+              Switch profile
+            </button>
+          </div>
+        </div>
       </header>
-      {children}
-    </main>
+      <main className={`mx-auto flex w-full flex-1 flex-col px-4 pb-10 pt-5 md:px-8 md:pt-10 ${wide ? 'max-w-5xl' : 'max-w-md md:max-w-xl'}`}>
+        {children}
+      </main>
+    </div>
   );
 }
 
@@ -83,9 +102,9 @@ export function PinPad({ onComplete, busy, reset = 0 }: { onComplete: (pin: stri
 export function Sheet({ open, onClose, children }: { open: boolean; onClose: () => void; children: ReactNode }) {
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-40 flex items-end justify-center bg-ink/40" onClick={onClose}>
-      <div className="w-full max-w-md rounded-t-3xl bg-bg px-5 pb-8 pt-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
-        <div className="mx-auto mb-4 h-1.5 w-10 rounded-full bg-rule" />
+    <div className="fixed inset-0 z-40 flex items-end justify-center bg-ink/40 md:items-center" onClick={onClose}>
+      <div className="w-full max-w-md rounded-t-3xl bg-bg px-5 pb-8 pt-5 shadow-xl md:rounded-3xl md:p-8" onClick={(e) => e.stopPropagation()}>
+        <div className="mx-auto mb-4 h-1.5 w-10 rounded-full bg-rule md:hidden" />
         {children}
       </div>
     </div>
