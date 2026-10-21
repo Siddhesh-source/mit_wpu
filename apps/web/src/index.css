@@ -73,6 +73,16 @@ select {
   color: rgb(var(--faint));
 }
 
+/* Keyboard focus is always visible (the reset removes outlines; this puts one back for keyboard users only). */
+:focus-visible {
+  outline: 2px solid rgb(var(--accent));
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+::selection {
+  background: rgb(var(--accent) / 0.2);
+}
+
 @layer components {
   .cta {
     @apply inline-flex items-center justify-center rounded-xl bg-accent px-8 py-5 text-lg font-semibold text-white shadow-sm transition active:scale-[0.98] disabled:opacity-40;
