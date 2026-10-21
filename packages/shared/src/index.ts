@@ -38,7 +38,7 @@ export function homeFor(roles: Role[]): string {
 
 // ---------- requests ----------
 
-export type RequestStatus = 'in_review' | 'approved' | 'rejected' | 'returned' | 'sealing' | 'sealed';
+export type RequestStatus = 'in_review' | 'approved' | 'rejected' | 'returned' | 'sealing' | 'sealed' | 'amending';
 export type Decision = 'waiting' | 'pending' | 'approved' | 'rejected' | 'returned' | 'cancelled' | 'carried';
 
 export const STATUS_LABEL: Record<RequestStatus, string> = {
@@ -48,6 +48,7 @@ export const STATUS_LABEL: Record<RequestStatus, string> = {
   returned: 'Returned',
   sealing: 'Sealing',
   sealed: 'Sealed',
+  amending: 'Amending',
 };
 
 export interface FieldDef {
@@ -61,7 +62,8 @@ export interface RequestType {
   code: string;
   name: string;
   fields: FieldDef[];
-  chain: { stepNo: number; role: Role }[];
+  /** affectedBy = fields whose change sends this step back for re-approval on amendment. */
+  chain: { stepNo: number; role: Role; affectedBy: string[] }[];
 }
 
 export interface TimelineStep {
@@ -75,6 +77,8 @@ export interface TimelineStep {
   openedAt: string | null;
   signedAt: string | null;
   version: number;
+  /** For carried approvals: the version that was actually signed. */
+  carriedFromVersion: number | null;
 }
 
 export interface RequestSummary {
@@ -131,8 +135,10 @@ export interface RequestDetail extends RequestSummary {
   form: Record<string, string | number>;
   fields: FieldDef[];
   timeline: TimelineStep[];
-  lastComment: { role: Role; decision: Decision; comment: string } | null;
+  lastComment: { role: Role; decision: Decision; comment: string; version: number } | null;
   seal: SealInfo | null;
+  /** Present when the current version amends an earlier one. */
+  amendment: { fromVersion: number; reason: string; previous: Record<string, string | number>; changed: string[] } | null;
 }
 
 export interface InboxItem extends RequestDetail {

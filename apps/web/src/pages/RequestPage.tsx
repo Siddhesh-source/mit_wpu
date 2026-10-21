@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react';
-import { useParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import { ROLE_LABEL, type RequestDetail } from '@plc/shared';
 import { Page, StatusPill, Tick, toast } from '../components/ui';
 import { Timeline } from '../components/Timeline';
@@ -21,6 +21,9 @@ export default function RequestPage() {
 
   const mine = r.student.id === me?.id;
   const finished = r.status === 'approved' || r.status === 'sealing' || r.status === 'sealed';
+  const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+  const canAmend = mine && r.status === 'sealed' && !(r.type === 'event_permission' && String(r.form.date) < today);
+  const amendReturned = r.status === 'sealed' && r.lastComment && r.lastComment.version > r.version && r.lastComment.decision !== 'approved' ? r.lastComment : null;
   const getPdf = () => download(`/api/requests/${r.id}/pdf`, `${r.id}-v${r.seal?.version ?? 1}.pdf`).catch((e) => toast(e.message));
 
   async function resubmit(e: FormEvent) {
@@ -69,8 +72,24 @@ export default function RequestPage() {
       </div>
       {!mine && <p className="text-sm text-muted">{r.student.name} · {r.student.title}</p>}
 
+      {r.status === 'amending' && r.amendment && (
+        <p className="mt-4 rounded-2xl bg-warn-bg p-4 text-sm">
+          <span className="font-semibold text-warn">Amendment v{r.version} in review</span> · {r.amendment.reason}
+          <br />
+          <span className="text-muted">v{r.amendment.fromVersion} stays valid until v{r.version} is sealed. Only the approvers affected by the change sign again.</span>
+        </p>
+      )}
+      {amendReturned && (
+        <p className="mt-4 rounded-2xl bg-warn-bg p-4 text-sm">
+          <span className="font-semibold text-warn">
+            Your amendment (v{amendReturned.version}) was {amendReturned.decision} by {ROLE_LABEL[amendReturned.role]}:
+          </span>{' '}
+          “{amendReturned.comment}” <span className="text-muted">v{r.version} is still valid.</span>
+        </p>
+      )}
+
       <div className="my-5 rounded-2xl bg-panel p-4">
-        <FieldList fields={r.fields} form={r.form} />
+        <FieldList fields={r.fields} form={r.form} previous={r.status === 'amending' ? r.amendment?.previous : undefined} />
       </div>
 
       {mine && r.status === 'returned' && (
@@ -86,12 +105,19 @@ export default function RequestPage() {
         </section>
       )}
 
-      {finished && (
+      {(finished || r.seal) && (
         <section className="mb-6 flex flex-col items-center gap-3">
           {mine ? (
-            <button className="cta w-full" disabled={!r.seal} onClick={getPdf}>
-              {r.seal ? 'Download PDF' : 'Preparing PDF…'}
-            </button>
+            <>
+              <button className="cta w-full" disabled={!r.seal} onClick={getPdf}>
+                {r.seal ? (r.status === 'amending' ? `Download v${r.seal.version} PDF (still valid)` : 'Download PDF') : 'Preparing PDF…'}
+              </button>
+              {canAmend && (
+                <Link to={`/requests/${r.id}/amend`} className="w-full rounded-xl border-2 border-ink py-4 text-center text-lg font-semibold active:scale-[0.98]">
+                  Amend
+                </Link>
+              )}
+            </>
           ) : (
             r.seal && (
               <button className="link text-base" onClick={getPdf}>
@@ -126,6 +152,7 @@ export default function RequestPage() {
       </div>
       <section className="lg:rounded-3xl lg:border lg:border-rule lg:p-6">
         <h2 className="mb-3 text-sm font-semibold text-muted">Approval chain</h2>
+        {r.version > 1 && <p className="mb-3 text-xs text-faint">Showing v{r.version}. Carried approvals were signed on an earlier version and still apply.</p>}
         <Timeline steps={r.timeline} done={finished && (r.status === 'sealed' ? 'sealed' : 'approved')} />
       </section>
       </div>

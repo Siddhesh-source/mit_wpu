@@ -28,6 +28,7 @@ Mobile-first and responsive. `Page` takes `wide`: phone = one `max-w-md` column;
 | Student home | /student | New request (+ my requests list with "With: role (since)") | `pages/StudentHome.tsx` |
 | New request | /student/new | Type tile → form → Submit for approval | `pages/NewRequest.tsx` |
 | Request page | /requests/:id | Returned: Edit and resubmit · Approved: Download PDF (enabled in prompt 4) | `pages/RequestPage.tsx` |
+| Amend | /requests/:id/amend | Prefilled form, changed fields tagged, reason, live "Goes back to: … · Kept: …" preview → Send amendment | `pages/AmendPage.tsx` |
 | Approver inbox | /inbox | Review next (n) → phone card: Approve / Return / Reject → sheet with comment + PIN; auto-advances; "All clear" at zero | `pages/Inbox.tsx` |
 | Gate | /gate | Scan pass (prompt 9); secondary link to inbox, since Security is also an approver | `pages/Home.tsx` |
 | Admin | /admin | All requests (prompt 10) | `pages/Home.tsx` |
@@ -57,3 +58,11 @@ Mobile-first and responsive. `Page` takes `wide`: phone = one `max-w-md` column;
 | QR signature fine, server unreachable | Signature valid (never "Verified") | amber |
 
 Camera note: browsers allow live camera only on https or localhost. On plain http over LAN, use the phone camera app (opens the link) or "Scan from photo" (jsQR on an image). The QR reader is `components/QrScanner.tsx` (jsQR, no other dependency).
+
+## Amendment UI
+
+- Sealed request (student): Download PDF (primary) + **Amend** (outlined), hidden once the event date has passed.
+- Amending: amber banner "Amendment vN in review · reason; v(N-1) stays valid", the field list shows old values struck through and new ones in bold, Download v(N-1) PDF stays available.
+- Returned amendment: amber banner with the approver's comment; the earlier version is still valid.
+- Approver card: amber "Amendment to vN: reason" + the same struck-through diff.
+- Timeline: carried approvals show an outlined green tick and "Carried from vN".

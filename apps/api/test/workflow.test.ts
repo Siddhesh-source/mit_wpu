@@ -9,12 +9,15 @@ describe('catalogue', () => {
     const { as } = await setup();
     const types = (await as('u_riya').get('/api/request-types')).body;
     expect(types.map((t: any) => t.code)).toEqual(['event_permission', 'on_duty', 'bonafide']);
-    expect(types[0].chain).toEqual([
+    expect(types[0].chain.map(({ stepNo, role }: any) => ({ stepNo, role }))).toEqual([
       { stepNo: 1, role: 'faculty_coordinator' },
       { stepNo: 2, role: 'hod' },
       { stepNo: 2, role: 'security' },
       { stepNo: 3, role: 'dean_sa' },
     ]);
+    // Date or venue changes go back to the coordinator and HoD only
+    const byDate = types[0].chain.filter((s: any) => s.affectedBy.includes('date') || s.affectedBy.includes('venue')).map((s: any) => s.role);
+    expect(byDate).toEqual(['faculty_coordinator', 'hod']);
   });
 });
 
@@ -76,7 +79,7 @@ describe("Riya's event permission", () => {
     expect((await act('u_kulkarni', id, 'rejected', { comment: 'Clashes with exams' })).status).toBe(200);
     const d = (await as('u_riya').get(`/api/requests/${id}`)).body;
     expect(d.status).toBe('rejected');
-    expect(d.lastComment).toEqual({ role: 'hod', decision: 'rejected', comment: 'Clashes with exams' });
+    expect(d.lastComment).toEqual({ role: 'hod', decision: 'rejected', comment: 'Clashes with exams', version: 1 });
     expect((await as('u_pawar').get('/api/inbox')).body).toHaveLength(0);
     expect(pendingRoles(d)).toEqual([]);
   });

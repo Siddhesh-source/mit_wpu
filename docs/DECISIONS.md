@@ -28,3 +28,7 @@
 26. **Verify page never says "Verified" without a live Active status**; an offline QR check with a good signature reads "Signature valid".
 27. **Public verify endpoints rate limited** in memory: 60 per IP per minute (`apps/api/src/ratelimit.ts`).
 28. **Issuer public key cached in localStorage** by the verify page so signature checks keep working offline (used again by the gate in prompt 9).
+29. **Amendment = same request, version n+1, new round.** `createRound` is reused with only the affected steps; unaffected roles get `carried` rows that always point at the originally signed approval (follows chains of carries).
+30. **`purpose` sends the amendment to the faculty coordinator**, so every field change reaches at least one approver and nothing gets re-sealed without a signature.
+31. **A returned or rejected amendment ends only the amendment** and restores `current_version` and round to the sealed version; the abandoned round stays in the history.
+32. **v2 is sealed through the same pipeline with `prevHash` = v1**, so the on-chain link and v1 → Superseded happen in prompt 6 already; prompt 7 adds history and UI on top.

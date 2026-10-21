@@ -96,8 +96,13 @@ export default function Inbox() {
         <p className="text-sm text-muted">
           {item.student.name} · {item.student.title}
         </p>
+        {item.amendment && (
+          <p className="mt-3 rounded-xl bg-warn-bg px-3 py-2 text-sm">
+            <span className="font-semibold text-warn">Amendment to v{item.amendment.fromVersion}:</span> {item.amendment.reason}
+          </p>
+        )}
         <div className="my-4 rounded-2xl bg-panel p-4">
-          <FieldList fields={item.fields} form={item.form} />
+          <FieldList fields={item.fields} form={item.form} previous={item.amendment?.previous} />
         </div>
         <p className="mb-4 text-xs text-faint">
           You sign as {ROLE_LABEL[item.myRole]} ·{' '}

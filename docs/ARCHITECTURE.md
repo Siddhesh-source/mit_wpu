@@ -61,6 +61,7 @@ Approve/Return/Reject require the approver's PIN. The server signs canonical JSO
 | GET | /api/requests/mine | Student |
 | GET | /api/requests/:id (detail + timeline + lastComment) | Owner, anyone on the chain, admin |
 | POST | /api/requests/:id/resubmit `{form}` | Owner, when returned |
+| POST | /api/requests/:id/amend `{changes, reason}` | Owner, when sealed (see `docs/CONTEXT.md` amendment table) |
 | GET | /api/inbox (pending for me, oldest first, full detail + approvalId, myRole) | Approvers |
 | POST | /api/approvals/:id/decide `{decision, comment, pin}` | Assignee (last approval triggers sealing) |
 | GET | /api/requests/:id/pdf `?v=n` | Owner, anyone on the chain, admin |
@@ -75,4 +76,4 @@ API tests start one Hardhat node (`test/global-setup.ts`, port 8621); each `setu
 
 ## Request state machine
 
-in_review → approved | rejected | returned; returned → (resubmit) in_review; approved → sealing (PDF built, anchor pending) → sealed (on chain). Later: superseded | revoked (prompts 7, 8). There is no draft state: a request is created on submit. `GET /api/requests/:id` includes `seal` (latest version's hash, anchor state, tx, validity).
+in_review → approved | rejected | returned; returned → (resubmit) in_review; approved → sealing (PDF built, anchor pending) → sealed (on chain); sealed → (amend) amending → approved → sealing → sealed as v(n+1), or amending → (return/reject) sealed at v(n). Later: superseded | revoked (prompts 7, 8). There is no draft state: a request is created on submit. `GET /api/requests/:id` includes `seal` (latest version's hash, anchor state, tx, validity).

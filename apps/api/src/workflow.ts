@@ -63,7 +63,7 @@ export function listTypes(db: DB) {
   const codes = db.prepare('SELECT code FROM request_types ORDER BY rowid').pluck().all() as string[];
   return codes.map((c) => {
     const t = getType(db, c);
-    return { code: t.code, name: t.name, fields: t.fields, chain: t.steps.map(({ stepNo, role }) => ({ stepNo, role })) };
+    return { code: t.code, name: t.name, fields: t.fields, chain: t.steps };
   });
 }
 
@@ -200,6 +200,14 @@ export async function decide(db: DB, userId: string, approvalId: number, decisio
     if (decision !== 'approved') {
       // Reject ends the request; return sends it back to the student. Either way the rest of the round is cancelled.
       db.prepare(`UPDATE approvals SET decision = 'cancelled' WHERE ${round} AND decision IN ('pending', 'waiting')`).run(a.request_id, a.round);
+      const status = db.prepare('SELECT status FROM requests WHERE id = ?').pluck().get(a.request_id);
+      if (status === 'amending') {
+        // Only the amendment ends: the previous version stays sealed and valid.
+        const prevRound = db.prepare('SELECT MAX(round) FROM approvals WHERE request_id = ? AND version = ?').pluck().get(a.request_id, a.version - 1);
+        db.prepare("UPDATE requests SET status = 'sealed', current_version = ?, round = ?, updated_at = ? WHERE id = ?").run(a.version - 1, prevRound, signedAt, a.request_id);
+        audit(db, a.request_id, userId, `amendment_${decision}`, a.version, { role: a.role, comment: note });
+        return false;
+      }
       db.prepare('UPDATE requests SET status = ?, updated_at = ? WHERE id = ?').run(decision, signedAt, a.request_id);
       return false;
     }
@@ -214,6 +222,59 @@ export async function decide(db: DB, userId: string, approvalId: number, decisio
     db.prepare("UPDATE requests SET status = 'approved', updated_at = ? WHERE id = ?").run(signedAt, a.request_id);
     audit(db, a.request_id, null, 'fully_approved', a.version);
     return true;
+  })();
+}
+
+/**
+ * Amend a sealed approval instead of starting a new request. Creates version n+1; only the roles whose
+ * `affectedBy` fields changed re-approve (in chain order, parallel rules kept); every other role gets a
+ * "carried" row pointing at the approval it carries, so history shows who approved which version.
+ * Version n stays sealed and valid until n+1 is sealed.
+ */
+export function amendRequest(db: DB, studentId: string, requestId: string, changes: unknown, reason: unknown) {
+  const req = getRow(db, requestId);
+  if (req.student_id !== studentId) throw new HttpError(403, 'Not your request');
+  if (req.status !== 'sealed') throw new HttpError(409, req.status === 'amending' ? 'An amendment is already in review' : 'Only a sealed approval can be amended');
+  if (typeof reason !== 'string' || !reason.trim()) throw new HttpError(400, 'Say briefly why it changed');
+  if (!changes || typeof changes !== 'object') throw new HttpError(400, 'Nothing changed');
+  const type = getType(db, req.type);
+  const known = new Set(type.fields.map((f) => f.key));
+  for (const k of Object.keys(changes)) if (!known.has(k)) throw new HttpError(400, `${k} cannot be amended`);
+
+  const before = JSON.parse(db.prepare('SELECT form_json FROM request_versions WHERE request_id = ? AND version = ?').pluck().get(req.id, req.current_version) as string) as Form;
+  const after = cleanForm(type.fields, { ...before, ...(changes as object) });
+  const changed = type.fields.map((f) => f.key).filter((k) => String(after[k] ?? '') !== String(before[k] ?? ''));
+  if (!changed.length) throw new HttpError(400, 'Nothing changed');
+  const affected = type.steps.filter((s) => s.affectedBy.some((f) => changed.includes(f)));
+  if (!affected.length) throw new HttpError(400, 'This change does not need an amendment');
+  const kept = type.steps.filter((s) => !affected.includes(s));
+
+  const version = req.current_version + 1;
+  const round = (db.prepare('SELECT MAX(round) FROM approvals WHERE request_id = ?').pluck().get(req.id) as number) + 1;
+  db.transaction(() => {
+    const t = now();
+    db.prepare('INSERT OR REPLACE INTO request_versions (request_id, version, form_json, form_hash, reason, created_at) VALUES (?, ?, ?, ?, ?, ?)').run(
+      req.id, version, JSON.stringify(after), formHash(after), reason.trim().slice(0, 500), t,
+    );
+    db.prepare("UPDATE requests SET status = 'amending', current_version = ?, round = ?, updated_at = ? WHERE id = ?").run(version, round, t, req.id);
+    createRound(db, { ...req, current_version: version, round }, affected);
+    const prevRound = db.prepare('SELECT MAX(round) FROM approvals WHERE request_id = ? AND version = ?').pluck().get(req.id, req.current_version);
+    const carry = db.prepare(
+      "INSERT INTO approvals (request_id, version, round, step_no, role, assignee_id, decision, carried_from) VALUES (?, ?, ?, ?, ?, ?, 'carried', ?)",
+    );
+    for (const s of kept) {
+      const src = db
+        .prepare("SELECT id, assignee_id, decision, carried_from FROM approvals WHERE request_id = ? AND version = ? AND round = ? AND role = ? AND decision IN ('approved', 'carried')")
+        .get(req.id, req.current_version, prevRound, s.role) as { id: number; assignee_id: string; decision: string; carried_from: number | null };
+      // Always point at the approval that was actually signed, even across several amendments.
+      carry.run(req.id, version, round, s.stepNo, s.role, src.assignee_id, src.decision === 'carried' ? src.carried_from : src.id);
+    }
+    audit(db, req.id, studentId, 'amendment_requested', version, {
+      changed,
+      reapprove: affected.map((s) => s.role),
+      carried: kept.map((s) => s.role),
+      reason: reason.trim(),
+    });
   })();
 }
 
@@ -259,8 +320,12 @@ function summarize(db: DB, r: RequestRow): RequestSummary {
 export function getDetail(db: DB, id: string): RequestDetail {
   const r = getRow(db, id);
   const rows = db
-    .prepare('SELECT a.*, u.name AS assignee_name FROM approvals a JOIN users u ON u.id = a.assignee_id WHERE a.request_id = ? AND a.round = ? ORDER BY a.step_no, a.id')
-    .all(r.id, r.round) as (ApprovalRow & { assignee_name: string })[];
+    .prepare(
+      `SELECT a.*, u.name AS assignee_name, src.version AS src_version
+         FROM approvals a JOIN users u ON u.id = a.assignee_id LEFT JOIN approvals src ON src.id = a.carried_from
+        WHERE a.request_id = ? AND a.round = ? ORDER BY a.step_no, a.id`,
+    )
+    .all(r.id, r.round) as (ApprovalRow & { assignee_name: string; src_version: number | null })[];
   const timeline: TimelineStep[] = rows.map((a) => ({
     approvalId: a.id,
     stepNo: a.step_no,
@@ -272,17 +337,33 @@ export function getDetail(db: DB, id: string): RequestDetail {
     openedAt: a.opened_at,
     signedAt: a.signed_at,
     version: a.version,
+    carriedFromVersion: a.src_version,
   }));
   const last = db
-    .prepare("SELECT role, decision, comment FROM approvals WHERE request_id = ? AND comment IS NOT NULL ORDER BY signed_at DESC, id DESC LIMIT 1")
+    .prepare("SELECT role, decision, comment, version FROM approvals WHERE request_id = ? AND comment IS NOT NULL ORDER BY signed_at DESC, id DESC LIMIT 1")
     .get(r.id) as RequestDetail['lastComment'] | undefined;
+  const versionRow = (v: number) => db.prepare('SELECT form_json, reason FROM request_versions WHERE request_id = ? AND version = ?').get(r.id, v) as { form_json: string; reason: string | null };
+  const cur = versionRow(r.current_version);
+  const form = JSON.parse(cur.form_json) as Form;
+  const fields = getType(db, r.type).fields;
+  let amendment: RequestDetail['amendment'] = null;
+  if (r.current_version > 1) {
+    const previous = JSON.parse(versionRow(r.current_version - 1).form_json) as Form;
+    amendment = {
+      fromVersion: r.current_version - 1,
+      reason: cur.reason ?? '',
+      previous,
+      changed: fields.map((f) => f.key).filter((k) => String(form[k] ?? '') !== String(previous[k] ?? '')),
+    };
+  }
   return {
     ...summarize(db, r),
-    form: JSON.parse(db.prepare('SELECT form_json FROM request_versions WHERE request_id = ? AND version = ?').pluck().get(r.id, r.current_version) as string),
-    fields: getType(db, r.type).fields,
+    form,
+    fields,
     timeline,
     lastComment: last ?? null,
     seal: null,
+    amendment,
   };
 }
 

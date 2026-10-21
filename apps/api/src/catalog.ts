@@ -18,7 +18,7 @@ export const CATALOG: {
       { key: 'purpose', label: 'Purpose', type: 'textarea', required: false },
     ],
     steps: [
-      { stepNo: 1, role: 'faculty_coordinator', affectedBy: ['title', 'date', 'venue', 'headcount'] },
+      { stepNo: 1, role: 'faculty_coordinator', affectedBy: ['title', 'date', 'venue', 'headcount', 'purpose'] },
       { stepNo: 2, role: 'hod', affectedBy: ['title', 'date', 'venue', 'headcount'] },
       { stepNo: 2, role: 'security', affectedBy: ['headcount'] },
       { stepNo: 3, role: 'dean_sa', affectedBy: ['title', 'headcount'] },
@@ -33,7 +33,7 @@ export const CATALOG: {
       { key: 'purpose', label: 'Details', type: 'textarea', required: false },
     ],
     steps: [
-      { stepNo: 1, role: 'faculty_coordinator', affectedBy: ['title', 'date'] },
+      { stepNo: 1, role: 'faculty_coordinator', affectedBy: ['title', 'date', 'purpose'] },
       { stepNo: 2, role: 'hod', affectedBy: ['title', 'date'] },
     ],
   },

@@ -35,6 +35,19 @@ submit → route by role → sign → seal → verify
 
 Event permission fields: title, date, venue, headcount, purpose. Demo request: Robotics fest, Hall B, 5 Nov, 120 students.
 
+## Amendment: who signs again (`affectedBy` in `apps/api/src/catalog.ts`)
+
+| Role (event permission) | Re-approves when these change |
+| --- | --- |
+| Faculty coordinator | title, date, venue, headcount, purpose |
+| HoD | title, date, venue, headcount |
+| Security | headcount |
+| Dean SA | title, headcount |
+
+So a **date or venue change goes back to Faculty coordinator + HoD only; Security and Dean SA are carried**. Headcount brings everyone back; purpose only the coordinator. Every other role gets a `carried` approval row pointing at the approval that was actually signed (`carried_from`), so history shows who approved which version.
+
+Amendment rules: student owner only; request must be `sealed`; reason required; only catalogue fields; a no-op is refused. Request becomes `amending` with version n+1 and a new round; v(n) stays sealed and valid. A return or reject during amendment ends only the amendment (status back to `sealed`, `current_version` back to n; the comment shows on the request). When the affected approvers finish, v(n+1) is sealed with `prevHash` = v(n), which the contract marks Superseded.
+
 ## On chain vs off chain
 
 - **On chain:** document hash, request ID, type, version, previous-version hash, signer-roles hash, timestamps, validity window, status (Active / Superseded / Revoked). Never personal data.

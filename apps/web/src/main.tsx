@@ -9,6 +9,7 @@ import Verify from './pages/Verify';
 import StudentHome from './pages/StudentHome';
 import NewRequest from './pages/NewRequest';
 import RequestPage from './pages/RequestPage';
+import AmendPage from './pages/AmendPage';
 import Inbox from './pages/Inbox';
 import { Toaster } from './components/ui';
 import './index.css';
@@ -38,6 +39,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
           <Route path="/student" element={<Guard roles={['student']}><StudentHome /></Guard>} />
           <Route path="/student/new" element={<Guard roles={['student']}><NewRequest /></Guard>} />
           <Route path="/requests/:id" element={<Guard roles={['student', 'faculty_coordinator', 'hod', 'dean_sa', 'security', 'admin']}><RequestPage /></Guard>} />
+ <Route path="/requests/:id/amend" element={<Guard roles={['student']}><AmendPage /></Guard>} />
           <Route path="/inbox" element={<Guard roles={['faculty_coordinator', 'hod', 'dean_sa', 'security']}><Inbox /></Guard>} />
           <Route path="/gate" element={<Guard roles={['security']}><Home cta="Scan pass" hint="Checks the QR on the spot, even offline." secondary={{ to: '/inbox', label: 'Approvals waiting for me' }} /></Guard>} />
           <Route path="/admin" element={<Guard roles={['admin']}><Home cta="All requests" hint="Every request and its status." /></Guard>} />

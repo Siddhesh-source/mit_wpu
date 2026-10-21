@@ -2,7 +2,7 @@ import { Router, type NextFunction, type Request, type Response } from 'express'
 import type { DB } from './db.js';
 import { requireAuth, requireRole } from './auth.js';
 import { HttpError } from './errors.js';
-import { canView, decide, getDetail, inbox, listMine, listTypes, resubmitRequest, submitRequest } from './workflow.js';
+import { amendRequest, canView, decide, getDetail, inbox, listMine, listTypes, resubmitRequest, submitRequest } from './workflow.js';
 import { issuerKey } from './keys.js';
 import { rateLimit } from './ratelimit.js';
 import { pdfPath, sealInfo, sealRequest, verifyHash, verifyRef, type Services } from './seal.js';
@@ -48,6 +48,11 @@ export function workflowRoutes(db: DB, svc: Services) {
 
   r.post('/requests/:id/resubmit', requireAuth, requireRole('student'), wrap((req, res) => {
     resubmitRequest(db, req.user!.sub, req.params.id, req.body?.form);
+    res.json(detail(req.params.id));
+  }));
+
+  r.post('/requests/:id/amend', requireAuth, requireRole('student'), wrap((req, res) => {
+    amendRequest(db, req.user!.sub, req.params.id, req.body?.changes, req.body?.reason);
     res.json(detail(req.params.id));
   }));
 

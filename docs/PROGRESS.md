@@ -7,7 +7,7 @@
 | 3 | Core workflow UI | Done | 2026-10-21 |
 | 4 | Seal: PDF, SHA-256, chain, signed QR | Done | 2026-10-21 |
 | 5 | Verify page | Done | 2026-10-21 |
-| 6 | Twist: amendment | Todo | |
+| 6 | Twist: amendment | Done | 2026-10-21 |
 | 7 | Twist: versioned sealing | Todo | |
 | 8 | Twist: revocation | Todo | |
 | 9 | Twist: offline gate check | Todo | |
@@ -21,3 +21,4 @@
 - After prompt 3: desktop layout (two-column request/review, 3-across picker, centred PIN dialog), readable dates, "Stopped" for cancelled steps, sign-out-on-network-error fix. Verified with Playwright screenshots at 390px and 1440px.
 - Prompt 4: DocumentRegistry (8 contract tests), sealing pipeline, PDF with signed QR (decodes from the rendered page), queue-and-retry, chain-restart replay, per-DB contract. 29 API tests. UI: Download PDF + "Sealed on chain" badge.
 - Prompt 5: verify page (scan / upload / photo / link), rate-limited verify API; 31 API tests.
+- Prompt 6: amend endpoint with selective re-approval and carried approvals, return-during-amendment, v2 sealed and linked on chain; amend UI + diffs. 39 API tests.

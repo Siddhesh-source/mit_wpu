@@ -10,6 +10,7 @@ const PILL: Record<RequestStatus, string> = {
   returned: 'bg-warn-bg text-warn',
   sealing: 'bg-panel text-accent',
   sealed: 'bg-ok-bg text-ok',
+  amending: 'bg-warn-bg text-warn',
 };
 
 export function StatusPill({ status }: { status: RequestStatus }) {
