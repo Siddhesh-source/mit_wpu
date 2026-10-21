@@ -16,3 +16,11 @@
 14. **Security's home stays /gate** with a secondary link to /inbox, because Security is both the gate checker and a parallel approver on event permissions.
 15. **One responsive layout, not separate desktop screens**: `Page wide` + Tailwind `md`/`lg` breakpoints. Same CTA per screen on every size.
 16. **Only a 401 from /api/me signs the user out.** Network errors or aborted fetches keep the session (previously any failure cleared the token, which logged people out on flaky networks).
+17. **QR carries `(rid, v)` + Ed25519 signature, not the file hash** (a file cannot contain its own hash). File upload → SHA-256 → chain; QR → signature offline, status online by `(rid, v)`.
+18. **Anchor SHA-256 of the final PDF bytes.** Any one-byte edit fails.
+19. **Compile Solidity with the `solc` npm package**, not Hardhat's downloader (blocked in some networks). EVM target `paris` for Amoy compatibility.
+20. **Contract address stored per database** (`kv`), not in a shared file: a fresh database gets a fresh contract, so `PLC-YYYY-0001` never collides with an earlier run on the same chain.
+21. **Check contract code before every chain call; redeploy + replay if missing.** A write to an address without code would otherwise "succeed".
+22. **Queue-and-retry anchoring** (`seals.anchor_status`, retried every 5 s): sealing never blocks on the chain; verify says `pending` until anchored.
+23. **No "Verified" stamp printed on the PDF.** Only a live scan may say Verified; an old version must read Superseded.
+24. **PDF uses standard Helvetica/Courier** (no font embedding) to keep it small and deterministic; colours follow the deck.

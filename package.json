@@ -3,7 +3,7 @@
   "private": true,
   "workspaces": ["packages/*", "apps/*", "contracts"],
   "scripts": {
-    "dev": "concurrently -n api,web -c blue,green \"npm run dev -w apps/api\" \"npm run dev -w apps/web\"",
+    "dev": "concurrently -n chain,api,web -c magenta,blue,green \"npm run node -w contracts\" \"npm run dev -w apps/api\" \"npm run dev -w apps/web\"",
     "test": "npm run test --workspaces --if-present",
     "build": "npm run build --workspaces --if-present",
     "seed": "npm run seed -w apps/api"

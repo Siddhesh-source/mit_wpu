@@ -8,6 +8,8 @@ const PILL: Record<RequestStatus, string> = {
   approved: 'bg-ok-bg text-ok',
   rejected: 'bg-bad-bg text-bad',
   returned: 'bg-warn-bg text-warn',
+  sealing: 'bg-panel text-accent',
+  sealed: 'bg-ok-bg text-ok',
 };
 
 export function StatusPill({ status }: { status: RequestStatus }) {

@@ -1,10 +1,10 @@
 import { useState, type FormEvent } from 'react';
 import { useParams } from 'react-router-dom';
 import { ROLE_LABEL, type RequestDetail } from '@plc/shared';
-import { Page, StatusPill, toast } from '../components/ui';
+import { Page, StatusPill, Tick, toast } from '../components/ui';
 import { Timeline } from '../components/Timeline';
 import { FieldList, FormFields, type FormValues } from '../components/FormFields';
-import { api } from '../lib/api';
+import { api, download } from '../lib/api';
 import { useLive } from '../lib/hooks';
 import { useSession } from '../lib/session';
 
@@ -20,6 +20,8 @@ export default function RequestPage() {
   if (!r) return <Page back={back} wide>{null}</Page>;
 
   const mine = r.student.id === me?.id;
+  const finished = r.status === 'approved' || r.status === 'sealing' || r.status === 'sealed';
+  const getPdf = () => download(`/api/requests/${r.id}/pdf`, `${r.id}-v${r.seal?.version ?? 1}.pdf`).catch((e) => toast(e.message));
 
   async function resubmit(e: FormEvent) {
     e.preventDefault();
@@ -84,12 +86,34 @@ export default function RequestPage() {
         </section>
       )}
 
-      {mine && r.status === 'approved' && (
-        <section className="mb-6 flex flex-col items-center gap-2">
-          <button className="cta w-full" disabled title="Available once the document is sealed">
-            Download PDF
-          </button>
-          <p className="text-xs text-faint">Sealing on chain comes next.</p>
+      {finished && (
+        <section className="mb-6 flex flex-col items-center gap-3">
+          {mine ? (
+            <button className="cta w-full" disabled={!r.seal} onClick={getPdf}>
+              {r.seal ? 'Download PDF' : 'Preparing PDF…'}
+            </button>
+          ) : (
+            r.seal && (
+              <button className="link text-base" onClick={getPdf}>
+                Download sealed PDF
+              </button>
+            )
+          )}
+          {r.seal?.anchor === 'anchored' ? (
+            <p className="flex items-center gap-2 text-sm text-ok">
+              <span className="grid h-5 w-5 place-items-center rounded-full bg-ok text-white"><Tick className="h-3 w-3" /></span>
+              Sealed on chain · v{r.seal.version}
+              {r.seal.txUrl ? (
+                <a className="link font-mono text-xs" href={r.seal.txUrl} target="_blank" rel="noreferrer">
+                  {r.seal.txHash!.slice(0, 10)}…
+                </a>
+              ) : (
+                <span className="font-mono text-xs text-faint">{r.seal.txHash?.slice(0, 10)}…</span>
+              )}
+            </p>
+          ) : (
+            r.seal && <p className="text-sm text-muted">Sealing on chain… the PDF is ready; verification turns on once it lands.</p>
+          )}
         </section>
       )}
 
@@ -102,7 +126,7 @@ export default function RequestPage() {
       </div>
       <section className="lg:rounded-3xl lg:border lg:border-rule lg:p-6">
         <h2 className="mb-3 text-sm font-semibold text-muted">Approval chain</h2>
-        <Timeline steps={r.timeline} done={r.status === 'approved'} />
+        <Timeline steps={r.timeline} done={finished && (r.status === 'sealed' ? 'sealed' : 'approved')} />
       </section>
       </div>
     </Page>

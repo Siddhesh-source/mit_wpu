@@ -1,0 +1,341 @@
+{
+  "contractName": "DocumentRegistry",
+  "sourceName": "DocumentRegistry.sol",
+  "compiler": "0.8.28+commit.7893614a.Emscripten.clang",
+  "abi": [
+    {
+      "inputs": [],
+      "stateMutability": "nonpayable",
+      "type": "constructor"
+    },
+    {
+      "inputs": [],
+      "name": "AlreadySealed",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "BadVersion",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "EmptyHash",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "NotActive",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "NotOwner",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "PrevNotActive",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "PrevOtherRequest",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "RequestAlreadySealed",
+      "type": "error"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "bytes32",
+          "name": "docHash",
+          "type": "bytes32"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint8",
+          "name": "reasonCode",
+          "type": "uint8"
+        }
+      ],
+      "name": "Revoked",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "bytes32",
+          "name": "docHash",
+          "type": "bytes32"
+        },
+        {
+          "indexed": true,
+          "internalType": "bytes32",
+          "name": "requestId",
+          "type": "bytes32"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint32",
+          "name": "version",
+          "type": "uint32"
+        },
+        {
+          "indexed": false,
+          "internalType": "bytes32",
+          "name": "prevHash",
+          "type": "bytes32"
+        }
+      ],
+      "name": "Sealed",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "bytes32",
+          "name": "oldHash",
+          "type": "bytes32"
+        },
+        {
+          "indexed": true,
+          "internalType": "bytes32",
+          "name": "newHash",
+          "type": "bytes32"
+        }
+      ],
+      "name": "Superseded",
+      "type": "event"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "docHash",
+          "type": "bytes32"
+        }
+      ],
+      "name": "get",
+      "outputs": [
+        {
+          "components": [
+            {
+              "internalType": "bytes32",
+              "name": "requestId",
+              "type": "bytes32"
+            },
+            {
+              "internalType": "bytes32",
+              "name": "docType",
+              "type": "bytes32"
+            },
+            {
+              "internalType": "uint32",
+              "name": "version",
+              "type": "uint32"
+            },
+            {
+              "internalType": "bytes32",
+              "name": "prevHash",
+              "type": "bytes32"
+            },
+            {
+              "internalType": "bytes32",
+              "name": "rolesHash",
+              "type": "bytes32"
+            },
+            {
+              "internalType": "uint64",
+              "name": "sealedAt",
+              "type": "uint64"
+            },
+            {
+              "internalType": "uint64",
+              "name": "validFrom",
+              "type": "uint64"
+            },
+            {
+              "internalType": "uint64",
+              "name": "validUntil",
+              "type": "uint64"
+            },
+            {
+              "internalType": "enum DocumentRegistry.Status",
+              "name": "status",
+              "type": "uint8"
+            }
+          ],
+          "internalType": "struct DocumentRegistry.Record",
+          "name": "",
+          "type": "tuple"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "",
+          "type": "bytes32"
+        }
+      ],
+      "name": "latestFor",
+      "outputs": [
+        {
+          "internalType": "bytes32",
+          "name": "",
+          "type": "bytes32"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "owner",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "docHash",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "uint8",
+          "name": "reasonCode",
+          "type": "uint8"
+        }
+      ],
+      "name": "revoke",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "",
+          "type": "bytes32"
+        }
+      ],
+      "name": "revokeReason",
+      "outputs": [
+        {
+          "internalType": "uint8",
+          "name": "",
+          "type": "uint8"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "docHash",
+          "type": "bytes32"
+        },
+        {
+          "components": [
+            {
+              "internalType": "bytes32",
+              "name": "requestId",
+              "type": "bytes32"
+            },
+            {
+              "internalType": "bytes32",
+              "name": "docType",
+              "type": "bytes32"
+            },
+            {
+              "internalType": "uint32",
+              "name": "version",
+              "type": "uint32"
+            },
+            {
+              "internalType": "bytes32",
+              "name": "prevHash",
+              "type": "bytes32"
+            },
+            {
+              "internalType": "bytes32",
+              "name": "rolesHash",
+              "type": "bytes32"
+            },
+            {
+              "internalType": "uint64",
+              "name": "sealedAt",
+              "type": "uint64"
+            },
+            {
+              "internalType": "uint64",
+              "name": "validFrom",
+              "type": "uint64"
+            },
+            {
+              "internalType": "uint64",
+              "name": "validUntil",
+              "type": "uint64"
+            },
+            {
+              "internalType": "enum DocumentRegistry.Status",
+              "name": "status",
+              "type": "uint8"
+            }
+          ],
+          "internalType": "struct DocumentRegistry.Record",
+          "name": "r",
+          "type": "tuple"
+        }
+      ],
+      "name": "seal",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "",
+          "type": "bytes32"
+        }
+      ],
+      "name": "supersededBy",
+      "outputs": [
+        {
+          "internalType": "bytes32",
+          "name": "",
+          "type": "bytes32"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    }
+  ],
+  "bytecode": "0x60a0604052348015600f57600080fd5b5033608052608051610a1361003c6000396000818160cf0152818161019c01526106f70152610a136000f3fe608060405234801561001057600080fd5b506004361061007d5760003560e01c80638eaa6ac01161005b5780638eaa6ac014610109578063917758fe14610129578063a4ee87231461013c578063b4c7e70e1461015c57600080fd5b80631ceb83e9146100825780637d3b4a72146100b55780638da5cb5b146100ca575b600080fd5b6100a26100903660046107f3565b60016020526000908152604090205481565b6040519081526020015b60405180910390f35b6100c86100c336600461080c565b610191565b005b6100f17f000000000000000000000000000000000000000000000000000000000000000081565b6040516001600160a01b0390911681526020016100ac565b61011c6101173660046107f3565b6105e0565b6040516100ac919061087e565b6100c8610137366004610920565b6106ec565b6100a261014a3660046107f3565b60026020526000908152604090205481565b61017f61016a3660046107f3565b60036020526000908152604090205460ff1681565b60405160ff90911681526020016100ac565b336001600160a01b037f000000000000000000000000000000000000000000000000000000000000000016146101da576040516330cd747160e01b815260040160405180910390fd5b816101f857604051631c37cddf60e21b815260040160405180910390fd5b60008083815260208190526040902060050154600160c01b900460ff16600381111561022657610226610846565b1461024457604051630108cc4760e61b815260040160405180910390fd5b60608101356102b75780356000908152600260205260409020541561027c576040516316580c5760e21b815260040160405180910390fd5b61028c6060820160408301610956565b63ffffffff166001146102b25760405163cead342960e01b815260040160405180910390fd5b6103d1565b6060810135600090815260208190526040902060016005820154600160c01b900460ff1660038111156102ec576102ec610846565b1461030a57604051634aafd18560e11b815260040160405180910390fd5b805482351461032c57604051630eae361760e11b815260040160405180910390fd5b60028101546103429063ffffffff166001610983565b63ffffffff166103586060840160408501610956565b63ffffffff161461037c5760405163cead342960e01b815260040160405180910390fd5b60058101805460ff60c01b1916600160c11b1790556060820135600081815260016020526040808220869055518592917f4ceca62373493882221cf0c741c782342cd834cd1a8e5480df855f94da186b2491a3505b60405180610120016040528082600001358152602001826020013581526020018260400160208101906104049190610956565b63ffffffff16815260200182606001358152602001826080013581526020014267ffffffffffffffff1681526020018260c001602081019061044691906109b3565b67ffffffffffffffff168152602001610466610100840160e085016109b3565b67ffffffffffffffff1681526020016001905260008381526020818152604091829020835181559083015160018201559082015160028201805463ffffffff90921663ffffffff1990921691909117905560608201516003808301919091556080830151600483015560a083015160058301805460c086015160e087015167ffffffffffffffff908116600160801b0267ffffffffffffffff60801b19928216600160401b026fffffffffffffffffffffffffffffffff199094169190951617919091179081168317825561010086015193919260ff60c01b191668ffffffffffffffffff60801b199091161790600160c01b90849081111561056b5761056b610846565b0217905550505080356000818152600260205260409081902084905583907f2f8dedaf9e30ac03baa5a027a90372b85dec951160c2f847212b372fb22701c6906105bb9060608601908601610956565b6040805163ffffffff9092168252606086013560208301520160405180910390a35050565b61062d6040805161012081018252600080825260208201819052918101829052606081018290526080810182905260a0810182905260c0810182905260e081018290529061010082015290565b6000828152602081815260409182902082516101208101845281548152600182015492810192909252600281015463ffffffff1692820192909252600380830154606083015260048301546080830152600583015467ffffffffffffffff80821660a0850152600160401b8204811660c0850152600160801b82041660e0840152919291610100840191600160c01b90910460ff16908111156106d2576106d2610846565b60038111156106e3576106e3610846565b90525092915050565b336001600160a01b037f00000000000000000000000000000000000000000000000000000000000000001614610735576040516330cd747160e01b815260040160405180910390fd5b6001600083815260208190526040902060050154600160c01b900460ff16600381111561076457610764610846565b1461078257604051634065aaf160e11b815260040160405180910390fd5b600082815260208181526040808320600501805460ff60c01b1916600360c01b1790556003825291829020805460ff191660ff85169081179091558251908152915184927f11afacef8eda7e8a8b18aa7b263300e8b3e7578425c8f8ed1f72ee3009e0f78092908290030190a25050565b60006020828403121561080557600080fd5b5035919050565b60008082840361014081121561082157600080fd5b83359250610120601f198201121561083857600080fd5b506020830190509250929050565b634e487b7160e01b600052602160045260246000fd5b6004811061087a57634e487b7160e01b600052602160045260246000fd5b9052565b600061012082019050825182526020830151602083015263ffffffff6040840151166040830152606083015160608301526080830151608083015267ffffffffffffffff60a08401511660a083015260c08301516108e860c084018267ffffffffffffffff169052565b5060e083015161090460e084018267ffffffffffffffff169052565b5061010083015161091961010084018261085c565b5092915050565b6000806040838503121561093357600080fd5b82359150602083013560ff8116811461094b57600080fd5b809150509250929050565b60006020828403121561096857600080fd5b813563ffffffff8116811461097c57600080fd5b9392505050565b63ffffffff81811683821601908111156109ad57634e487b7160e01b600052601160045260246000fd5b92915050565b6000602082840312156109c557600080fd5b813567ffffffffffffffff8116811461097c57600080fdfea2646970667358221220fd6f44694d9b3cea862c01964a0ae4874efbe9c5e5f6c048f3bf76ac29ec04a464736f6c634300081c0033"
+}

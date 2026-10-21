@@ -174,7 +174,8 @@ export function resubmitRequest(db: DB, studentId: string, requestId: string, in
   })();
 }
 
-export async function decide(db: DB, userId: string, approvalId: number, decision: unknown, comment: unknown, pin: unknown) {
+/** Record a decision. Returns true when this decision completed the chain (the caller then seals). */
+export async function decide(db: DB, userId: string, approvalId: number, decision: unknown, comment: unknown, pin: unknown): Promise<boolean> {
   if (decision !== 'approved' && decision !== 'rejected' && decision !== 'returned') throw new HttpError(400, 'Decision must be approved, rejected or returned');
   const a = db.prepare('SELECT * FROM approvals WHERE id = ?').get(approvalId) as ApprovalRow | undefined;
   if (!a || a.assignee_id !== userId) throw new HttpError(404, 'Not in your inbox');
@@ -192,7 +193,7 @@ export async function decide(db: DB, userId: string, approvalId: number, decisio
     privateKey,
   );
 
-  db.transaction(() => {
+  return db.transaction(() => {
     db.prepare('UPDATE approvals SET decision = ?, comment = ?, signed_at = ?, signature = ? WHERE id = ?').run(decision, note, signedAt, signature, a.id);
     audit(db, a.request_id, userId, decision, a.version, { role: a.role, comment: note });
     const round = 'request_id = ? AND round = ?';
@@ -200,18 +201,19 @@ export async function decide(db: DB, userId: string, approvalId: number, decisio
       // Reject ends the request; return sends it back to the student. Either way the rest of the round is cancelled.
       db.prepare(`UPDATE approvals SET decision = 'cancelled' WHERE ${round} AND decision IN ('pending', 'waiting')`).run(a.request_id, a.round);
       db.prepare('UPDATE requests SET status = ?, updated_at = ? WHERE id = ?').run(decision, signedAt, a.request_id);
-      return;
+      return false;
     }
     const openInStep = db.prepare(`SELECT COUNT(*) FROM approvals WHERE ${round} AND step_no = ? AND decision = 'pending'`).pluck().get(a.request_id, a.round, a.step_no);
-    if (openInStep) return; // parallel partner still pending
+    if (openInStep) return false; // parallel partner still pending
     const next = db.prepare(`SELECT MIN(step_no) FROM approvals WHERE ${round} AND decision = 'waiting'`).pluck().get(a.request_id, a.round) as number | null;
     if (next !== null) {
       db.prepare(`UPDATE approvals SET decision = 'pending', opened_at = ? WHERE ${round} AND step_no = ? AND decision = 'waiting'`).run(signedAt, a.request_id, a.round, next);
       db.prepare('UPDATE requests SET updated_at = ? WHERE id = ?').run(signedAt, a.request_id);
-    } else {
-      db.prepare("UPDATE requests SET status = 'approved', updated_at = ? WHERE id = ?").run(signedAt, a.request_id);
-      audit(db, a.request_id, null, 'fully_approved', a.version);
+      return false;
     }
+    db.prepare("UPDATE requests SET status = 'approved', updated_at = ? WHERE id = ?").run(signedAt, a.request_id);
+    audit(db, a.request_id, null, 'fully_approved', a.version);
+    return true;
   })();
 }
 
@@ -280,6 +282,7 @@ export function getDetail(db: DB, id: string): RequestDetail {
     fields: getType(db, r.type).fields,
     timeline,
     lastComment: last ?? null,
+    seal: null,
   };
 }
 

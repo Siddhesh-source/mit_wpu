@@ -26,6 +26,18 @@ export class ApiError extends Error {
   }
 }
 
+/** Download an authenticated file (the PDF) by fetching it as a blob. */
+export async function download(path: string, filename: string) {
+  const res = await fetch(path, { headers: auth.token ? { Authorization: `Bearer ${auth.token}` } : {} });
+  if (!res.ok) throw new ApiError((await res.json().catch(() => ({}))).error || 'Download failed', res.status);
+  const url = URL.createObjectURL(await res.blob());
+  const a = Object.assign(document.createElement('a'), { href: url, download: filename });
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 10_000);
+}
+
 export async function api<T>(path: string, init: RequestInit & { json?: unknown } = {}): Promise<T> {
   const headers: Record<string, string> = { ...(init.headers as Record<string, string>) };
   if (auth.token) headers.Authorization = `Bearer ${auth.token}`;

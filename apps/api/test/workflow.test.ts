@@ -52,7 +52,7 @@ describe("Riya's event permission", () => {
 
     await act('u_rao', id, 'approved');
     d = (await as('u_riya').get(`/api/requests/${id}`)).body;
-    expect(d.status).toBe('approved');
+    expect(d.status).toBe('sealed'); // approved, then sealed and anchored straight away
     expect(d.timeline.every((s: any) => s.decision === 'approved' && s.signedAt)).toBe(true);
   });
 
@@ -114,7 +114,7 @@ describe('other chains', () => {
     const id = (await as('u_riya').post('/api/requests', { type: 'on_duty', form: { title: 'Hackathon at COEP', date: '2026-11-10' } })).body.id;
     await act('u_mehta', id, 'approved');
     await act('u_kulkarni', id, 'approved');
-    expect((await as('u_riya').get(`/api/requests/${id}`)).body.status).toBe('approved');
+    expect((await as('u_riya').get(`/api/requests/${id}`)).body.status).toBe('sealed');
   });
 
   it('bonafide: HoD → Dean SA → approved', async () => {
@@ -123,7 +123,7 @@ describe('other chains', () => {
     expect((await as('u_mehta').get('/api/inbox')).body).toHaveLength(0);
     await act('u_kulkarni', id, 'approved');
     await act('u_rao', id, 'approved');
-    expect((await as('u_riya').get(`/api/requests/${id}`)).body.status).toBe('approved');
+    expect((await as('u_riya').get(`/api/requests/${id}`)).body.status).toBe('sealed');
   });
 });
 
@@ -187,6 +187,8 @@ describe('audit log', () => {
       { action: 'approved', actor_id: 'u_mehta', version: 1 },
       { action: 'approved', actor_id: 'u_kulkarni', version: 1 },
       { action: 'fully_approved', actor_id: null, version: 1 },
+      { action: 'sealed', actor_id: null, version: 1 },
+      { action: 'anchored', actor_id: null, version: 1 },
     ]);
   });
 });

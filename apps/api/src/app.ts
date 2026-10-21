@@ -5,6 +5,8 @@ import type { Me, Profile, Role } from '@plc/shared';
 import type { DB } from './db.js';
 import { requireAuth, signToken } from './auth.js';
 import { errorHandler, workflowRoutes } from './routes.js';
+import type { Services } from './seal.js';
+import { config } from './config.js';
 
 const initials = (name: string) =>
   name
@@ -17,7 +19,8 @@ const initials = (name: string) =>
 
 const ROLE_ORDER: Role[] = ['student', 'faculty_coordinator', 'hod', 'dean_sa', 'security', 'admin'];
 
-export function createApp(db: DB) {
+export function createApp(db: DB, services: Partial<Services> = {}) {
+  const svc: Services = { chain: null, storageDir: config.storageDir, publicBaseUrl: config.publicBaseUrl, ...services };
   const app = express();
   app.use(cors());
   app.use(express.json());
@@ -27,7 +30,10 @@ export function createApp(db: DB) {
       (a, b) => ROLE_ORDER.indexOf(a) - ROLE_ORDER.indexOf(b),
     );
 
-  app.get('/api/health', (_req, res) => res.json({ ok: true }));
+  app.get('/api/health', async (_req, res) => {
+    const contract = await svc.chain?.address().catch(() => null);
+    res.json({ ok: true, chain: svc.chain ? { network: svc.chain.network, contract: contract ?? 'unreachable' } : null });
+  });
 
   app.get('/api/profiles', (_req, res) => {
     const users = db.prepare('SELECT id, name, title FROM users ORDER BY rowid').all() as Omit<Profile, 'role' | 'initials'>[];
@@ -53,7 +59,7 @@ export function createApp(db: DB) {
     res.json(me);
   });
 
-  app.use('/api', workflowRoutes(db));
+  app.use('/api', workflowRoutes(db, svc));
   app.use(errorHandler);
   return app;
 }

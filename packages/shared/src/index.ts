@@ -1,4 +1,5 @@
 export * from './crypto';
+export * from './pass';
 
 export const ROLES = ['student', 'faculty_coordinator', 'hod', 'dean_sa', 'security', 'admin'] as const;
 export type Role = (typeof ROLES)[number];
@@ -37,7 +38,7 @@ export function homeFor(roles: Role[]): string {
 
 // ---------- requests ----------
 
-export type RequestStatus = 'in_review' | 'approved' | 'rejected' | 'returned';
+export type RequestStatus = 'in_review' | 'approved' | 'rejected' | 'returned' | 'sealing' | 'sealed';
 export type Decision = 'waiting' | 'pending' | 'approved' | 'rejected' | 'returned' | 'cancelled' | 'carried';
 
 export const STATUS_LABEL: Record<RequestStatus, string> = {
@@ -45,6 +46,8 @@ export const STATUS_LABEL: Record<RequestStatus, string> = {
   approved: 'Approved',
   rejected: 'Rejected',
   returned: 'Returned',
+  sealing: 'Sealing',
+  sealed: 'Sealed',
 };
 
 export interface FieldDef {
@@ -89,11 +92,47 @@ export interface RequestSummary {
   withNow: { role: Role; roleLabel: string; name: string; since: string }[];
 }
 
+export interface SealInfo {
+  version: number;
+  docHash: string;
+  anchor: 'pending' | 'anchored';
+  chainStatus: 'active' | 'superseded' | 'revoked';
+  txHash: string | null;
+  txUrl: string | null;
+  sealedAt: string;
+  validFrom: number;
+  validUntil: number;
+}
+
+export type VerifyStatus = 'verified' | 'superseded' | 'revoked' | 'pending' | 'not_found';
+
+/** Public verify response. No personal data. */
+export interface VerifyResult {
+  status: VerifyStatus;
+  docHash?: string;
+  requestId?: string;
+  version?: number;
+  type?: string;
+  typeName?: string;
+  sealedAt?: number;
+  validFrom?: number;
+  validUntil?: number;
+  signers?: { role: Role; roleLabel: string; signedAt: string | null; version: number; carried: boolean }[];
+  supersededBy?: { version: number; docHash: string } | null;
+  latest?: { version: number; docHash: string } | null;
+  revokeReason?: number;
+  txHash?: string | null;
+  txUrl?: string | null;
+  network?: string;
+  source?: 'chain' | 'cache';
+}
+
 export interface RequestDetail extends RequestSummary {
   form: Record<string, string | number>;
   fields: FieldDef[];
   timeline: TimelineStep[];
   lastComment: { role: Role; decision: Decision; comment: string } | null;
+  seal: SealInfo | null;
 }
 
 export interface InboxItem extends RequestDetail {

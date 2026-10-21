@@ -8,7 +8,7 @@
 | `apps/api/db/*.sql` | Migrations, applied in name order on startup (`src/db.ts`) |
 | `apps/web` | React + Vite + Tailwind, React Router; `/api` proxied to :4000 in dev |
 | `packages/shared` | Types, role labels, routing helpers; later canonical JSON, hashing, QR codec, verify precedence (used by API and browser) |
-| `contracts` | Solidity `DocumentRegistry` + Hardhat (prompt 4) |
+| `contracts` | Solidity `DocumentRegistry`, compiled with solcjs (`scripts/compile.mjs`); `lib/index.ts` exports the artifact, `deployRegistry`, `startLocalNode`; Hardhat only runs the local node |
 | `docs` | Project memory for Claude |
 
 ## Stack
@@ -17,7 +17,7 @@ Node 20+, TypeScript, Express, SQLite, JWT (12 h), bcrypt PINs, pdf-lib + qrcode
 
 ## Commands
 
-`npm install` · `npm run dev` (API :4000 + web :5173) · `npm test` · `npm run build` · `npm run seed`.
+`npm install` · `npm run dev` (local chain :8545 + API :4000 + web :5173) · `npm test` (API + contract) · `npm run build` · `npm run seed` · `npm run compile -w contracts`.
 
 ## Auth
 
@@ -35,6 +35,7 @@ Node 20+, TypeScript, Express, SQLite, JWT (12 h), bcrypt PINs, pdf-lib + qrcode
 | `request_versions (request_id, version, form_json, form_hash, reason)` | Form per version; `form_hash` = SHA-256 of canonical JSON |
 | `approvals (request_id, version, round, step_no, role, assignee_id, decision, comment, opened_at, signed_at, signature, carried_from)` | One row per role per round |
 | `audit_log (request_id, actor_id, action, version, details_json, at)` | Every state change |
+| `seals (request_id, version, doc_hash, prev_hash, roles_hash, pass, pdf_path, valid_from, valid_until, anchor_status, chain_status, tx_hash, attempts, last_error)` | One per sealed version; see `docs/TRUST.md` |
 
 ## Routing engine (`apps/api/src/workflow.ts`)
 
@@ -61,10 +62,17 @@ Approve/Return/Reject require the approver's PIN. The server signs canonical JSO
 | GET | /api/requests/:id (detail + timeline + lastComment) | Owner, anyone on the chain, admin |
 | POST | /api/requests/:id/resubmit `{form}` | Owner, when returned |
 | GET | /api/inbox (pending for me, oldest first, full detail + approvalId, myRole) | Approvers |
-| POST | /api/approvals/:id/decide `{decision, comment, pin}` | Assignee |
+| POST | /api/approvals/:id/decide `{decision, comment, pin}` | Assignee (last approval triggers sealing) |
+| GET | /api/requests/:id/pdf `?v=n` | Owner, anyone on the chain, admin |
+| GET | /api/verify/hash/:hash · /api/verify/ref/:rid/:v | Public |
+| GET | /api/health (includes chain network + contract) | Public |
 
 Errors: `{error}` with 400 / 401 / 403 / 404 / 409 / 422 via `HttpError`.
 
+## Tests
+
+API tests start one Hardhat node (`test/global-setup.ts`, port 8621); each `setup()` deploys a fresh contract with a per-worker dev account. Contract tests use port 8611; the restart test uses 8631.
+
 ## Request state machine
 
-in_review → approved | rejected | returned; returned → (resubmit) in_review. Later: approved → sealed → superseded | revoked (prompts 4, 7, 8). There is no draft state: a request is created on submit.
+in_review → approved | rejected | returned; returned → (resubmit) in_review; approved → sealing (PDF built, anchor pending) → sealed (on chain). Later: superseded | revoked (prompts 7, 8). There is no draft state: a request is created on submit. `GET /api/requests/:id` includes `seal` (latest version's hash, anchor state, tx, validity).

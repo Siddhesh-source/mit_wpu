@@ -23,7 +23,7 @@ const NOTE: Record<Decision, (s: TimelineStep) => string> = {
 };
 
 /** Vertical role chain (deck slide 7). Steps that share a stepNo sit side by side as parallel. */
-export function Timeline({ steps, done }: { steps: TimelineStep[]; done?: boolean }) {
+export function Timeline({ steps, done }: { steps: TimelineStep[]; done?: false | 'approved' | 'sealed' }) {
   const groups = [...new Set(steps.map((s) => s.stepNo))].map((n) => steps.filter((s) => s.stepNo === n));
   return (
     <ol className="relative">
@@ -47,7 +47,7 @@ export function Timeline({ steps, done }: { steps: TimelineStep[]; done?: boolea
       {done && (
         <li className="relative flex items-center gap-3">
           <span className="grid h-8 w-8 place-items-center rounded-full bg-ok text-white"><Tick className="h-4 w-4" /></span>
-          <p className="font-semibold text-ok">Approved</p>
+          <p className="font-semibold text-ok">{done === 'sealed' ? 'Approved and sealed' : 'Approved'}</p>
         </li>
       )}
     </ol>
