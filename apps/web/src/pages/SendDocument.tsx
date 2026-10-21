@@ -67,6 +67,40 @@ function PeoplePicker({ onPick, exclude }: { onPick: (p: Person) => void; exclud
   );
 }
 
+/** What to search for to suggest people for a "signs as" label (designations, as the directory stores them). */
+const SUGGEST: Record<string, string> = {
+  guide: 'faculty',
+  mentor: 'faculty',
+  'class teacher': 'faculty',
+  'faculty in-charge': 'faculty',
+  'project coordinator': 'faculty_coordinator',
+  'head of department': 'hod',
+  hod: 'hod',
+  'dean student affairs': 'dean',
+  dean: 'dean',
+};
+
+/** One-tap choices for an empty slot: matching staff, your own teachers first. */
+function Suggestions({ label, exclude, onPick, onMore }: { label: string; exclude: string[]; onPick: (p: Person) => void; onMore: () => void }) {
+  const q = SUGGEST[label.trim().toLowerCase()];
+  const { data: people } = useLive<Person[]>(q ? `/api/people?kind=staff&q=${encodeURIComponent(q)}` : null, 120_000);
+  const { data: conns } = useLive<Connection[]>('/api/connections', 120_000);
+  const mine = new Set(conns?.filter((c) => c.status === 'accepted').map((c) => c.person.id));
+  const list = (people ?? []).filter((p) => !exclude.includes(p.id)).sort((a, b) => Number(mine.has(b.id)) - Number(mine.has(a.id))).slice(0, 4);
+  return (
+    <div className="mt-2 flex flex-wrap gap-1.5">
+      {list.map((p) => (
+        <button key={p.id} type="button" onClick={() => onPick(p)} className="min-h-[36px] rounded-full border border-accent/40 bg-accent/5 px-3 text-xs font-semibold text-accent hover:bg-accent/10" title={`${p.roleLabel}, ${p.department}`}>
+          {p.name}
+        </button>
+      ))}
+      <button type="button" onClick={onMore} className="min-h-[36px] rounded-full border border-rule px-3 text-xs font-semibold text-muted hover:text-ink">
+        {list.length ? 'Someone else…' : 'Choose a person…'}
+      </button>
+    </div>
+  );
+}
+
 /** A VIT form generated with the student's details, with its sign spots already placed. */
 function TemplateSheet({ open, initial, onClose, onMade }: { open: boolean; initial?: string | null; onClose: () => void; onMade: (r: { document: AttachmentInfo; spots: FoundSpot[]; signers: string[]; template: FormTemplate }) => void }) {
   const { data: templates } = useLive<FormTemplate[]>(open ? '/api/templates' : null, 600_000);
@@ -235,7 +269,8 @@ export default function SendDocument() {
   }
 
   const ready = slots.filter((s) => s.person);
-  const missing = !doc ? 'Choose the document' : !ready.length ? 'Add who signs' : slots.some((s) => !s.person) ? 'Choose a person for every signer' : !title.trim() ? 'Give it a title' : null;
+  const skipped = slots.filter((s) => !s.person && s.label).map((s) => s.label);
+  const missing = !doc ? 'Choose the document' : !ready.length ? 'Choose who signs' : !title.trim() ? 'Give it a title' : null;
 
   async function submit(e: FormEvent) {
     e.preventDefault();
@@ -248,11 +283,17 @@ export default function SendDocument() {
           type: 'sign_document',
           attachments: [doc.id],
           form: { title, purpose: note },
-          signers: slots.map((s) => ({ userId: s.person!.id, label: s.label })),
-          fields: isPdf ? fields : [],
+          // signers left empty are skipped; their boxes are dropped and later signers move up
+          signers: ready.map((s) => ({ userId: s.person!.id, label: s.label })),
+          fields: isPdf
+            ? fields.flatMap((f) => {
+                const slot = slots[f.step - 1];
+                return slot?.person ? [{ ...f, step: ready.indexOf(slot) + 1 }] : [];
+              })
+            : [],
         },
       });
-      toast(`Sent to ${slots[0].person!.name}${slots.length > 1 ? ` and ${slots.length - 1} more` : ''}`);
+      toast(`Sent to ${ready[0].person!.name}${ready.length > 1 ? `, then ${ready.length - 1} more` : ''}`);
       nav(`/requests/${r.id}`, { replace: true });
     } catch (err) {
       toast((err as Error).message);
@@ -269,7 +310,7 @@ export default function SendDocument() {
         </button>
       </PageHeader>
 
-      <form onSubmit={submit} className="flex flex-col gap-8 lg:grid lg:grid-cols-[1fr_22rem] lg:items-start lg:gap-10">
+      <form id="send-form" onSubmit={submit} className="flex flex-col gap-8 pb-28 lg:grid lg:grid-cols-[1fr_22rem] lg:items-start lg:gap-10">
         {/* The document, with the boxes */}
         <section className="order-2 lg:order-1">
           <SectionHead title="Where each person signs">
@@ -317,7 +358,7 @@ export default function SendDocument() {
         </section>
 
         {/* Steps */}
-        <aside className="order-1 flex flex-col gap-8 lg:sticky lg:top-24 lg:order-2">
+        <aside className="order-1 flex flex-col gap-8 lg:order-2">
           <section>
             <SectionHead title="1. Document" />
             <DocumentLibrary docs={docs} onChanged={reload} selected={docId ? [docId] : []} onSelect={(ids) => (setDocId(ids.filter((x) => x !== docId)[0] ?? null), setFields([]), setMore([]))} compact />
@@ -332,11 +373,11 @@ export default function SendDocument() {
                     <div className="flex items-center gap-2">
                       <span className="text-xs font-bold text-muted">{i + 1}</span>
                       {s.person ? (
-                        <span className="min-w-0 flex-1 truncate text-sm font-semibold">{s.person.name}</span>
-                      ) : (
-                        <button type="button" className="link flex-1 text-left text-sm font-semibold" onClick={() => setPicking(i)}>
-                          Choose who signs as {s.label}
+                        <button type="button" className="min-w-0 flex-1 truncate text-left text-sm font-semibold hover:text-accent" onClick={() => setPicking(i)} title="Change">
+                          {s.person.name}
                         </button>
+                      ) : (
+                        <span className="min-w-0 flex-1 text-sm font-semibold text-warn">Who signs as {s.label || 'this'}?</span>
                       )}
                       <button type="button" className="px-1 text-muted disabled:opacity-30" disabled={i === 0} onClick={() => moveSlot(i, -1)} aria-label="Move up">
                         ↑
@@ -348,6 +389,17 @@ export default function SendDocument() {
                         Remove
                       </button>
                     </div>
+                    {!s.person && (
+                      <Suggestions
+                        label={s.label}
+                        exclude={slots.map((x) => x.person?.id ?? '')}
+                        onPick={(p) => {
+                          setSlots(slots.map((x, j) => (j === i ? { ...x, person: p } : x)));
+                          if (active === null) setActive(i + 1);
+                        }}
+                        onMore={() => setPicking(i)}
+                      />
+                    )}
                     <label className="mt-2 flex items-center gap-2 text-xs text-muted">
                       Signs as
                       <input list="sign-as" className="min-w-0 flex-1 rounded-lg border border-rule px-2 py-1.5 text-sm text-ink outline-none focus:border-accent" value={s.label} onChange={(e) => setSlots(slots.map((x, j) => (j === i ? { ...x, label: e.target.value } : x)))} />
@@ -380,14 +432,32 @@ export default function SendDocument() {
             <textarea id="send-note" rows={2} className={`${field} resize-none`} placeholder="Anything they should know before signing" value={note} onChange={(e) => setNote(e.target.value)} />
           </section>
 
-          <div>
-            <button className="cta w-full" disabled={busy || !!missing}>
-              {busy ? 'Sending…' : (missing ?? `Send to ${ready[0].person!.name.split(' ').slice(-1)[0]}${ready.length > 1 ? ` + ${ready.length - 1}` : ''}`)}
-            </button>
-            <p className="mt-2 text-center text-xs text-faint">They sign in this order with their PIN. Their saved signatures are placed in your boxes; the signed copy is verifiable.</p>
-          </div>
         </aside>
       </form>
+
+      {/* Always on screen: who it goes to, in order, and Send */}
+      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-rule bg-bg/95 backdrop-blur">
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3 md:px-8">
+          <div className="min-w-0 text-sm">
+            {ready.length ? (
+              <p className="truncate">
+                <span className="text-muted">Goes to </span>
+                <b>{ready.map((s) => `${s.person!.name} (${s.label || s.person!.roleLabel})`).join(' → ')}</b>
+              </p>
+            ) : (
+              <p className="text-muted">Choose the document and who signs it.</p>
+            )}
+            <p className="truncate text-xs text-faint">
+              {skipped.length ? `Not sending to: ${skipped.join(', ')} (their box stays empty) · ` : ''}
+              {fields.length} signature box{fields.length === 1 ? '' : 'es'} placed
+            </p>
+          </div>
+          <button type="submit" form="send-form" className="cta shrink-0 px-6 py-3 text-base" disabled={busy || !!missing}>
+            <Icon name="send" className="mr-2 h-4 w-4" />
+            {busy ? 'Sending…' : (missing ?? `Send to ${ready[0].person!.name.split(' ').slice(-1)[0]}${ready.length > 1 ? ` + ${ready.length - 1}` : ''}`)}
+          </button>
+        </div>
+      </div>
 
       <Sheet open={picking !== null} onClose={() => (picking !== null && !slots[picking]?.person && !slots[picking]?.label ? setSlots(slots.filter((_, j) => j !== picking)) : undefined, setPicking(null))}>
         <h2 className="mb-3 text-lg font-bold">{picking !== null && slots[picking]?.label ? `Who signs as ${slots[picking].label}?` : 'Who signs?'}</h2>
