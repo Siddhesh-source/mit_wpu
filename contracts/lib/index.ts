@@ -22,8 +22,9 @@ export async function deployRegistry(signer: Signer): Promise<string> {
 /** Start `hardhat node` on a port and resolve once it accepts JSON-RPC. Used by tests and `npm run dev`. */
 export function startLocalNode(port: number): Promise<{ url: string; stop: () => Promise<void> }> {
   return new Promise((resolve, reject) => {
-    const bin = path.join(ROOT, '..', 'node_modules', '.bin', 'hardhat');
-    const child: ChildProcess = spawn(bin, ['node', '--hostname', '127.0.0.1', '--port', String(port)], {
+    // Run Hardhat's CLI with this Node (the .bin shim is a shell script, which Windows cannot spawn).
+    const cli = path.join(ROOT, '..', 'node_modules', 'hardhat', 'internal', 'cli', 'cli.js');
+    const child: ChildProcess = spawn(process.execPath, [cli, 'node', '--hostname', '127.0.0.1', '--port', String(port)], {
       cwd: ROOT,
       env: { ...process.env, HARDHAT_DISABLE_TELEMETRY_PROMPT: 'true' },
       stdio: ['ignore', 'pipe', 'pipe'],

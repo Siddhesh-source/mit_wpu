@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ROLE_LABEL, type AuditEntry, type OutboxEntry, type RequestSummary, type Role, type Stats } from '@plc/shared';
-import { Page, StatusPill, toast } from '../components/ui';
+import { Empty, Page, StatTile, StatusPill, toast } from '../components/ui';
 import { ImpactDashboard } from '../components/ImpactDashboard';
 import { api } from '../lib/api';
 import { fmtDate, useLive } from '../lib/hooks';
@@ -35,7 +35,10 @@ const detail = (v: unknown): string => {
 export default function Admin() {
   const [tab, setTab] = useState<Tab>('requests');
   const { data: all, reload } = useLive<RequestSummary[]>(tab === 'requests' ? '/api/admin/requests' : null);
-  const { data: stats } = useLive<Stats>(tab === 'impact' ? '/api/admin/stats' : null, 10_000);
+  const { data: stats } = useLive<Stats>('/api/admin/stats', 15_000);
+  const [q, setQ] = useState('');
+  const needle = q.trim().toLowerCase();
+  const shown = all?.filter((r) => !needle || [r.id, r.title, r.typeName, r.student.name, r.department].some((v) => v.toLowerCase().includes(needle)));
   const { data: log } = useLive<AuditEntry[]>(tab === 'audit' ? '/api/admin/audit?limit=300' : null, 8000);
   const { data: mails } = useLive<OutboxEntry[]>(tab === 'emails' ? '/api/admin/emails' : null, 5000);
   const [busy, setBusy] = useState(false);
@@ -61,6 +64,21 @@ export default function Admin() {
 
   return (
     <Page wide>
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold md:text-3xl">Registrar dashboard</h1>
+        <p className="text-sm text-muted">Every request across the college, its impact, the audit trail and the emails sent.</p>
+      </div>
+      <section className="mb-6 grid grid-cols-2 gap-3 md:grid-cols-4">
+        <StatTile label="Requests" value={stats?.requests ?? '–'} hint="all time" />
+        <StatTile label="In review" value={stats?.inReview ?? '–'} tone="accent" hint="with approvers now" />
+        <StatTile label="Overdue" value={stats?.overdue ?? '–'} tone={stats?.overdue ? 'warn' : 'ink'} hint="past a step deadline" />
+        <StatTile
+          label="Sealed"
+          value={stats?.digitised ?? '–'}
+          tone="ok"
+          hint={stats?.avgTurnaroundHours != null ? `avg ${Math.round(stats.avgTurnaroundHours)} h to seal` : 'approved and on chain'}
+        />
+      </section>
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <div className="flex gap-1 rounded-xl bg-panel p-1">
           {TABS.map((t) => (
@@ -81,9 +99,15 @@ export default function Admin() {
 
       {tab === 'requests' && (
         <>
-          {all && all.length === 0 && <p className="text-muted">No requests yet.</p>}
+          <input
+            className="mb-3 w-full rounded-xl border border-rule px-4 py-2.5 outline-none focus:border-accent md:w-80"
+            placeholder="Search request ID, title, student, department"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+          />
+          {shown && shown.length === 0 && <Empty>{all?.length ? 'Nothing matches.' : 'No requests yet.'}</Empty>}
           <ul className="flex flex-col gap-2">
-            {all?.map((r) => (
+            {shown?.map((r) => (
               <li key={r.id}>
                 <Link to={`/requests/${r.id}`} className="grid grid-cols-[1fr_auto] items-center gap-3 rounded-2xl border border-rule p-4 hover:border-accent/40 md:grid-cols-[10rem_1fr_12rem_auto]">
                   <span className="hidden font-mono text-xs text-faint md:block">{r.id}</span>

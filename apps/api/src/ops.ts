@@ -1,5 +1,5 @@
 import bcrypt from 'bcryptjs';
-import { ROLE_LABEL, APPROVER_ROLES, type AuditEntry, type Delegation, type OutboxEntry, type Role, type Stats } from '@plc/shared';
+import { ROLE_LABEL, APPROVER_ROLES, type AuditEntry, type DecisionEntry, type Delegation, type OutboxEntry, type RequestStatus, type Role, type StaffDashboard, type Stats } from '@plc/shared';
 import type { DB } from './db.js';
 import { HttpError } from './errors.js';
 import { link, notify } from './notify.js';
@@ -73,6 +73,74 @@ export function colleagues(db: DB, userId: string) {
           AND r.role IN (${APPROVER_ROLES.map(() => '?').join(',')}) ORDER BY u.name`,
     )
     .all(userId, userId, ...APPROVER_ROLES) as { id: string; name: string; title: string }[];
+}
+
+// ---------- staff home ----------
+
+/** Workload, the decisions this person signed (newest first) and who covers for them today. */
+export function staffDashboard(db: DB, userId: string, limit = 100): StaffDashboard {
+  const one = <T>(sql: string, ...args: unknown[]) => db.prepare(sql).get(...args) as T;
+  const { waiting, overdue } = one<{ waiting: number; overdue: number }>(
+    "SELECT COUNT(*) AS waiting, COUNT(nudged_at) AS overdue FROM approvals WHERE assignee_id = ? AND decision = 'pending'",
+    userId,
+  );
+  const weekAgo = new Date(Date.now() - 7 * 86_400_000).toISOString();
+  const d = one<{ total: number; approved: number; returned: number; rejected: number; thisWeek: number; avgH: number | null }>(
+    `SELECT COUNT(*) AS total,
+            COALESCE(SUM(decision = 'approved'), 0) AS approved,
+            COALESCE(SUM(decision = 'returned'), 0) AS returned,
+            COALESCE(SUM(decision = 'rejected'), 0) AS rejected,
+            COALESCE(SUM(signed_at >= ?), 0) AS thisWeek,
+            AVG((julianday(signed_at) - julianday(opened_at)) * 24) AS avgH
+       FROM approvals WHERE assignee_id = ? AND decision IN ('approved', 'returned', 'rejected') AND signed_at IS NOT NULL`,
+    weekAgo,
+    userId,
+  );
+  const students = db.prepare("SELECT COUNT(*) FROM connections WHERE staff_id = ? AND status = 'accepted'").pluck().get(userId) as number;
+  const today = todayIST();
+  const delegation = myDelegations(db, userId).find((x) => x.startsOn <= today && x.endsOn >= today) ?? null;
+
+  const rows = db
+    .prepare(
+      `SELECT a.id, a.request_id, a.role, a.decision, a.comment, a.version, a.signed_at, ob.name AS on_behalf,
+              r.status, r.type, t.name AS type_name, v.form_json, s.id AS sid, s.name AS sname
+         FROM approvals a
+         JOIN requests r ON r.id = a.request_id
+         JOIN request_types t ON t.code = r.type
+         JOIN request_versions v ON v.request_id = a.request_id AND v.version = a.version
+         JOIN users s ON s.id = r.student_id
+         LEFT JOIN users ob ON ob.id = a.on_behalf_of
+        WHERE a.assignee_id = ? AND a.decision IN ('approved', 'returned', 'rejected') AND a.signed_at IS NOT NULL
+        ORDER BY a.signed_at DESC, a.id DESC LIMIT ?`,
+    )
+    .all(userId, limit) as {
+    id: number; request_id: string; role: Role; decision: DecisionEntry['decision']; comment: string | null; version: number; signed_at: string;
+    on_behalf: string | null; status: RequestStatus; type: string; type_name: string; form_json: string; sid: string; sname: string;
+  }[];
+  const history = rows.map((h): DecisionEntry => ({
+    approvalId: h.id,
+    requestId: h.request_id,
+    title: String(JSON.parse(h.form_json).title ?? h.type_name),
+    typeName: h.type_name,
+    student: { id: h.sid, name: h.sname },
+    role: h.role,
+    roleLabel: ROLE_LABEL[h.role],
+    decision: h.decision,
+    comment: h.comment,
+    version: h.version,
+    signedAt: h.signed_at,
+    onBehalfOf: h.on_behalf,
+    status: h.status,
+  }));
+  return {
+    waiting,
+    overdue,
+    decided: { total: d.total, approved: d.approved, returned: d.returned, rejected: d.rejected, thisWeek: d.thisWeek },
+    avgResponseHours: d.avgH == null ? null : Math.round(d.avgH * 10) / 10,
+    students,
+    delegation,
+    history,
+  };
 }
 
 // ---------- deadlines: nudge, then escalate ----------

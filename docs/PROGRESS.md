@@ -33,3 +33,4 @@
 - Light / dark mode toggle on every screen (saved per device, follows the device until chosen). Checked rendered in both themes.
 - Deployed to AWS (2026-10-21): t4g.micro `i-0f226b2f18ae18e70` in ap-south-1, Elastic IP 13.205.194.159, https://campussign.duckdns.org, local chain, email via SES (sandbox, sender and redirect `csiddhesh3011@gmail.com`). Details and teardown: `docs/DEPLOY_AWS.md` → "Live deployment".
 - Renamed to CampusSign everywhere user-facing (2026-10-21); live site moved to https://campussign.duckdns.org and redeployed. The demo was reseeded so its QR links use the new hostname.
+- Dashboards (2026-10-21): role-aware top bar; staff dashboard (stats, waiting list with pick-any review, recent decisions, delegate, students, quick links), History page with filters/search/CSV, student home stats + Needs your action + filtered requests, admin overview tiles + search. New `GET /api/dashboard`. 104 API tests + 8 contract tests; tests now run on Windows.

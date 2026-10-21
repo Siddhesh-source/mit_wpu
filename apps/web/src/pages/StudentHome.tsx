@@ -1,15 +1,31 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import type { Connection, InboxItem, LibraryDocument, Person, RequestSummary } from '@plc/shared';
-import { Page, StatusPill, toast } from '../components/ui';
+import type { Connection, InboxItem, LibraryDocument, Person, RequestStatus, RequestSummary } from '@plc/shared';
+import { Empty, Page, SectionHead, StatTile, StatusPill, toast } from '../components/ui';
+import { useSession } from '../lib/session';
 import { DocumentLibrary } from '../components/DocumentLibrary';
 import { PersonBlock } from '../components/PersonBlock';
 import { api } from '../lib/api';
-import { ago, useLive } from '../lib/hooks';
+import { ago, fmtDate, useLive } from '../lib/hooks';
+
+type Filter = 'all' | 'active' | 'action' | 'sealed' | 'closed';
+const GROUP: Record<RequestStatus, Exclude<Filter, 'all'>> = {
+  in_review: 'active', approved: 'active', sealing: 'active', amending: 'active',
+  returned: 'action', sealed: 'sealed', rejected: 'closed', revoked: 'closed',
+};
+const FILTERS: { key: Filter; label: string }[] = [
+  { key: 'all', label: 'All' },
+  { key: 'active', label: 'In progress' },
+  { key: 'action', label: 'Needs action' },
+  { key: 'sealed', label: 'Sealed' },
+  { key: 'closed', label: 'Closed' },
+];
 
 /** Student workspace: documents (drag and drop), teachers as blocks, add a teacher, things to sign, my requests. */
 export default function StudentHome() {
   const nav = useNavigate();
+  const { me } = useSession();
+  const [filter, setFilter] = useState<Filter>('all');
   const { data: mine, error } = useLive<RequestSummary[]>('/api/requests/mine');
   const { data: docs, reload: reloadDocs } = useLive<LibraryDocument[]>('/api/documents', 15_000);
   const { data: conns, reload: reloadConns } = useLive<Connection[]>('/api/connections', 8000);
@@ -26,6 +42,9 @@ export default function StudentHome() {
     return () => clearTimeout(t);
   }, [q]);
 
+  const count = (f: Exclude<Filter, 'all'>) => mine?.filter((r) => GROUP[r.status] === f).length ?? 0;
+  const needsAction = mine?.filter((r) => r.status === 'returned') ?? [];
+  const shown = mine?.filter((r) => filter === 'all' || GROUP[r.status] === filter) ?? [];
   const teachers = conns?.filter((c) => c.status === 'accepted') ?? [];
   const pending = conns?.filter((c) => c.status === 'pending') ?? [];
   const statusOf = (id: string) => conns?.find((c) => c.person.id === id)?.status;
@@ -68,6 +87,11 @@ export default function StudentHome() {
         <div className="hidden lg:block">{library}</div>
 
         <div className="flex flex-col gap-8">
+          <div>
+            <h1 className="text-2xl font-bold md:text-3xl">Hello, {me?.name.split(' ')[0]}</h1>
+            <p className="text-sm text-muted">{[me?.title, me?.department].filter(Boolean).join(' · ')}</p>
+          </div>
+
           {/* Central actions */}
           <section className="grid gap-3 sm:grid-cols-2">
             <Link to="/student/new" className="cta">
@@ -76,6 +100,13 @@ export default function StudentHome() {
             <button className="rounded-xl border-2 border-accent px-8 py-5 text-lg font-semibold text-accent active:scale-[0.98]" onClick={() => send(undefined)}>
               Send a document
             </button>
+          </section>
+
+          <section className="grid grid-cols-2 gap-3 md:grid-cols-4">
+            <StatTile label="In progress" value={mine ? count('active') : '–'} tone="accent" hint="with approvers now" />
+            <StatTile label="Needs your action" value={mine ? count('action') : '–'} tone={count('action') ? 'warn' : 'ink'} hint="returned for changes" />
+            <StatTile label="Sealed" value={mine ? count('sealed') : '–'} tone="ok" hint="approved, PDF ready" />
+            <StatTile label="To sign" value={toSign?.length ?? '–'} tone={toSign?.length ? 'warn' : 'ink'} hint="sent to you" to="/inbox" />
           </section>
 
           {toSign && toSign.length > 0 && (
@@ -87,6 +118,88 @@ export default function StudentHome() {
               <span className="font-semibold text-accent">Review →</span>
             </Link>
           )}
+
+          {needsAction.length > 0 && (
+            <section>
+              <SectionHead title="Needs your action" />
+              <ul className="flex flex-col gap-2">
+                {needsAction.map((r) => (
+                  <li key={r.id}>
+                    <Link to={`/requests/${r.id}`} className="flex items-center justify-between gap-3 rounded-2xl border border-warn/40 bg-warn-bg px-4 py-3">
+                      <span className="min-w-0">
+                        <span className="block truncate font-semibold">{r.title}</span>
+                        <span className="text-xs text-muted">
+                          {r.typeName} · returned {ago(r.updatedAt)} ago
+                        </span>
+                      </span>
+                      <span className="shrink-0 text-sm font-semibold text-accent">Edit and resubmit →</span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+
+          {/* My requests, filterable */}
+          <section>
+            <SectionHead title={`My requests${mine?.length ? ` (${mine.length})` : ''}`} />
+            {error && <p className="text-sm text-bad">{error}</p>}
+            {mine && mine.length === 0 && (
+              <Empty
+                action={
+                  <Link to="/student/new" className="link">
+                    Start your first request →
+                  </Link>
+                }
+              >
+                No requests yet. Pick a type, fill one form, and it goes to the right people on its own.
+              </Empty>
+            )}
+            {mine && mine.length > 0 && (
+              <>
+                <div className="mb-3 flex gap-1 overflow-x-auto rounded-xl bg-panel p-1">
+                  {FILTERS.map((f) => (
+                    <button
+                      key={f.key}
+                      onClick={() => setFilter(f.key)}
+                      className={`whitespace-nowrap rounded-lg px-3 py-1.5 text-sm font-semibold ${filter === f.key ? 'bg-bg text-ink shadow-sm' : 'text-muted'}`}
+                    >
+                      {f.label}
+                      <span className="ml-1 text-xs text-faint">{f.key === 'all' ? mine.length : count(f.key)}</span>
+                    </button>
+                  ))}
+                </div>
+                {shown.length === 0 ? (
+                  <Empty>Nothing here.</Empty>
+                ) : (
+                  <ul className="flex flex-col gap-2">
+                    {shown.map((r) => (
+                      <li key={r.id}>
+                        <Link to={`/requests/${r.id}`} className="block rounded-2xl border border-rule bg-bg p-4 hover:border-accent/40 active:bg-rule">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <p className="truncate font-semibold">{r.title}</p>
+                              <p className="text-xs text-muted">
+                                {r.typeName} · <span className="font-mono">{r.id}</span>
+                                {r.version > 1 && ` · v${r.version}`} · {fmtDate(r.createdAt)}
+                              </p>
+                            </div>
+                            <StatusPill status={r.status} />
+                          </div>
+                          {r.withNow.length > 0 && (
+                            <p className="mt-2 text-sm text-muted">
+                              With: {r.withNow.map((w) => (w.role === 'recipient' ? w.name : w.roleLabel)).join(' and ')} (since {ago(r.withNow[0].since)})
+                            </p>
+                          )}
+                          {r.status === 'sealed' && <p className="mt-2 text-sm font-semibold text-ok">Sealed on chain · open it to download the PDF</p>}
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </>
+            )}
+          </section>
 
           {/* Teachers as blocks */}
           <section>
@@ -151,33 +264,6 @@ export default function StudentHome() {
             {!found && <p className="text-xs text-faint">Type a name (e.g. “Meera”), a designation (“HoD”) or a department.</p>}
           </section>
 
-          {/* My requests */}
-          {error && <p className="text-sm text-bad">{error}</p>}
-          {mine && mine.length > 0 && (
-            <section>
-              <h2 className="mb-2 text-sm font-semibold text-muted">My requests</h2>
-              <ul className="flex flex-col gap-2">
-                {mine.map((r) => (
-                  <li key={r.id}>
-                    <Link to={`/requests/${r.id}`} className="block rounded-2xl border border-rule bg-bg p-4 hover:border-accent/40 active:bg-rule">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <p className="truncate font-semibold">{r.title}</p>
-                          <p className="text-xs text-muted">{r.typeName}</p>
-                        </div>
-                        <StatusPill status={r.status} />
-                      </div>
-                      {r.withNow.length > 0 && (
-                        <p className="mt-2 text-sm text-muted">
-                          With: {r.withNow.map((w) => (w.role === 'recipient' ? w.name : w.roleLabel)).join(' and ')} (since {ago(r.withNow[0].since)})
-                        </p>
-                      )}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </section>
-          )}
         </div>
       </div>
     </Page>

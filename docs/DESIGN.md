@@ -20,7 +20,7 @@ Motifs: horizontal step track with hollow accent rings and a filled green tick a
 
 ## Rule: one central CTA per screen
 
-Mobile-first and responsive. `Page` takes `wide`: phone = one `max-w-md` column; desktop (`md`+) = header bar (product name, person, Switch profile) and either a `max-w-xl` column (forms, single-CTA screens) or a `max-w-5xl` two-column layout (student home: CTA panel | my requests; request page and approver review: details/card | approval chain at `lg`+). Type picker is 3 across; the PIN sheet becomes a centred dialog. Otherwise: big tap targets, no nested menus, no modals except a bottom confirm sheet. Shared classes: `.cta` (primary button), `.link`.
+Mobile-first and responsive. **Top bar** on every signed-in page (sticky): logo, the role's destinations (student: Home · New request · Send a document · To sign (count) · Verify; staff: Gate (Security) · Dashboard (count) · History · Admin (Registrar) · Verify), name → profile, theme, Log out. Below `lg` the destinations scroll in a row under the bar. Shared pieces: `StatTile`, `SectionHead`, `Empty` (`components/ui.tsx`), `DecisionList` / `DecisionPill` (`components/Decisions.tsx`). `Page` takes `wide` (max-w-6xl): phone = one `max-w-md` column; desktop (`md`+) = header bar (product name, person, Switch profile) and either a `max-w-xl` column (forms, single-CTA screens) or a `max-w-5xl` two-column layout (student home: CTA panel | my requests; request page and approver review: details/card | approval chain at `lg`+). Type picker is 3 across; the PIN sheet becomes a centred dialog. Otherwise: big tap targets, no nested menus, no modals except a bottom confirm sheet. Shared classes: `.cta` (primary button), `.link`.
 
 | Screen | Route | Central CTA | File |
 | --- | --- | --- | --- |
@@ -31,9 +31,10 @@ Mobile-first and responsive. `Page` takes `wide`: phone = one `max-w-md` column;
 | New request | /student/new | Type tile → form → Submit for approval | `pages/NewRequest.tsx` |
 | Request page | /requests/:id | Returned: Edit and resubmit · Approved: Download PDF (enabled in prompt 4) | `pages/RequestPage.tsx` |
 | Amend | /requests/:id/amend | Prefilled form, changed fields tagged, reason, live "Goes back to: … · Kept: …" preview → Send amendment | `pages/AmendPage.tsx` |
-| Approver inbox | /inbox | Review next (n) → phone card: Approve / Return / Reject → sheet with comment + PIN; auto-advances; "All clear" at zero | `pages/Inbox.tsx` |
+| Staff dashboard | /inbox | Greeting; hero **Review next (n)** (or All clear) + Approve several; tiles Waiting · Overdue · Signed this week · Avg response; Waiting for you list (tap any row to review it); Recent decisions; sidebar Away (delegate), student requests, My students, Quick links. Review = phone card: Approve / Return / Reject → sheet with comment + PIN, "n of m waiting", auto-advances | `pages/Inbox.tsx` |
+| History (staff) | /history | Tiles Signed · Approved · Returned · Rejected; filter chips, search, Export CSV; each row opens the request | `pages/History.tsx` |
 | Gate | /gate | Scan pass (big) · Scan from photo · sync bar "Revocation list synced HH:MM · n entries" + Sync now · "How offline checks work" sheet · link to Approvals. Result: full-screen VALID / NOT TODAY / SUPERSEDED / REVOKED / INVALID + Scan next | `pages/Gate.tsx` |
-| Admin | /admin | All requests (id, title, type, student, version, who has it, status) + Reset demo | `pages/Admin.tsx` |
+| Admin | /admin | Registrar dashboard: tiles Requests · In review · Overdue · Sealed; tabs Requests (search) · Impact · Audit log · Emails; Run deadline check, Reset demo | `pages/Admin.tsx` |
 | Verify (public) | /verify | Scan QR (live camera) · secondary: Upload PDF, Scan from photo. Opening `/verify#p=…` (phone camera app) runs the check directly. One full-screen verdict + details card + Check another | `pages/Verify.tsx` |
 
 ## Components (`apps/web/src/components`)

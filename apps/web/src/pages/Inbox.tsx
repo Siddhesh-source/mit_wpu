@@ -1,13 +1,14 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { ROLE_LABEL, type Connection, type Delegation, type InboxItem } from '@plc/shared';
+import { Link, useSearchParams } from 'react-router-dom';
+import { ROLE_LABEL, type Connection, type Delegation, type InboxItem, type StaffDashboard } from '@plc/shared';
 import { PersonBlock } from '../components/PersonBlock';
-import { Page, PinPad, Sheet, Tick, toast } from '../components/ui';
+import { DecisionList } from '../components/Decisions';
+import { Empty, Page, PinPad, SectionHead, Sheet, StatTile, Tick, toast } from '../components/ui';
 import { FieldList } from '../components/FormFields';
 import { Timeline } from '../components/Timeline';
 import { AttachmentList } from '../components/Attachments';
 import { api } from '../lib/api';
-import { ago, useLive } from '../lib/hooks';
+import { ago, fmtDay, useLive } from '../lib/hooks';
 import { useSession } from '../lib/session';
 
 type Choice = 'approved' | 'returned' | 'rejected';
@@ -91,7 +92,15 @@ function DelegateSheet({ open, onClose, onChanged }: { open: boolean; onClose: (
 export default function Inbox() {
   const { me } = useSession();
   const { data: items, error, reload } = useLive<InboxItem[]>('/api/inbox');
-  const [mode, setMode] = useState<'home' | 'review' | 'batch'>('home');
+  const [params, setParams] = useSearchParams();
+  const [mode, setModeState] = useState<'home' | 'review' | 'batch'>(params.has('review') ? 'review' : 'home');
+  /** The item being reviewed; null = the oldest waiting. */
+  const [current, setCurrent] = useState<number | null>(Number(params.get('review')) || null);
+  const setMode = (m: 'home' | 'review' | 'batch', approvalId: number | null = null) => {
+    setModeState(m);
+    setCurrent(approvalId);
+    setParams(m === 'review' ? { review: String(approvalId ?? '') } : {}, { replace: true });
+  };
   const [choice, setChoice] = useState<Choice | null>(null);
   const [comment, setComment] = useState('');
   const [picked, setPicked] = useState<number[]>([]);
@@ -102,31 +111,16 @@ export default function Inbox() {
 
   const isStudent = !!me?.roles.includes('student');
   const { data: conns, reload: reloadConns } = useLive<Connection[]>(isStudent ? null : '/api/connections', 8000);
+  const { data: dash, reload: reloadDash } = useLive<StaffDashboard>(isStudent ? null : '/api/dashboard?limit=6', 15_000);
   const requests = conns?.filter((c) => c.status === 'pending') ?? [];
+  const myStudents = conns?.filter((c) => c.status === 'accepted') ?? [];
   async function answer(c: Connection, how: 'accept' | 'decline') {
     await api(`/api/connections/${c.id}/${how}`, { method: 'POST' }).catch((e) => toast(e.message));
     toast(how === 'accept' ? `${c.person.name} can now send you documents from their dashboard` : 'Declined');
     reloadConns();
   }
-  const connectionPanel = requests.length > 0 && (
-    <section className="mt-8 w-full text-left">
-      <h2 className="mb-3 text-sm font-semibold text-muted">Students who want to add you ({requests.length})</h2>
-      <div className="grid gap-3 sm:grid-cols-2">
-        {requests.map((c) => (
-          <PersonBlock key={c.id} p={c.person}>
-            <button className="flex-1 rounded-xl bg-ok px-4 py-2 text-sm font-semibold text-white" onClick={() => answer(c, 'accept')}>
-              Accept
-            </button>
-            <button className="rounded-xl border border-rule px-4 py-2 text-sm font-semibold" onClick={() => answer(c, 'decline')}>
-              Decline
-            </button>
-          </PersonBlock>
-        ))}
-      </div>
-    </section>
-  );
 
-  const item = items?.[0];
+  const item = items?.find((i) => i.approvalId === current) ?? items?.[0];
   const count = items?.length ?? 0;
   const mine = item?.timeline.find((s) => s.approvalId === item.approvalId);
 
@@ -143,7 +137,9 @@ export default function Inbox() {
       toast(`${DONE[choice]} · ${item.title}`);
       setChoice(null);
       setComment('');
+      setCurrent(null);
       await reload();
+      reloadDash();
     } catch (e) {
       toast((e as Error).message);
       setResetPin((n) => n + 1);
@@ -162,6 +158,7 @@ export default function Inbox() {
       setBatchPin(false);
       setMode('home');
       await reload();
+      reloadDash();
     } catch (e) {
       toast((e as Error).message);
       setResetPin((n) => n + 1);
@@ -170,38 +167,13 @@ export default function Inbox() {
     }
   }
 
-  const tools = (
-    <div className="mt-6 flex flex-wrap justify-center gap-5">
-      {count > 1 && (
-        <button className="link text-base" onClick={() => (setPicked([]), setMode('batch'))}>
-          Approve several
-        </button>
-      )}
-      {!isStudent && (
-        <button className="link text-base" onClick={() => setDelegating(true)}>
-          Away? Set a delegate
-        </button>
-      )}
-      {isStudent && (
-        <Link to="/student" className="link text-base">
-          Back to my dashboard
-        </Link>
-      )}
-      {me?.roles.includes('security') && (
-        <Link to="/gate" className="link text-base">
-          Back to gate
-        </Link>
-      )}
-    </div>
-  );
-
   // Batch: tick routine items, approve with one PIN
   if (mode === 'batch' && items)
     return (
       <Page wide>
         <div className="mb-4 flex items-center justify-between">
           <button className="link" onClick={() => setMode('home')}>
-            ← Inbox
+            ← {isStudent ? 'To sign' : 'Dashboard'}
           </button>
           <button className="link text-sm" onClick={() => setPicked(picked.length === items.length ? [] : items.map((i) => i.approvalId))}>
             {picked.length === items.length ? 'Clear' : 'Select all'}
@@ -241,46 +213,244 @@ export default function Inbox() {
       </Page>
     );
 
-  // Home: one central CTA
-  if (mode !== 'review' || !item)
-    return (
-      <Page>
-        <section className="flex flex-1 flex-col items-center justify-center gap-4 text-center">
-          {items === null && !error ? null : count === 0 ? (
-            <>
-              <span className="grid h-20 w-20 place-items-center rounded-full bg-ok text-white">
-                <Tick className="h-10 w-10" />
-              </span>
+  // Home: the dashboard. One central CTA (Review next), then the queue, numbers, history and people.
+  if (mode !== 'review' || !item) {
+    const waitingSince = (i: InboxItem) => i.withNow.find((w) => w.role === i.myRole)?.since ?? i.updatedAt;
+    const stepOf = (i: InboxItem) => i.timeline.find((s) => s.approvalId === i.approvalId);
+    const hour = Number(new Date().toLocaleString('en-GB', { hour: 'numeric', hour12: false, timeZone: 'Asia/Kolkata' }));
+    const hello = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+    const away = dash?.delegation;
+
+    const hero = (
+      <section className="flex flex-col gap-5 rounded-3xl border border-rule bg-panel p-6 md:flex-row md:items-center md:justify-between md:p-8">
+        {items === null && !error ? (
+          <p className="text-muted">Loading…</p>
+        ) : count === 0 ? (
+          <div className="flex items-center gap-4">
+            <span className="grid h-14 w-14 shrink-0 place-items-center rounded-full bg-ok text-white">
+              <Tick className="h-7 w-7" />
+            </span>
+            <div>
               <p className="text-xl font-semibold">All clear</p>
-              <p className="text-sm text-muted">Nothing waiting for you. New requests show up here on their own.</p>
-            </>
-          ) : (
-            <>
-              <button className="cta w-full max-w-xs" onClick={() => setMode('review')}>
-                Review next ({count})
+              <p className="text-sm text-muted">Nothing is waiting for your signature. New requests appear here on their own.</p>
+            </div>
+          </div>
+        ) : (
+          <div>
+            <p className="text-2xl font-bold">{count} waiting for your signature</p>
+            <p className="mt-1 text-sm text-muted">
+              Oldest first · waiting {ago(waitingSince(items![0]))}
+              {items!.some((i) => stepOf(i)?.overdue) && <span className="font-semibold text-warn"> · some are overdue</span>}
+            </p>
+          </div>
+        )}
+        <div className="flex flex-col gap-2 md:items-end">
+          <button className="cta w-full md:w-auto" disabled={!count} onClick={() => setMode('review')}>
+            {count ? `Review next (${count})` : 'Nothing to review'}
+          </button>
+          <div className="flex flex-wrap justify-center gap-4 md:justify-end">
+            {count > 1 && (
+              <button className="link" onClick={() => (setPicked([]), setMode('batch'))}>
+                Approve several
               </button>
-              <p className="max-w-xs text-sm text-muted">
-                Oldest first. Waiting since {ago(items![0].withNow.find((w) => w.role === items![0].myRole)?.since ?? items![0].updatedAt)}.
-                {items!.some((i) => i.timeline.find((s) => s.approvalId === i.approvalId)?.overdue) && <span className="font-semibold text-warn"> Some are overdue.</span>}
-              </p>
-            </>
-          )}
+            )}
+            {isStudent && (
+              <Link to="/student" className="link">
+                Back to my dashboard
+              </Link>
+            )}
+          </div>
+        </div>
+      </section>
+    );
+
+    const queue = (
+      <section>
+        <SectionHead title={`Waiting for you${count ? ` (${count})` : ''}`} />
+        {count === 0 ? (
+          <Empty>No requests are waiting. Everything you signed is in your history.</Empty>
+        ) : (
+          <ul className="flex flex-col divide-y divide-rule overflow-hidden rounded-2xl border border-rule">
+            {items!.map((i) => {
+              const step = stepOf(i);
+              return (
+                <li key={i.approvalId}>
+                  <button className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-panel" onClick={() => setMode('review', i.approvalId)}>
+                    <span className="min-w-0 flex-1">
+                      <span className="flex items-center gap-2">
+                        <span className="truncate font-semibold">{i.title}</span>
+                        {i.amendment && <span className="shrink-0 rounded-full bg-warn-bg px-2 py-0.5 text-[11px] font-semibold text-warn">Amendment</span>}
+                        {step?.escalated ? (
+                          <span className="shrink-0 rounded-full bg-bad-bg px-2 py-0.5 text-[11px] font-semibold text-bad">Escalated</span>
+                        ) : (
+                          step?.overdue && <span className="shrink-0 rounded-full bg-warn-bg px-2 py-0.5 text-[11px] font-semibold text-warn">Overdue</span>
+                        )}
+                      </span>
+                      <span className="mt-0.5 block truncate text-xs text-muted">
+                        {i.typeName} · {i.student.name} · as {ROLE_LABEL[i.myRole]}
+                        {step?.onBehalfOf && ` for ${step.onBehalfOf.name}`}
+                        {i.attachments.length > 0 && ` · ${i.attachments.length} file(s)`}
+                      </span>
+                    </span>
+                    <span className="hidden shrink-0 text-xs text-faint sm:inline">{ago(waitingSince(i))}</span>
+                    <span className="shrink-0 text-sm font-semibold text-accent">Review →</span>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </section>
+    );
+
+    // A student opening "To sign": the queue only.
+    if (isStudent)
+      return (
+        <Page wide>
+          <div className="flex flex-col gap-8">
+            {hero}
+            {queue}
+            {error && <p className="text-sm text-bad">{error}</p>}
+          </div>
+        </Page>
+      );
+
+    const avg = dash?.avgResponseHours;
+    return (
+      <Page wide>
+        <div className="mb-6">
+          <h1 className="text-2xl font-bold md:text-3xl">
+            {hello}, {me?.name}
+          </h1>
+          <p className="text-sm text-muted">
+            {me?.roles.map((r) => ROLE_LABEL[r]).join(' · ')} · {me?.department} ·{' '}
+            {new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Asia/Kolkata' })}
+          </p>
+        </div>
+
+        <div className="flex flex-col gap-8">
+          {hero}
+
+          <section className="grid grid-cols-2 gap-3 md:grid-cols-4">
+            <StatTile label="Waiting" value={count} tone="accent" hint="for your signature" />
+            <StatTile label="Overdue" value={dash?.overdue ?? 0} tone={dash?.overdue ? 'warn' : 'ink'} hint="past the step deadline" />
+            <StatTile label="Signed this week" value={dash?.decided.thisWeek ?? '–'} tone="ok" hint={dash ? `${dash.decided.total} in total · see history` : undefined} to="/history" />
+            <StatTile label="Avg response" value={avg == null ? '–' : avg < 1 ? '<1 h' : `${Math.round(avg)} h`} hint="from opened to signed" />
+          </section>
+
+          <div className="flex flex-col gap-8 lg:grid lg:grid-cols-[1fr_20rem] lg:items-start lg:gap-10">
+            <div className="flex flex-col gap-8">
+              {queue}
+              <section>
+                <SectionHead title="Recent decisions">
+                  {!!dash?.history.length && (
+                    <Link to="/history" className="link">
+                      All history →
+                    </Link>
+                  )}
+                </SectionHead>
+                {dash && (dash.history.length === 0 ? <Empty>Requests you approve, return or reject are listed here.</Empty> : <DecisionList items={dash.history} />)}
+                {!!dash?.decided.total && (
+                  <p className="mt-2 text-xs text-faint">
+                    {dash.decided.approved} approved · {dash.decided.returned} returned · {dash.decided.rejected} rejected
+                  </p>
+                )}
+              </section>
+            </div>
+
+            <aside className="flex flex-col gap-6">
+              <section className="rounded-2xl border border-rule p-4">
+                <SectionHead title="Away from campus?" />
+                <p className="mb-3 text-sm text-muted">
+                  {away ? (
+                    <>
+                      <b className="text-ink">{away.delegate.name}</b> is signing for you until {fmtDay(away.endsOn)}.
+                    </>
+                  ) : (
+                    'Hand your approvals to a colleague for a few days. They sign on your behalf, and the PDF says so.'
+                  )}
+                </p>
+                <button className="w-full rounded-xl border-2 border-accent px-4 py-2.5 text-sm font-semibold text-accent" onClick={() => setDelegating(true)}>
+                  {away ? 'Manage delegate' : 'Set a delegate'}
+                </button>
+              </section>
+
+              {requests.length > 0 && (
+                <section>
+                  <SectionHead title={`Students who want to add you (${requests.length})`} />
+                  <div className="flex flex-col gap-3">
+                    {requests.map((c) => (
+                      <PersonBlock key={c.id} p={c.person}>
+                        <button className="flex-1 rounded-xl bg-ok px-4 py-2 text-sm font-semibold text-white" onClick={() => answer(c, 'accept')}>
+                          Accept
+                        </button>
+                        <button className="rounded-xl border border-rule px-4 py-2 text-sm font-semibold" onClick={() => answer(c, 'decline')}>
+                          Decline
+                        </button>
+                      </PersonBlock>
+                    ))}
+                  </div>
+                </section>
+              )}
+
+              <section>
+                <SectionHead title={`My students${myStudents.length ? ` (${myStudents.length})` : ''}`} />
+                {myStudents.length === 0 ? (
+                  <Empty>Students who add you as their teacher appear here; their documents come to you first.</Empty>
+                ) : (
+                  <ul className="flex flex-col divide-y divide-rule rounded-2xl border border-rule">
+                    {myStudents.slice(0, 8).map((c) => (
+                      <li key={c.id} className="flex items-center gap-3 px-3 py-2.5">
+                        <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-ok text-xs font-semibold text-white">{c.person.initials}</span>
+                        <span className="min-w-0">
+                          <span className="block truncate text-sm font-semibold">{c.person.name}</span>
+                          <span className="block truncate text-xs text-faint">{c.person.title || c.person.department}</span>
+                        </span>
+                      </li>
+                    ))}
+                    {myStudents.length > 8 && <li className="px-3 py-2 text-xs text-faint">and {myStudents.length - 8} more</li>}
+                  </ul>
+                )}
+              </section>
+
+              <section className="rounded-2xl border border-rule p-4">
+                <SectionHead title="Quick links" />
+                <div className="flex flex-col gap-2">
+                  <Link to="/verify" className="link">
+                    Verify a document (scan QR or upload PDF)
+                  </Link>
+                  {me?.roles.includes('security') && (
+                    <Link to="/gate" className="link">
+                      Open the gate check
+                    </Link>
+                  )}
+                  <Link to="/history" className="link">
+                    My decision history
+                  </Link>
+                  <Link to="/profile" className="link">
+                    My profile
+                  </Link>
+                </div>
+              </section>
+            </aside>
+          </div>
           {error && <p className="text-sm text-bad">{error}</p>}
-          {tools}
-          {connectionPanel}
-        </section>
-        <DelegateSheet open={delegating} onClose={() => setDelegating(false)} onChanged={reload} />
+        </div>
+        <DelegateSheet open={delegating} onClose={() => setDelegating(false)} onChanged={() => (reload(), reloadDash())} />
       </Page>
     );
+  }
 
   // Review: the phone card from deck slide 7; on desktop the request's chain sits beside it
   return (
     <Page wide>
       <div className="mb-3 flex items-center justify-between text-sm">
         <button className="link" onClick={() => setMode('home')}>
-          ← Inbox
+          ← {isStudent ? 'To sign' : 'Dashboard'}
         </button>
-        <span className="text-muted">{count} pending</span>
+        <span className="text-muted">
+          {(items?.indexOf(item) ?? 0) + 1} of {count} waiting
+        </span>
       </div>
 
       <div className="lg:grid lg:grid-cols-[1fr_1fr] lg:items-start lg:gap-12">

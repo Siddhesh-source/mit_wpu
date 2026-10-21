@@ -293,6 +293,36 @@ export interface VersionHistory {
   approvals: { role: Role; roleLabel: string; name: string; decision: Decision; signedVersion: number; carried: boolean; signedAt: string | null }[];
 }
 
+/** One decision a staff member signed (their approval history). */
+export interface DecisionEntry {
+  approvalId: number;
+  requestId: string;
+  title: string;
+  typeName: string;
+  student: { id: string; name: string };
+  role: Role;
+  roleLabel: string;
+  decision: 'approved' | 'returned' | 'rejected';
+  comment: string | null;
+  version: number;
+  signedAt: string;
+  /** Set when the decision was signed as someone's delegate. */
+  onBehalfOf: string | null;
+  /** Where the request stands now. */
+  status: RequestStatus;
+}
+
+/** Staff home: workload, decision history and current delegation. */
+export interface StaffDashboard {
+  waiting: number;
+  overdue: number;
+  decided: { total: number; approved: number; returned: number; rejected: number; thisWeek: number };
+  avgResponseHours: number | null;
+  students: number;
+  delegation: Delegation | null;
+  history: DecisionEntry[];
+}
+
 export interface InboxItem extends RequestDetail {
   approvalId: number;
   myRole: Role;

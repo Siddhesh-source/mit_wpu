@@ -1,7 +1,7 @@
 import express, { Router, type NextFunction, type Request, type Response } from 'express';
 import { APPROVER_ROLES } from '@plc/shared';
 import { ALLOWED, attachmentFor, saveUpload } from './attachments.js';
-import { auditLog, batchApprove, colleagues, createDelegation, endDelegation, myDelegations, outbox, runSla, stats } from './ops.js';
+import { auditLog, batchApprove, colleagues, createDelegation, endDelegation, myDelegations, outbox, runSla, staffDashboard, stats } from './ops.js';
 import type { DB } from './db.js';
 import { requireAuth, requireRole } from './auth.js';
 import { HttpError } from './errors.js';
@@ -108,6 +108,11 @@ export function workflowRoutes(db: DB, svc: Services) {
   r.get('/delegations', requireAuth, requireRole(...APPROVER_ROLES), (req, res) => res.json({ mine: myDelegations(db, req.user!.sub), colleagues: colleagues(db, req.user!.sub) }));
   r.post('/delegations', requireAuth, requireRole(...APPROVER_ROLES), wrap((req, res) => res.status(201).json(createDelegation(db, req.user!.sub, req.body?.delegateId, req.body?.startsOn, req.body?.endsOn))));
   r.delete('/delegations/:id', requireAuth, requireRole(...APPROVER_ROLES), wrap((req, res) => (endDelegation(db, req.user!.sub, Number(req.params.id)), res.json({ ok: true }))));
+
+  // Staff home: workload, my decision history, current delegation
+  r.get('/dashboard', requireAuth, requireRole(...APPROVER_ROLES, 'admin'), (req, res) =>
+    res.json(staffDashboard(db, req.user!.sub, Math.min(Number(req.query.limit) || 100, 500))),
+  );
 
   // Admin: overview, impact, audit, emails, deadline check
   r.get('/admin/stats', requireAuth, requireRole('admin'), (_req, res) => res.json(stats(db)));
