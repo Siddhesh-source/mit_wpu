@@ -29,7 +29,7 @@ export function Discussion({ requestId }: { requestId: string }) {
 
   return (
     <section className="mt-8">
-      <h2 className="mb-3 text-sm font-semibold text-muted">Discussion{thread?.length ? ` (${thread.length})` : ''}</h2>
+      <h2 className="mb-3 text-base font-semibold">Discussion{thread?.length ? ` (${thread.length})` : ''}</h2>
       {thread && thread.length === 0 && <p className="mb-3 text-sm text-faint">Ask a question or explain a change. Everyone on this request can read it.</p>}
       <ul className="mb-3 flex flex-col gap-2">
         {thread?.map((c) => {
@@ -50,9 +50,9 @@ export function Discussion({ requestId }: { requestId: string }) {
           value={body}
           onChange={(e) => setBody(e.target.value)}
           placeholder="Write a message"
-          className="min-h-[2.75rem] flex-1 resize-y rounded-xl border border-rule px-3 py-2.5 text-sm outline-none focus:border-accent"
+          className="min-h-[2.75rem] flex-1 resize-none rounded-xl border border-rule px-3 py-2.5 text-sm outline-none focus:border-accent"
         />
-        <button className="rounded-xl border-2 border-accent px-4 py-2 text-sm font-semibold text-accent disabled:opacity-40" disabled={busy || !body.trim()}>
+        <button className="min-h-[2.75rem] rounded-xl bg-accent px-4 text-sm font-semibold text-white disabled:opacity-40" disabled={busy || !body.trim()}>
           Send
         </button>
       </form>

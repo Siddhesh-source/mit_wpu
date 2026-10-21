@@ -105,6 +105,10 @@ export function Page({ children, back, wide = false }: { children: ReactNode; ba
           </div>
           <div className="flex min-w-0 items-center gap-3 md:gap-5">
             <div className="hidden min-w-0 max-w-[14rem] sm:block">{who}</div>
+            {/* Phones: the profile is one tap on your initials */}
+            <Link to="/profile" className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-panel text-sm font-semibold sm:hidden" title="Your profile" aria-label="Your profile">
+              {me?.initials}
+            </Link>
             <ThemeToggle />
             <button className="link min-h-[44px] shrink-0" onClick={() => (logout(), nav('/login'))}>
               Log out

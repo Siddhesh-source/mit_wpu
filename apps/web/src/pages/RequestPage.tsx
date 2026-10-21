@@ -1,7 +1,8 @@
 import { useState, type FormEvent } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { ROLE_LABEL, type RequestDetail, type VersionHistory } from '@plc/shared';
-import { Page, PinPad, Sheet, StatusPill, Tick, toast } from '../components/ui';
+import { Page, PinPad, SectionHead, Sheet, StatusPill, Tick, toast } from '../components/ui';
+import { Icon } from '../components/Icon';
 import { VersionStrip } from '../components/VersionStrip';
 import { AttachmentList, AttachmentPicker } from '../components/Attachments';
 import type { AttachmentInfo, RequestType } from '@plc/shared';
@@ -240,11 +241,16 @@ export default function RequestPage() {
               )}
             </>
           ) : (
-            r.seal && (
-              <button className="link text-base" onClick={getPdf}>
-                {r.status === 'revoked' ? 'Download PDF (revoked, for records)' : 'Download signed PDF'}
+            r.seal &&
+            (r.status === 'revoked' ? (
+              <button className="link min-h-[44px] text-base" onClick={getPdf}>
+                Download PDF (revoked, for records)
               </button>
-            )
+            ) : (
+              <button className="flex min-h-[48px] w-full items-center justify-center gap-2 rounded-xl border border-rule font-semibold transition-colors hover:bg-panel" onClick={getPdf}>
+                <Icon name="file" className="h-4 w-4" /> Download signed PDF
+              </button>
+            ))
           )}
           {r.status === 'revoked' ? null : r.seal?.anchor === 'anchored' ? (
             <p className="flex items-center gap-2 text-sm text-ok">
@@ -282,14 +288,18 @@ export default function RequestPage() {
 
       <Discussion requestId={r.id} />
 
+      {/* Destructive action on its own row, well away from any form */}
       {canRevoke && (
-        <button className="mb-6 text-sm font-semibold text-bad underline-offset-4 hover:underline" onClick={() => setRevoking(true)}>
-          Revoke approval
-        </button>
+        <div className="mb-6 mt-8 flex items-center justify-between gap-4 border-t border-rule pt-5">
+          <p className="text-sm text-muted">Cancel this approval everywhere. Every copy will verify as Revoked.</p>
+          <button className="min-h-[44px] shrink-0 rounded-xl border border-bad/40 px-4 text-sm font-semibold text-bad transition-colors hover:bg-bad-bg" onClick={() => setRevoking(true)}>
+            Revoke approval
+          </button>
+        </div>
       )}
       </div>
-      <section className="lg:rounded-3xl lg:border lg:border-rule lg:p-6">
-        <h2 className="mb-3 text-sm font-semibold text-muted">Approval chain</h2>
+      <section className="mt-8 lg:mt-0 lg:rounded-2xl lg:border lg:border-rule lg:p-6">
+        <SectionHead title="Approval chain" />
         {r.version > 1 && <p className="mb-3 text-xs text-faint">Showing v{r.version}. Carried approvals were signed on an earlier version and still apply.</p>}
         <Timeline steps={r.timeline} done={finished && (r.status === 'sealed' ? 'sealed' : 'approved')} />
       </section>

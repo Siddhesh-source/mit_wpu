@@ -66,10 +66,10 @@ export default function StudentHome() {
           <div className="-mb-8">
             <PageHeader title={`Hello, ${me?.name.split(' ')[0] ?? ''}`} subtitle={[me?.title, me?.department].filter(Boolean).join(' · ')}>
               <div className="flex w-full gap-2 sm:w-auto">
-                <button className="flex min-h-[48px] flex-1 items-center justify-center gap-2 rounded-xl border border-rule px-4 font-semibold transition-colors hover:bg-panel sm:flex-none" onClick={() => send(undefined)}>
+                <button className="flex min-h-[48px] flex-1 items-center justify-center gap-2 whitespace-nowrap rounded-xl border border-rule px-3 text-sm font-semibold transition-colors hover:bg-panel sm:flex-none sm:px-4 sm:text-base" onClick={() => send(undefined)}>
                   <Icon name="send" className="h-4 w-4" /> Send a document
                 </button>
-                <Link to="/student/new" className="flex min-h-[48px] flex-1 items-center justify-center gap-2 rounded-xl bg-accent px-5 font-semibold text-white shadow-sm transition active:scale-[0.98] sm:flex-none">
+                <Link to="/student/new" className="flex min-h-[48px] flex-1 items-center justify-center gap-2 whitespace-nowrap rounded-xl bg-accent px-3 text-sm font-semibold text-white shadow-sm transition active:scale-[0.98] sm:flex-none sm:px-5 sm:text-base">
                   <Icon name="plus" className="h-4 w-4" /> New request
                 </Link>
               </div>
