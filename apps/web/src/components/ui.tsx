@@ -4,6 +4,7 @@ import { APPROVER_ROLES, ROLE_LABEL, STATUS_LABEL, type InboxItem, type RequestS
 import { useSession } from '../lib/session';
 import { useLive } from '../lib/hooks';
 import { ThemeToggle } from './ThemeToggle';
+import { Icon, type IconName } from './Icon';
 
 const PILL: Record<RequestStatus, string> = {
   in_review: 'bg-panel text-accent',
@@ -20,24 +21,28 @@ export function StatusPill({ status }: { status: RequestStatus }) {
   return <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${PILL[status]}`}>{STATUS_LABEL[status]}</span>;
 }
 
-type NavItem = { to: string; label: string; badge?: number; end?: boolean };
+type NavItem = { to: string; label: string; icon: IconName; badge?: number; end?: boolean };
 
 /** Top bar destinations for this person's roles. `waiting` = items waiting for their signature. */
 function navFor(roles: Role[], waiting: number): NavItem[] {
   if (roles.includes('student'))
     return [
-      { to: '/student', label: 'Home', end: true },
-      { to: '/student/new', label: 'New request' },
-      { to: '/student/teachers', label: 'My teachers' },
-      { to: '/inbox', label: 'To sign', badge: waiting },
-      { to: '/verify', label: 'Verify' },
+      { to: '/student', label: 'Home', icon: 'home', end: true },
+      { to: '/student/new', label: 'New request', icon: 'plus' },
+      { to: '/student/teachers', label: 'My teachers', icon: 'users' },
+      { to: '/inbox', label: 'To sign', icon: 'pen', badge: waiting },
+      { to: '/verify', label: 'Verify', icon: 'shield' },
     ];
   const items: NavItem[] = [];
-  if (roles.includes('security')) items.push({ to: '/gate', label: 'Gate' });
+  if (roles.includes('security')) items.push({ to: '/gate', label: 'Gate', icon: 'scan' });
   if (roles.some((r) => APPROVER_ROLES.includes(r)))
-    items.push({ to: '/inbox', label: 'Dashboard', badge: waiting }, { to: '/people', label: 'People' }, { to: '/history', label: 'History' });
-  if (roles.includes('admin')) items.push({ to: '/admin', label: 'Admin' });
-  items.push({ to: '/verify', label: 'Verify' });
+    items.push(
+      { to: '/inbox', label: 'Dashboard', icon: 'inbox', badge: waiting },
+      { to: '/people', label: 'People', icon: 'users' },
+      { to: '/history', label: 'History', icon: 'history' },
+    );
+  if (roles.includes('admin')) items.push({ to: '/admin', label: 'Admin', icon: 'building' });
+  items.push({ to: '/verify', label: 'Verify', icon: 'shield' });
   return items;
 }
 
@@ -50,11 +55,14 @@ function TopNav({ items, className = '' }: { items: NavItem[]; className?: strin
           to={i.to}
           end={i.end}
           className={({ isActive }) =>
-            `flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-1.5 text-sm font-semibold ${isActive ? 'bg-panel text-ink' : 'text-muted hover:text-ink'}`
+            `flex min-h-[44px] shrink-0 items-center gap-2 whitespace-nowrap rounded-lg px-3 text-sm font-semibold transition-colors lg:min-h-[36px] ${
+              isActive ? 'bg-panel text-ink' : 'text-muted hover:bg-panel/60 hover:text-ink'
+            }`
           }
         >
+          <Icon name={i.icon} className="h-4 w-4" />
           {i.label}
-          {!!i.badge && <span className="rounded-full bg-accent px-1.5 text-[11px] font-bold leading-5 text-white">{i.badge}</span>}
+          {!!i.badge && <span className="rounded-full bg-accent px-1.5 text-[11px] font-bold leading-5 text-white tabular-nums">{i.badge}</span>}
         </NavLink>
       ))}
     </nav>
@@ -83,10 +91,10 @@ export function Page({ children, back, wide = false }: { children: ReactNode; ba
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 md:px-8">
           <div className="flex min-w-0 items-center gap-6">
             <Link to="/" className="flex shrink-0 items-center gap-2 text-lg font-bold">
-              <span className="grid h-7 w-7 place-items-center rounded-lg bg-accent text-white">
-                <Tick className="h-4 w-4" />
+              <span className="grid h-8 w-8 place-items-center rounded-lg bg-accent text-white">
+                <Icon name="check" className="h-5 w-5" />
               </span>
-              <span className="hidden sm:inline">CampusSign</span>
+              <span>CampusSign</span>
             </Link>
             {back && (
               <Link to={back} className="link -ml-2 shrink-0 text-base lg:hidden">
@@ -95,17 +103,21 @@ export function Page({ children, back, wide = false }: { children: ReactNode; ba
             )}
             <TopNav items={items} className="hidden lg:flex" />
           </div>
-          <div className="flex min-w-0 items-center gap-4 md:gap-5">
-            <div className="min-w-0 max-w-[10rem] md:max-w-[14rem]">{who}</div>
+          <div className="flex min-w-0 items-center gap-3 md:gap-5">
+            <div className="hidden min-w-0 max-w-[14rem] sm:block">{who}</div>
             <ThemeToggle />
-            <button className="link shrink-0" onClick={() => (logout(), nav('/login'))}>
+            <button className="link min-h-[44px] shrink-0" onClick={() => (logout(), nav('/login'))}>
               Log out
             </button>
           </div>
         </div>
         {items.length > 0 && (
-          <div className="mx-auto max-w-6xl overflow-x-auto px-3 pb-2 lg:hidden">
-            <TopNav items={items} />
+          // Phones and tablets: the destinations scroll in a row; the right edge fades so the scroll is visible.
+          <div className="relative mx-auto max-w-6xl lg:hidden">
+            <div className="overflow-x-auto px-3 pb-1 [scrollbar-width:none]">
+              <TopNav items={items} />
+            </div>
+            <div className="pointer-events-none absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-bg" />
           </div>
         )}
       </header>
@@ -121,41 +133,69 @@ export function Page({ children, back, wide = false }: { children: ReactNode; ba
   );
 }
 
-/** One number on a dashboard: label, big value, a short hint. */
-export function StatTile({ label, value, hint, tone = 'ink', to }: { label: string; value: ReactNode; hint?: string; tone?: 'ink' | 'accent' | 'ok' | 'warn' | 'bad'; to?: string }) {
-  const color = { ink: 'text-ink', accent: 'text-accent', ok: 'text-ok', warn: 'text-warn', bad: 'text-bad' }[tone];
-  const body = (
-    <>
-      <p className="text-xs font-semibold uppercase tracking-wide text-muted">{label}</p>
-      <p className={`mt-1 text-3xl font-bold tabular-nums ${color}`}>{value}</p>
-      {hint && <p className="mt-0.5 truncate text-xs text-faint">{hint}</p>}
-    </>
-  );
-  const cls = 'block rounded-2xl border border-rule bg-panel p-4';
-  return to ? (
-    <Link to={to} className={`${cls} hover:border-accent/40`}>
-      {body}
-    </Link>
-  ) : (
-    <div className={cls}>{body}</div>
+export type Stat = { label: string; value: ReactNode; hint?: string; tone?: 'ink' | 'accent' | 'ok' | 'warn' | 'bad'; to?: string };
+
+/**
+ * Key numbers as one strip: a single bordered row divided by hairlines (two columns on phones). Callers colour a
+ * number only when it asks for action and is not zero; everything else is ink.
+ */
+export function StatStrip({ items }: { items: Stat[] }) {
+  const color = { ink: 'text-ink', accent: 'text-accent', ok: 'text-ok', warn: 'text-warn', bad: 'text-bad' };
+  return (
+    <dl className={`grid grid-cols-2 overflow-hidden rounded-2xl border border-rule ${items.length === 4 ? 'md:grid-cols-4' : 'md:grid-cols-3'}`}>
+      {items.map((s, i) => {
+        const body = (
+          <>
+            <dt className="text-xs text-muted">{s.label}</dt>
+            <dd className={`mt-1 text-2xl font-bold tabular-nums ${color[s.tone ?? 'ink']}`}>{s.value}</dd>
+            {s.hint && <dd className="mt-0.5 truncate text-xs text-faint">{s.hint}</dd>}
+          </>
+        );
+        // hairlines between cells: left border except the first in a row, top border on the phone's second row
+        const cls = `block px-4 py-3.5 ${i % 2 ? 'border-l border-rule' : ''} ${i >= 2 ? 'border-t border-rule md:border-t-0' : ''} ${i === 2 ? 'md:border-l' : ''}`;
+        return s.to ? (
+          <Link key={s.label} to={s.to} className={`${cls} transition-colors hover:bg-panel`}>
+            {body}
+          </Link>
+        ) : (
+          <div key={s.label} className={cls}>
+            {body}
+          </div>
+        );
+      })}
+    </dl>
   );
 }
 
-/** A section heading with an optional action on the right. */
-export function SectionHead({ title, children }: { title: ReactNode; children?: ReactNode }) {
+/** Page title, one-line subtitle and an optional action on the right. */
+export function PageHeader({ title, subtitle, children }: { title: ReactNode; subtitle?: ReactNode; children?: ReactNode }) {
   return (
-    <div className="mb-3 flex items-center justify-between gap-3">
-      <h2 className="text-sm font-semibold text-muted">{title}</h2>
+    <div className="mb-8 flex flex-wrap items-end justify-between gap-3">
+      <div className="min-w-0">
+        <h1 className="text-2xl font-bold md:text-3xl">{title}</h1>
+        {subtitle && <p className="mt-1 text-sm text-muted">{subtitle}</p>}
+      </div>
       {children}
     </div>
   );
 }
 
-/** Empty state: one line of text and an optional action. */
-export function Empty({ children, action }: { children: ReactNode; action?: ReactNode }) {
+/** A section heading (more space above than below; callers' gap-8 provides the space above) with an optional action. */
+export function SectionHead({ title, children }: { title: ReactNode; children?: ReactNode }) {
   return (
-    <div className="rounded-2xl border border-dashed border-rule px-4 py-6 text-center text-sm text-faint">
-      <p>{children}</p>
+    <div className="mb-3 flex min-h-[28px] items-center justify-between gap-3">
+      <h2 className="text-base font-semibold text-ink">{title}</h2>
+      {children}
+    </div>
+  );
+}
+
+/** Empty state: a quiet panel with an optional icon, one line of text and an optional action. Dashed borders are for drop zones only. */
+export function Empty({ children, action, icon }: { children: ReactNode; action?: ReactNode; icon?: IconName }) {
+  return (
+    <div className="flex flex-col items-center rounded-2xl bg-panel px-4 py-7 text-center text-sm text-muted">
+      {icon && <Icon name={icon} className="mb-2 h-6 w-6 text-faint" />}
+      <p className="max-w-sm">{children}</p>
       {action && <div className="mt-3">{action}</div>}
     </div>
   );

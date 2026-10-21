@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import type { Classroom, Connection, InboxItem, LibraryDocument, RequestStatus, RequestSummary } from '@plc/shared';
-import { Empty, Page, SectionHead, StatTile, StatusPill, toast } from '../components/ui';
+import { Empty, Page, PageHeader, SectionHead, StatStrip, StatusPill } from '../components/ui';
+import { Icon } from '../components/Icon';
 import { useSession } from '../lib/session';
 import { DocumentLibrary } from '../components/DocumentLibrary';
 import { ago, fmtDate, useLive } from '../lib/hooks';
@@ -37,19 +38,21 @@ export default function StudentHome() {
   const send = (to?: string, docIds = selected) => nav(`/student/send?${new URLSearchParams({ ...(to ? { to } : {}), ...(docIds.length ? { docs: docIds.join(',') } : {}) })}`);
 
   const library = (
-    <aside className="lg:sticky lg:top-6">
-      <div className="mb-3 flex items-center justify-between">
-        <h2 className="text-sm font-semibold text-muted">My documents{docs?.length ? ` (${docs.length})` : ''}</h2>
+    <aside className="lg:sticky lg:top-24">
+      <SectionHead title={`My documents${docs?.length ? ` (${docs.length})` : ''}`}>
         {selected.length > 0 && (
-          <button className="text-xs font-semibold text-muted" onClick={() => setSelected([])}>
+          <button className="text-xs font-semibold text-muted hover:text-ink" onClick={() => setSelected([])}>
             Clear
           </button>
         )}
-      </div>
+      </SectionHead>
       <DocumentLibrary docs={docs} onChanged={reloadDocs} selected={selected} onSelect={setSelected} />
-      <button className="cta mt-3 w-full py-3 text-base" disabled={!selected.length} onClick={() => send(undefined)}>
-        Send {selected.length || ''} to…
-      </button>
+      {/* Only when there is something to send: no dead button */}
+      {selected.length > 0 && (
+        <button className="cta mt-3 w-full py-3 text-base" onClick={() => send(undefined)}>
+          <Icon name="send" className="mr-2 h-4 w-4" /> Send {selected.length} to…
+        </button>
+      )}
     </aside>
   );
 
@@ -59,27 +62,28 @@ export default function StudentHome() {
         <div className="hidden lg:block">{library}</div>
 
         <div className="flex flex-col gap-8">
-          <div>
-            <h1 className="text-2xl font-bold md:text-3xl">Hello, {me?.name.split(' ')[0]}</h1>
-            <p className="text-sm text-muted">{[me?.title, me?.department].filter(Boolean).join(' · ')}</p>
+          {/* One filled CTA (New request); Send a document is the secondary action beside it */}
+          <div className="-mb-8">
+            <PageHeader title={`Hello, ${me?.name.split(' ')[0] ?? ''}`} subtitle={[me?.title, me?.department].filter(Boolean).join(' · ')}>
+              <div className="flex w-full gap-2 sm:w-auto">
+                <button className="flex min-h-[48px] flex-1 items-center justify-center gap-2 rounded-xl border border-rule px-4 font-semibold transition-colors hover:bg-panel sm:flex-none" onClick={() => send(undefined)}>
+                  <Icon name="send" className="h-4 w-4" /> Send a document
+                </button>
+                <Link to="/student/new" className="flex min-h-[48px] flex-1 items-center justify-center gap-2 rounded-xl bg-accent px-5 font-semibold text-white shadow-sm transition active:scale-[0.98] sm:flex-none">
+                  <Icon name="plus" className="h-4 w-4" /> New request
+                </Link>
+              </div>
+            </PageHeader>
           </div>
 
-          {/* Central actions */}
-          <section className="grid gap-3 sm:grid-cols-2">
-            <Link to="/student/new" className="cta">
-              New request
-            </Link>
-            <button className="rounded-xl border-2 border-accent px-8 py-5 text-lg font-semibold text-accent active:scale-[0.98]" onClick={() => send(undefined)}>
-              Send a document
-            </button>
-          </section>
-
-          <section className="grid grid-cols-2 gap-3 md:grid-cols-4">
-            <StatTile label="In progress" value={mine ? count('active') : '–'} tone="accent" hint="with approvers now" />
-            <StatTile label="Needs your action" value={mine ? count('action') : '–'} tone={count('action') ? 'warn' : 'ink'} hint="returned for changes" />
-            <StatTile label="Signed" value={mine ? count('sealed') : '–'} tone="ok" hint="approved, PDF ready" />
-            <StatTile label="To sign" value={toSign?.length ?? '–'} tone={toSign?.length ? 'warn' : 'ink'} hint="sent to you" to="/inbox" />
-          </section>
+          <StatStrip
+            items={[
+              { label: 'In progress', value: mine ? count('active') : '–', hint: 'with approvers now' },
+              { label: 'Needs your action', value: mine ? count('action') : '–', tone: count('action') ? 'warn' : 'ink', hint: 'returned for changes' },
+              { label: 'Signed', value: mine ? count('sealed') : '–', hint: 'PDF ready' },
+              { label: 'To sign', value: toSign?.length ?? '–', tone: toSign?.length ? 'accent' : 'ink', hint: 'sent to you', to: '/inbox' },
+            ]}
+          />
 
           {toSign && toSign.length > 0 && (
             <Link to="/inbox" className="flex items-center justify-between gap-3 rounded-2xl bg-warn-bg px-4 py-3 text-sm">
@@ -118,8 +122,9 @@ export default function StudentHome() {
             {error && <p className="text-sm text-bad">{error}</p>}
             {mine && mine.length === 0 && (
               <Empty
+                icon="file"
                 action={
-                  <Link to="/student/new" className="link">
+                  <Link to="/student/new" className="link font-semibold">
                     Start your first request →
                   </Link>
                 }
@@ -134,20 +139,20 @@ export default function StudentHome() {
                     <button
                       key={f.key}
                       onClick={() => setFilter(f.key)}
-                      className={`whitespace-nowrap rounded-lg px-3 py-1.5 text-sm font-semibold ${filter === f.key ? 'bg-bg text-ink shadow-sm' : 'text-muted'}`}
+                      className={`min-h-[40px] whitespace-nowrap rounded-lg px-3 text-sm font-semibold ${filter === f.key ? 'bg-bg text-ink shadow-sm' : 'text-muted hover:text-ink'}`}
                     >
                       {f.label}
-                      <span className="ml-1 text-xs text-faint">{f.key === 'all' ? mine.length : count(f.key)}</span>
+                      <span className="ml-1.5 text-xs tabular-nums text-faint">{f.key === 'all' ? mine.length : count(f.key)}</span>
                     </button>
                   ))}
                 </div>
                 {shown.length === 0 ? (
                   <Empty>Nothing here.</Empty>
                 ) : (
-                  <ul className="flex flex-col gap-2">
+                  <ul className="flex flex-col divide-y divide-rule overflow-hidden rounded-2xl border border-rule">
                     {shown.map((r) => (
                       <li key={r.id}>
-                        <Link to={`/requests/${r.id}`} className="block rounded-2xl border border-rule bg-bg p-4 hover:border-accent/40 active:bg-rule">
+                        <Link to={`/requests/${r.id}`} className="block p-4 transition-colors hover:bg-panel">
                           <div className="flex items-start justify-between gap-3">
                             <div className="min-w-0">
                               <p className="truncate font-semibold">{r.title}</p>
@@ -174,24 +179,26 @@ export default function StudentHome() {
           </section>
 
           {/* Teachers and classes: summary here, managed in My teachers */}
-          <section className="rounded-2xl border border-rule p-4">
-            <SectionHead title="My teachers">
-              <Link to="/student/teachers" className="link">
-                Open →
-              </Link>
-            </SectionHead>
-            <div className="grid grid-cols-2 gap-3">
-              <Link to="/student/teachers" className="rounded-xl bg-panel p-3 hover:bg-rule">
-                <p className="text-2xl font-bold tabular-nums">{conns ? teachers.length : '–'}</p>
-                <p className="text-xs text-muted">Teachers</p>
-              </Link>
-              <Link to="/student/teachers?tab=classes" className="rounded-xl bg-panel p-3 hover:bg-rule">
-                <p className="text-2xl font-bold tabular-nums">{classes?.length ?? '–'}</p>
-                <p className="text-xs text-muted">Classes</p>
-              </Link>
-            </div>
-            <Link to="/student/teachers?tab=classes" className="mt-3 block text-center text-sm font-semibold text-accent">
-              Got a class code? Join a class →
+          <section>
+            <SectionHead title="My teachers" />
+            <ul className="divide-y divide-rule overflow-hidden rounded-2xl border border-rule text-sm">
+              {[
+                { to: '/student/teachers', label: 'Teachers', n: conns ? teachers.length : undefined },
+                { to: '/student/teachers?tab=classes', label: 'Classes', n: classes?.length },
+              ].map((r) => (
+                <li key={r.label}>
+                  <Link to={r.to} className="flex min-h-[52px] items-center justify-between px-4 transition-colors hover:bg-panel">
+                    <span>{r.label}</span>
+                    <span className="flex items-center gap-1 font-semibold tabular-nums">
+                      {r.n ?? '–'}
+                      <Icon name="chevron" className="h-4 w-4 text-faint" />
+                    </span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+            <Link to="/student/teachers?tab=classes" className="link mt-1 inline-flex min-h-[44px] items-center gap-1.5 font-semibold">
+              <Icon name="plus" className="h-4 w-4" /> Join a class with a code
             </Link>
           </section>
 

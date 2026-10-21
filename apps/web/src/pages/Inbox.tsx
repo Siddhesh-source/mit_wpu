@@ -3,7 +3,8 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { ROLE_LABEL, type Classroom, type Connection, type Delegation, type InboxItem, type StaffDashboard } from '@plc/shared';
 import { PersonBlock } from '../components/PersonBlock';
 import { DecisionList } from '../components/Decisions';
-import { Empty, Page, PinPad, SectionHead, Sheet, StatTile, Tick, toast } from '../components/ui';
+import { Empty, Page, PageHeader, PinPad, SectionHead, Sheet, StatStrip, Tick, toast } from '../components/ui';
+import { Icon } from '../components/Icon';
 import { FieldList } from '../components/FormFields';
 import { Timeline } from '../components/Timeline';
 import { AttachmentList } from '../components/Attachments';
@@ -222,54 +223,48 @@ export default function Inbox() {
     const hello = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
     const away = dash?.delegation;
 
-    const hero = (
-      <section className="flex flex-col gap-5 rounded-3xl border border-rule bg-panel p-6 md:flex-row md:items-center md:justify-between md:p-8">
-        {items === null && !error ? (
-          <p className="text-muted">Loading…</p>
-        ) : count === 0 ? (
-          <div className="flex items-center gap-4">
-            <span className="grid h-14 w-14 shrink-0 place-items-center rounded-full bg-ok text-white">
-              <Tick className="h-7 w-7" />
-            </span>
-            <div>
-              <p className="text-xl font-semibold">All clear</p>
-              <p className="text-sm text-muted">Nothing is waiting for your signature. New requests appear here on their own.</p>
-            </div>
-          </div>
-        ) : (
+    // Busy: one filled CTA. Idle: a single quiet line, no dead button.
+    const hero =
+      items === null && !error ? (
+        <div className="h-[88px] rounded-2xl bg-panel" />
+      ) : count === 0 ? (
+        <section className="flex items-center gap-3 rounded-2xl bg-ok-bg px-5 py-4">
+          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-ok text-white">
+            <Tick className="h-5 w-5" />
+          </span>
+          <p className="text-sm">
+            <b className="font-semibold">All clear.</b> <span className="text-muted">Nothing is waiting for your signature; new requests appear here on their own.</span>
+          </p>
+        </section>
+      ) : (
+        <section className="flex flex-col gap-4 rounded-2xl border border-accent/30 bg-accent/5 p-5 md:flex-row md:items-center md:justify-between md:p-6">
           <div>
-            <p className="text-2xl font-bold">{count} waiting for your signature</p>
+            <p className="text-xl font-bold">
+              {count} waiting for your signature
+            </p>
             <p className="mt-1 text-sm text-muted">
               Oldest first · waiting {ago(waitingSince(items![0]))}
               {items!.some((i) => stepOf(i)?.overdue) && <span className="font-semibold text-warn"> · reminders sent for some</span>}
             </p>
           </div>
-        )}
-        <div className="flex flex-col gap-2 md:items-end">
-          <button className="cta w-full md:w-auto" disabled={!count} onClick={() => setMode('review')}>
-            {count ? `Review next (${count})` : 'Nothing to review'}
-          </button>
-          <div className="flex flex-wrap justify-center gap-4 md:justify-end">
+          <div className="flex flex-col items-stretch gap-2 md:items-end">
+            <button className="cta py-4" onClick={() => setMode('review')}>
+              Review next ({count})
+            </button>
             {count > 1 && (
-              <button className="link" onClick={() => (setPicked([]), setMode('batch'))}>
-                Approve several
+              <button className="link min-h-[44px] self-center md:self-end" onClick={() => (setPicked([]), setMode('batch'))}>
+                Approve several at once
               </button>
             )}
-            {isStudent && (
-              <Link to="/student" className="link">
-                Back to my dashboard
-              </Link>
-            )}
           </div>
-        </div>
-      </section>
-    );
+        </section>
+      );
 
     const queue = (
       <section>
         <SectionHead title={`Waiting for you${count ? ` (${count})` : ''}`} />
         {count === 0 ? (
-          <Empty>No requests are waiting. Everything you signed is in your history.</Empty>
+          <Empty icon="inbox">No requests are waiting. Everything you signed is in your history.</Empty>
         ) : (
           <ul className="flex flex-col divide-y divide-rule overflow-hidden rounded-2xl border border-rule">
             {items!.map((i) => {
@@ -308,8 +303,9 @@ export default function Inbox() {
     if (isStudent)
       return (
         <Page wide>
+          <PageHeader title="To sign" subtitle="Documents other people sent you to sign." />
           <div className="flex flex-col gap-8">
-            {hero}
+            {count > 0 && hero}
             {queue}
             {error && <p className="text-sm text-bad">{error}</p>}
           </div>
@@ -319,25 +315,22 @@ export default function Inbox() {
     const avg = dash?.avgResponseHours;
     return (
       <Page wide>
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold md:text-3xl">
-            {hello}, {me?.name}
-          </h1>
-          <p className="text-sm text-muted">
-            {me?.roles.map((r) => ROLE_LABEL[r]).join(' · ')} · {me?.department} ·{' '}
-            {new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Asia/Kolkata' })}
-          </p>
-        </div>
+        <PageHeader
+          title={`${hello}, ${me?.name}`}
+          subtitle={`${me?.roles.map((r) => ROLE_LABEL[r]).join(' · ')} · ${me?.department} · ${new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Asia/Kolkata' })}`}
+        />
 
         <div className="flex flex-col gap-8">
           {hero}
 
-          <section className="grid grid-cols-2 gap-3 md:grid-cols-4">
-            <StatTile label="Waiting" value={count} tone="accent" hint="for your signature" />
-            <StatTile label="Reminders sent" value={dash?.overdue ?? 0} tone={dash?.overdue ? 'warn' : 'ink'} hint="waiting past the usual time" />
-            <StatTile label="Signed this week" value={dash?.decided.thisWeek ?? '–'} tone="ok" hint={dash ? `${dash.decided.total} in total · see history` : undefined} to="/history" />
-            <StatTile label="Avg response" value={avg == null ? '–' : avg < 1 ? '<1 h' : `${Math.round(avg)} h`} hint="from opened to signed" />
-          </section>
+          <StatStrip
+            items={[
+              { label: 'Waiting for you', value: count, tone: count ? 'accent' : 'ink' },
+              { label: 'Reminders sent', value: dash?.overdue ?? 0, tone: dash?.overdue ? 'warn' : 'ink', hint: 'waiting past the usual time' },
+              { label: 'Signed this week', value: dash?.decided.thisWeek ?? '–', hint: dash ? `${dash.decided.total} in total` : undefined, to: '/history' },
+              { label: 'Average response', value: avg == null ? '–' : avg < 1 ? '<1 h' : `${Math.round(avg)} h`, hint: 'opened to signed' },
+            ]}
+          />
 
           <div className="flex flex-col gap-8 lg:grid lg:grid-cols-[1fr_20rem] lg:items-start lg:gap-10">
             <div className="flex flex-col gap-8">
@@ -350,7 +343,7 @@ export default function Inbox() {
                     </Link>
                   )}
                 </SectionHead>
-                {dash && (dash.history.length === 0 ? <Empty>Requests you approve, return or reject are listed here.</Empty> : <DecisionList items={dash.history} />)}
+                {dash && (dash.history.length === 0 ? <Empty icon="history">Requests you approve, return or reject are listed here.</Empty> : <DecisionList items={dash.history} />)}
                 {!!dash?.decided.total && (
                   <p className="mt-2 text-xs text-faint">
                     {dash.decided.approved} approved · {dash.decided.returned} returned · {dash.decided.rejected} rejected
@@ -359,25 +352,26 @@ export default function Inbox() {
               </section>
             </div>
 
-            <aside className="flex flex-col gap-6">
-              <section className="rounded-2xl border border-rule p-4">
+            {/* Side column: plain sections divided by hairlines, no cards */}
+            <aside className="flex flex-col divide-y divide-rule border-t border-rule lg:border-t-0">
+              <section className="py-5 lg:pt-0">
                 <SectionHead title="Away from campus?" />
-                <p className="mb-3 text-sm text-muted">
+                <p className="text-sm text-muted">
                   {away ? (
                     <>
                       <b className="text-ink">{away.delegate.name}</b> is signing for you until {fmtDay(away.endsOn)}.
                     </>
                   ) : (
-                    'Hand your approvals to a colleague for a few days. They sign on your behalf, and the PDF says so.'
+                    'A colleague can sign for you while you are away; the PDF says so.'
                   )}
                 </p>
-                <button className="w-full rounded-xl border-2 border-accent px-4 py-2.5 text-sm font-semibold text-accent" onClick={() => setDelegating(true)}>
-                  {away ? 'Manage delegate' : 'Set a delegate'}
+                <button className="link mt-2 min-h-[44px] font-semibold" onClick={() => setDelegating(true)}>
+                  {away ? 'Manage delegate' : 'Set a delegate'} →
                 </button>
               </section>
 
               {requests.length > 0 && (
-                <section>
+                <section className="py-5">
                   <SectionHead title={`Students who want to add you (${requests.length})`} />
                   <div className="flex flex-col gap-3">
                     {requests.map((c) => (
@@ -394,45 +388,27 @@ export default function Inbox() {
                 </section>
               )}
 
-              <section className="rounded-2xl border border-rule p-4">
-                <SectionHead title="People">
-                  <Link to="/people" className="link">
-                    Open →
-                  </Link>
-                </SectionHead>
-                <div className="grid grid-cols-2 gap-3">
-                  <Link to="/people?tab=students" className="rounded-xl bg-panel p-3 hover:bg-rule">
-                    <p className="text-2xl font-bold tabular-nums">{myStudents.length}</p>
-                    <p className="text-xs text-muted">My students</p>
-                  </Link>
-                  <Link to="/people?tab=classes" className="rounded-xl bg-panel p-3 hover:bg-rule">
-                    <p className="text-2xl font-bold tabular-nums">{classes?.filter((c) => c.code).length ?? '–'}</p>
-                    <p className="text-xs text-muted">Classes</p>
-                  </Link>
-                </div>
-                <Link to="/people?tab=classes" className="mt-3 block text-center text-sm font-semibold text-accent">
-                  + Create a class and invite students
+              <section className="py-5">
+                <SectionHead title="People" />
+                <ul className="text-sm">
+                  {[
+                    { to: '/people?tab=students', label: 'My students', n: myStudents.length },
+                    { to: '/people?tab=classes', label: 'Classes', n: classes?.filter((c) => c.code).length },
+                  ].map((r) => (
+                    <li key={r.label}>
+                      <Link to={r.to} className="-mx-2 flex min-h-[44px] items-center justify-between rounded-lg px-2 hover:bg-panel">
+                        <span>{r.label}</span>
+                        <span className="flex items-center gap-1 font-semibold tabular-nums">
+                          {r.n ?? '–'}
+                          <Icon name="chevron" className="h-4 w-4 text-faint" />
+                        </span>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+                <Link to="/people?tab=classes" className="link mt-1 inline-flex min-h-[44px] items-center gap-1.5 font-semibold">
+                  <Icon name="plus" className="h-4 w-4" /> Create a class
                 </Link>
-              </section>
-
-              <section className="rounded-2xl border border-rule p-4">
-                <SectionHead title="Quick links" />
-                <div className="flex flex-col gap-2">
-                  <Link to="/verify" className="link">
-                    Verify a document (scan QR or upload PDF)
-                  </Link>
-                  {me?.roles.includes('security') && (
-                    <Link to="/gate" className="link">
-                      Open the gate check
-                    </Link>
-                  )}
-                  <Link to="/history" className="link">
-                    My decision history
-                  </Link>
-                  <Link to="/profile" className="link">
-                    My profile
-                  </Link>
-                </div>
               </section>
             </aside>
           </div>

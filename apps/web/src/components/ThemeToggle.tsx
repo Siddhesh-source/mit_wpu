@@ -41,7 +41,7 @@ export function ThemeToggle({ className = '' }: { className?: string }) {
       aria-checked={dark}
       aria-label={dark ? 'Switch to light mode' : 'Switch to dark mode'}
       title={dark ? 'Light mode' : 'Dark mode'}
-      className={`grid h-9 w-9 shrink-0 place-items-center rounded-full border border-rule text-ink transition hover:border-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent ${className}`}
+      className={`grid h-11 w-11 shrink-0 place-items-center rounded-full lg:h-9 lg:w-9 border border-rule text-ink transition hover:border-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent ${className}`}
     >
       {dark ? (
         <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" aria-hidden>

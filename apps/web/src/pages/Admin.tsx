@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ROLE_LABEL, type AuditEntry, type OutboxEntry, type RequestSummary, type Role, type Stats } from '@plc/shared';
-import { Empty, Page, StatTile, StatusPill, toast } from '../components/ui';
+import { Empty, Page, PageHeader, StatStrip, StatusPill, toast } from '../components/ui';
 import { ImpactDashboard } from '../components/ImpactDashboard';
 import { api } from '../lib/api';
 import { fmtDate, useLive } from '../lib/hooks';
@@ -64,21 +64,21 @@ export default function Admin() {
 
   return (
     <Page wide>
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold md:text-3xl">Registrar dashboard</h1>
-        <p className="text-sm text-muted">Every request across the college, its impact, the audit trail and the emails sent.</p>
-      </div>
-      <section className="mb-6 grid grid-cols-2 gap-3 md:grid-cols-4">
-        <StatTile label="Requests" value={stats?.requests ?? '–'} hint="all time" />
-        <StatTile label="In review" value={stats?.inReview ?? '–'} tone="accent" hint="with approvers now" />
-        <StatTile label="Reminders sent" value={stats?.overdue ?? '–'} tone={stats?.overdue ? 'warn' : 'ink'} hint="waiting past the usual time" />
-        <StatTile
-          label="Signed"
-          value={stats?.digitised ?? '–'}
-          tone="ok"
-          hint={stats?.avgTurnaroundHours != null ? `avg ${Math.round(stats.avgTurnaroundHours)} h to sign` : 'approved and on chain'}
+      <PageHeader title="Registrar dashboard" subtitle="Every request across the college, its impact, the audit trail and the emails sent." />
+      <div className="mb-8">
+        <StatStrip
+          items={[
+            { label: 'Requests', value: stats?.requests ?? '–', hint: 'all time' },
+            { label: 'In review', value: stats?.inReview ?? '–', tone: stats?.inReview ? 'accent' : 'ink', hint: 'with approvers now' },
+            { label: 'Reminders sent', value: stats?.overdue ?? '–', tone: stats?.overdue ? 'warn' : 'ink', hint: 'waiting past the usual time' },
+            {
+              label: 'Signed',
+              value: stats?.digitised ?? '–',
+              hint: stats?.avgTurnaroundHours != null ? `average ${Math.round(stats.avgTurnaroundHours)} h to sign` : 'approved and on chain',
+            },
+          ]}
         />
-      </section>
+      </div>
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <div className="flex gap-1 rounded-xl bg-panel p-1">
           {TABS.map((t) => (
