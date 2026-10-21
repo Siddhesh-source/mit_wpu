@@ -109,8 +109,8 @@ export const STATUS_LABEL: Record<RequestStatus, string> = {
   approved: 'Approved',
   rejected: 'Rejected',
   returned: 'Returned',
-  sealing: 'Sealing',
-  sealed: 'Sealed',
+  sealing: 'Signing',
+  sealed: 'Signed',
   amending: 'Amending',
   revoked: 'Revoked',
 };
@@ -278,6 +278,8 @@ export interface RequestDetail extends RequestSummary {
   revocation: { version: number; role: Role; roleLabel: string; name: string; reason: string; at: string; anchored: boolean } | null;
   /** Present when the current version amends an earlier one. */
   amendment: { fromVersion: number; reason: string; previous: Record<string, string | number>; changed: string[] } | null;
+  /** This request's signer chain (the type's, or the one chosen for a custom request). */
+  chain: RequestType['chain'];
 }
 
 export interface VersionHistory {
@@ -291,6 +293,26 @@ export interface VersionHistory {
   txUrl: string | null;
   sealedAt: string | null;
   approvals: { role: Role; roleLabel: string; name: string; decision: Decision; signedVersion: number; carried: boolean; signedAt: string | null }[];
+}
+
+/** A teacher's class. The teacher sees the code and every member; a student sees the class and its teacher. */
+export interface Classroom {
+  id: string;
+  name: string;
+  /** Join code (teacher only). */
+  code: string | null;
+  createdAt: string;
+  teacher: Person;
+  /** Teacher only: invited students, joined or not. */
+  members: { person: Person; email: string | null; invitedAt: string; joinedAt: string | null }[];
+  joinedCount: number;
+}
+
+/** Result of inviting one email address to a class. */
+export interface InviteResult {
+  email: string;
+  ok: boolean;
+  error?: string;
 }
 
 /** One decision a staff member signed (their approval history). */

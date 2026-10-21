@@ -8,7 +8,7 @@ describe('catalogue', () => {
   it('lists the request types with the event chain from the deck', async () => {
     const { as } = await setup();
     const types = (await as('u_riya').get('/api/request-types')).body;
-    expect(types.map((t: any) => t.code)).toEqual(['event_permission', 'on_duty', 'bonafide', 'document_signature', 'no_dues']);
+    expect(types.map((t: any) => t.code)).toEqual(['event_permission', 'on_duty', 'bonafide', 'document_signature', 'custom', 'no_dues']);
     expect(types[0].chain.map(({ stepNo, role }: any) => ({ stepNo, role }))).toEqual([
       { stepNo: 1, role: 'faculty_coordinator' },
       { stepNo: 2, role: 'hod' },

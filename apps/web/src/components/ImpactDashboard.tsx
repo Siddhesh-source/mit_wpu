@@ -93,17 +93,17 @@ export function ImpactDashboard({ s }: { s: Stats }) {
   return (
     <div className="flex flex-col gap-5">
       <section className="rounded-3xl bg-panel p-6">
-        <p className="text-sm text-muted">Approvals digitised and sealed</p>
+        <p className="text-sm text-muted">Approvals digitised and signed</p>
         <p className="text-6xl font-semibold tracking-tight text-ink">{compact(s.digitised, 0)}</p>
         <p className="mt-1 text-sm text-muted">
-          of {s.requests} requests · {s.inReview} in review{s.overdue ? ` · ${s.overdue} overdue` : ''}
+          of {s.requests} requests · {s.inReview} in review{s.overdue ? ` · ${s.overdue} reminded` : ''}
         </p>
       </section>
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <Tile label="Sheets of paper saved" value={compact(s.sheetsSaved)} note="est." />
         <Tile label="CO2e avoided" value={s.co2Kg < 1 ? `${Math.round(s.co2Kg * 1000)} g` : `${compact(s.co2Kg)} kg`} note="est., paper production only" />
         <Tile label="Trees saved" value={s.trees < 1 ? s.trees.toFixed(3) : compact(s.trees)} note="est." />
-        <Tile label="Avg time to sealed" value={hours(s.avgTurnaroundHours)} note="paper today: 2 to 4 days" />
+        <Tile label="Avg time to signed" value={hours(s.avgTurnaroundHours)} note="paper today: 2 to 4 days" />
       </div>
       <WaitBars rows={s.byRole} />
       {s.byType.length > 0 && (

@@ -8,7 +8,7 @@ const STATE: Record<VersionHistory['state'], { label: string; cls: string }> = {
   active: { label: 'Active', cls: 'bg-ok-bg text-ok border-ok/30' },
   superseded: { label: 'Superseded', cls: 'bg-warn-bg text-warn border-warn/30' },
   revoked: { label: 'Revoked', cls: 'bg-bad-bg text-bad border-bad/30' },
-  sealing: { label: 'Sealing', cls: 'bg-panel text-accent border-rule' },
+  sealing: { label: 'Signing', cls: 'bg-panel text-accent border-rule' },
   in_review: { label: 'In review', cls: 'bg-panel text-accent border-rule' },
   abandoned: { label: 'Returned', cls: 'bg-panel text-faint border-rule' },
 };

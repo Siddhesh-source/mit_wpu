@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import type { VerifyResult } from '@plc/shared';
-import { Cross, Tick } from '../components/ui';
+import { Cross, Page, Tick } from '../components/ui';
+import { useSession } from '../lib/session';
 import { QrScanner, decodeQrImage } from '../components/QrScanner';
 import { checkFile, checkHash, checkQr, type Check } from '../lib/verify';
 import { ThemeToggle } from '../components/ThemeToggle';
@@ -26,8 +27,8 @@ function verdict(c: Check): { tone: Tone; title: string; detail: string } {
         tone: 'ok',
         title: 'Verified',
         detail: live.notYetValid && live.validFrom
-          ? `Matches the record sealed on chain. Valid from ${day(live.validFrom)}${live.validUntil && live.validUntil - live.validFrom < 86400 * 2 ? ' (that day only)' : ''}.`
-          : 'Matches the record sealed on chain.',
+          ? `Matches the record signed on chain. Valid from ${day(live.validFrom)}${live.validUntil && live.validUntil - live.validFrom < 86400 * 2 ? ' (that day only)' : ''}.`
+          : 'Matches the record signed on chain.',
       };
     case 'superseded':
       return { tone: 'warn', title: `Superseded by v${live.latest?.version ?? (live.version ?? 1) + 1}`, detail: 'This version was amended. Only the latest version is valid.' };
@@ -42,11 +43,11 @@ function verdict(c: Check): { tone: Tone; title: string; detail: string } {
     case 'expired':
       return { tone: 'warn', title: 'Expired', detail: 'Genuine, but its validity window has ended.' };
     case 'pending':
-      return { tone: 'muted', title: 'Sealing in progress', detail: 'Approved, but not on chain yet. Check again in a minute.' };
+      return { tone: 'muted', title: 'Signing in progress', detail: 'Approved, but not on chain yet. Check again in a minute.' };
     default:
       return c.kind === 'file'
-        ? { tone: 'bad', title: 'Tampered', detail: 'This file does not match any sealed record. It may have been edited.' }
-        : { tone: 'bad', title: 'Not found', detail: 'No sealed record matches this.' };
+        ? { tone: 'bad', title: 'Tampered', detail: 'This file does not match any signed record. It may have been edited.' }
+        : { tone: 'bad', title: 'Not found', detail: 'No signed record matches this.' };
   }
 }
 
@@ -150,6 +151,7 @@ function Result({ check, onAgain, onCheckLatest }: { check: Check; onAgain: () =
 }
 
 export default function Verify() {
+  const { me, loading } = useSession();
   const [mode, setMode] = useState<'home' | 'camera'>('home');
   const [check, setCheck] = useState<Check | null>(null);
   const [busy, setBusy] = useState(false);
@@ -189,21 +191,8 @@ export default function Verify() {
     if (window.location.hash) history.replaceState(null, '', window.location.pathname);
   };
 
-  return (
-    <div className="flex min-h-screen flex-col">
-      <header className="md:border-b md:border-rule">
-        <div className="mx-auto flex max-w-5xl items-center justify-between px-4 pt-5 md:px-8 md:py-4">
-          <Link to="/" className="text-lg font-bold">
-            CampusSign
-          </Link>
-          <span className="flex items-center gap-4 text-sm text-muted">
-            Verify
-            <ThemeToggle />
-          </span>
-        </div>
-      </header>
-
-      <main className="mx-auto flex w-full max-w-md flex-1 flex-col px-4 pb-8 pt-6 md:max-w-xl md:pt-12">
+  const body = (
+    <>
         {check ? (
           <Result
             check={check}
@@ -261,8 +250,34 @@ export default function Verify() {
             />
           </section>
         )}
-      </main>
-      <footer className="pb-6 text-center text-xs text-faint">Hash only, no personal data on chain.</footer>
+        <p className="mt-8 text-center text-xs text-faint">Hash only, no personal data on chain.</p>
+    </>
+  );
+
+  // Signed in: part of the app, with the same top bar as every other page.
+  if (loading) return null;
+  if (me) return <Page>{body}</Page>;
+
+  // Public (anyone holding a document): a light header with a way into the app.
+  return (
+    <div className="flex min-h-screen flex-col">
+      <header className="border-b border-rule">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 md:px-8">
+          <Link to="/" className="flex items-center gap-2 text-lg font-bold">
+            <span className="grid h-7 w-7 place-items-center rounded-lg bg-accent text-white">
+              <Tick className="h-4 w-4" />
+            </span>
+            CampusSign
+          </Link>
+          <span className="flex items-center gap-4">
+            <ThemeToggle />
+            <Link to="/login" className="link">
+              Sign in
+            </Link>
+          </span>
+        </div>
+      </header>
+      <main className="mx-auto flex w-full max-w-md flex-1 flex-col px-4 pb-8 pt-6 md:max-w-xl md:pt-12">{body}</main>
     </div>
   );
 }

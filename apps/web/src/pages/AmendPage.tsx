@@ -32,8 +32,8 @@ export default function AmendPage() {
   const original = useMemo(() => (r ? asValues(r.form) : {}), [r]);
   const changedFields = Object.keys({ ...original, ...values }).filter((k) => (original[k] ?? '') !== (values[k] ?? ''));
   const changed = files.length ? [...changedFields, 'attachments'] : changedFields;
-  const back = type?.chain.filter((s) => s.affectedBy.some((f) => changed.includes(f))) ?? [];
-  const kept = type?.chain.filter((s) => !back.includes(s)) ?? [];
+  const back = r?.chain.filter((s) => s.affectedBy.some((f) => changed.includes(f))) ?? [];
+  const kept = r?.chain.filter((s) => !back.includes(s)) ?? [];
   const names = (steps: { role: keyof typeof ROLE_LABEL }[]) => steps.map((s) => ROLE_LABEL[s.role]).join(', ');
 
   async function submit(e: FormEvent) {
@@ -60,7 +60,7 @@ export default function AmendPage() {
         {r.typeName} · {r.id} · v{r.version} → v{r.version + 1}
       </p>
       <h1 className="mb-1 text-2xl font-bold">Amend approval</h1>
-      <p className="mb-5 text-sm text-muted">Change what moved. v{r.version} stays valid until the new version is sealed.</p>
+      <p className="mb-5 text-sm text-muted">Change what moved. v{r.version} stays valid until the new version is signed.</p>
       <form onSubmit={submit} className="flex flex-1 flex-col">
         <FormFields fields={type.fields} values={values} onChange={setValues} original={original} />
         <div className="mt-4 flex flex-col gap-2">

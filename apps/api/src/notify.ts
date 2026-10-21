@@ -42,7 +42,8 @@ export type Kind =
   | 'delegated'
   | 'reopened'
   | 'comment'
-  | 'connection';
+  | 'connection'
+  | 'classroom_invite';
 
 /** Queue an email to each user (skips users without an address). */
 export function notify(db: DB, userIds: string | string[], kind: Kind, subject: string, text: string, requestId: string | null = null) {

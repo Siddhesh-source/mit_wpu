@@ -39,6 +39,7 @@ Every demo profile has a placeholder email (`…@campus.example`).
 | On-duty | Faculty coordinator → HoD |
 | Bonafide | HoD → Dean SA |
 | No-dues clearance | (Librarian ‖ Lab in-charge ‖ Hostel warden ‖ Accounts) → HoD |
+| Custom request | Written by the student (title, optional date, details); signers chosen by designation, in order (1–6) |
 
 Event permission fields: title, date, venue, headcount, purpose. Demo request: Robotics fest, Hall B, 5 Nov, 120 students.
 

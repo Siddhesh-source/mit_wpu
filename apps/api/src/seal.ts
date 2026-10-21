@@ -210,7 +210,7 @@ export async function anchor(db: DB, svc: Services, requestId: string, version: 
         // First time on chain only (a replay after a chain restart does not email again).
         const student = db.prepare('SELECT student_id FROM requests WHERE id = ?').pluck().get(requestId) as string;
         const title = String(JSON.parse(db.prepare('SELECT form_json FROM request_versions WHERE request_id = ? AND version = ?').pluck().get(requestId, version) as string).title ?? requestId);
-        notify(db, student, 'sealed', `Approved and sealed: ${title}${version > 1 ? ` (v${version})` : ''}`, `Your approval is sealed on chain${version > 1 ? ` as v${version}; v${version - 1} is now superseded` : ''}. Download the PDF with its QR:\n${link(`/requests/${requestId}`)}`, requestId);
+        notify(db, student, 'sealed', `Approved and signed: ${title}${version > 1 ? ` (v${version})` : ''}`, `Your approval is signed on chain${version > 1 ? ` as v${version}; v${version - 1} is now superseded` : ''}. Download the PDF with its QR:\n${link(`/requests/${requestId}`)}`, requestId);
       }
     })();
   } catch (e) {
@@ -376,7 +376,7 @@ export async function revokeRequest(db: DB, svc: Services, userId: string, reque
     .get(userId, req.department_id) as Role | undefined;
   if (!role) throw new HttpError(403, 'Only the HoD or Dean can revoke an approval');
   if (req.status === 'revoked') throw new HttpError(409, 'Already revoked');
-  if (req.status !== 'sealed' && req.status !== 'amending') throw new HttpError(409, 'Only a sealed approval can be revoked');
+  if (req.status !== 'sealed' && req.status !== 'amending') throw new HttpError(409, 'Only a signed approval can be revoked');
   const user = db.prepare('SELECT pin_hash FROM users WHERE id = ?').get(userId) as { pin_hash: string };
   if (typeof pin !== 'string' || !bcrypt.compareSync(pin, user.pin_hash)) throw new HttpError(401, 'Wrong PIN');
   if (typeof reason !== 'string' || !reason.trim()) throw new HttpError(400, 'Give a reason for the record');
@@ -384,8 +384,8 @@ export async function revokeRequest(db: DB, svc: Services, userId: string, reque
   const seal = db.prepare('SELECT version, doc_hash, anchor_status FROM seals WHERE request_id = ? ORDER BY version DESC LIMIT 1').get(req.id) as
     | { version: number; doc_hash: string; anchor_status: string }
     | undefined;
-  if (!seal) throw new HttpError(409, 'Only a sealed approval can be revoked');
-  if (seal.anchor_status !== 'anchored') throw new HttpError(409, 'Still sealing on chain, try again in a moment');
+  if (!seal) throw new HttpError(409, 'Only a signed approval can be revoked');
+  if (seal.anchor_status !== 'anchored') throw new HttpError(409, 'Still signing on chain, try again in a moment');
 
   const at = new Date().toISOString();
   const { privateKey } = await issuerKey(db);

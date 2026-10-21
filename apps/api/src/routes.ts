@@ -29,7 +29,7 @@ export function workflowRoutes(db: DB, svc: Services) {
   r.get('/issuer-public-key', wrap(async (_req, res) => res.json({ publicKey: (await issuerKey(db)).publicKey })));
 
   r.post('/requests', requireAuth, requireRole('student'), wrap((req, res) => {
-    const id = submitRequest(db, req.user!.sub, req.body?.type, req.body?.form, req.body?.attachments, req.body?.recipientId);
+    const id = submitRequest(db, req.user!.sub, req.body?.type, req.body?.form, req.body?.attachments, req.body?.recipientId, req.body?.chain);
     res.status(201).json(detail(id));
   }));
 
@@ -43,7 +43,7 @@ export function workflowRoutes(db: DB, svc: Services) {
   r.get('/requests/:id/pdf', requireAuth, wrap((req, res) => {
     if (!canView(db, req.user!.sub, req.user!.roles, req.params.id)) throw new HttpError(403, 'Not your request');
     const file = pdfPath(db, req.params.id, req.query.v ? Number(req.query.v) : undefined);
-    if (!file) throw new HttpError(404, 'No sealed PDF yet');
+    if (!file) throw new HttpError(404, 'No signed PDF yet');
     res.download(file.pdf_path, `${req.params.id}-v${file.version}.pdf`);
   }));
 

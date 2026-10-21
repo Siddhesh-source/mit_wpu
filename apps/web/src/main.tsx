@@ -16,6 +16,7 @@ import SendDocument from './pages/SendDocument';
 import { ROLES } from '@plc/shared';
 import Inbox from './pages/Inbox';
 import History from './pages/History';
+import People from './pages/People';
 import { Toaster } from './components/ui';
 import './index.css';
 
@@ -65,6 +66,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
           <Route path="/requests/:id" element={<Guard roles={['student', 'admin', ...APPROVER_ROLES]}><RequestPage /></Guard>} />
           <Route path="/requests/:id/amend" element={<Guard roles={['student']}><AmendPage /></Guard>} />
           <Route path="/inbox" element={<Guard roles={[...APPROVER_ROLES, 'student']}><Inbox /></Guard>} />
+          <Route path="/people" element={<Guard roles={[...APPROVER_ROLES, 'admin']}><People /></Guard>} />
           <Route path="/history" element={<Guard roles={[...APPROVER_ROLES, 'admin']}><History /></Guard>} />
           <Route path="/gate" element={<Guard roles={['security']}><Gate /></Guard>} />
           <Route path="/admin" element={<Guard roles={['admin']}><Admin /></Guard>} />

@@ -73,7 +73,7 @@ export async function buildApprovalPdf(p: PdfInput): Promise<Uint8Array> {
   // Header
   page.drawRectangle({ x: 0, y: 841.89 - 8, width: 595.28, height: 8, color: C.accent });
   text('CampusSign', L, y, bold, 16, C.accent);
-  const tag = 'SEALED APPROVAL';
+  const tag = 'SIGNED APPROVAL';
   text(tag, R - mono.widthOfTextAtSize(tag, 9), y + 3, mono, 9, C.muted);
   y -= 34;
 

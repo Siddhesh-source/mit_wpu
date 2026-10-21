@@ -34,7 +34,8 @@ function navFor(roles: Role[], waiting: number): NavItem[] {
     ];
   const items: NavItem[] = [];
   if (roles.includes('security')) items.push({ to: '/gate', label: 'Gate' });
-  if (roles.some((r) => APPROVER_ROLES.includes(r))) items.push({ to: '/inbox', label: 'Dashboard', badge: waiting }, { to: '/history', label: 'History' });
+  if (roles.some((r) => APPROVER_ROLES.includes(r)))
+    items.push({ to: '/inbox', label: 'Dashboard', badge: waiting }, { to: '/people', label: 'People' }, { to: '/history', label: 'History' });
   if (roles.includes('admin')) items.push({ to: '/admin', label: 'Admin' });
   items.push({ to: '/verify', label: 'Verify' });
   return items;

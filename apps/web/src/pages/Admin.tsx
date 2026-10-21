@@ -16,7 +16,7 @@ const TABS: { key: Tab; label: string }[] = [
 
 const ACTION: Record<string, string> = {
   submitted: 'Submitted', resubmitted: 'Resubmitted', approved: 'Approved', rejected: 'Rejected', returned: 'Returned',
-  fully_approved: 'Fully approved', sealed: 'PDF sealed', anchored: 'Anchored on chain', amendment_requested: 'Amendment requested',
+  fully_approved: 'Fully approved', sealed: 'PDF signed', anchored: 'Anchored on chain', amendment_requested: 'Amendment requested',
   amendment_returned: 'Amendment returned', amendment_rejected: 'Amendment rejected', revoked: 'Revoked', revocation_anchored: 'Revocation on chain',
   reopened: 'Reopened', commented: 'Comment', sla_nudge: 'Deadline reminder', sla_escalated: 'Escalated', delegation_created: 'Delegate set', delegation_ended: 'Delegation ended',
 };
@@ -44,11 +44,11 @@ export default function Admin() {
   const [busy, setBusy] = useState(false);
 
   async function reset() {
-    if (!confirm('Reset the demo? All requests are deleted and Riya gets a fresh sealed v1.')) return;
+    if (!confirm('Reset the demo? All requests are deleted and Riya gets a fresh signed v1.')) return;
     setBusy(true);
     try {
       await api('/api/admin/reset-demo', { method: 'POST' });
-      toast('Demo reset: Riya has a sealed v1 again');
+      toast('Demo reset: Riya has a signed v1 again');
       reload();
     } catch (e) {
       toast((e as Error).message);
@@ -71,12 +71,12 @@ export default function Admin() {
       <section className="mb-6 grid grid-cols-2 gap-3 md:grid-cols-4">
         <StatTile label="Requests" value={stats?.requests ?? '–'} hint="all time" />
         <StatTile label="In review" value={stats?.inReview ?? '–'} tone="accent" hint="with approvers now" />
-        <StatTile label="Overdue" value={stats?.overdue ?? '–'} tone={stats?.overdue ? 'warn' : 'ink'} hint="past a step deadline" />
+        <StatTile label="Reminders sent" value={stats?.overdue ?? '–'} tone={stats?.overdue ? 'warn' : 'ink'} hint="waiting past the usual time" />
         <StatTile
-          label="Sealed"
+          label="Signed"
           value={stats?.digitised ?? '–'}
           tone="ok"
-          hint={stats?.avgTurnaroundHours != null ? `avg ${Math.round(stats.avgTurnaroundHours)} h to seal` : 'approved and on chain'}
+          hint={stats?.avgTurnaroundHours != null ? `avg ${Math.round(stats.avgTurnaroundHours)} h to sign` : 'approved and on chain'}
         />
       </section>
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">

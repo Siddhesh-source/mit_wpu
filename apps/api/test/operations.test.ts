@@ -261,14 +261,14 @@ describe('email notifications', () => {
     await ctx.act('u_kulkarni', id, 'approved');
     await ctx.act('u_rao', id, 'approved');
     expect(emails(ctx.db, 'sealed')).toHaveLength(1);
-    expect(emails(ctx.db, 'sealed')[0]).toMatchObject({ to_user: 'u_riya', subject: 'Approved and sealed: Robotics fest' });
+    expect(emails(ctx.db, 'sealed')[0]).toMatchObject({ to_user: 'u_riya', subject: 'Approved and signed: Robotics fest' });
 
     await ctx.as('u_riya').post(`/api/requests/${id}/amend`, { changes: { venue: 'Main Auditorium' }, reason: 'Moved' });
     expect(emails(ctx.db, 'amendment_needed').map((e) => e.to_user)).toEqual(['u_mehta']);
     await ctx.act('u_mehta', id, 'approved');
     expect(emails(ctx.db, 'amendment_needed').map((e) => e.to_user)).toEqual(['u_mehta', 'u_kulkarni']);
     await ctx.act('u_kulkarni', id, 'approved');
-    expect(emails(ctx.db, 'sealed').map((e) => e.subject)).toContain('Approved and sealed: Robotics fest (v2)');
+    expect(emails(ctx.db, 'sealed').map((e) => e.subject)).toContain('Approved and signed: Robotics fest (v2)');
 
     await ctx.as('u_kulkarni').post(`/api/requests/${id}/revoke`, { reason: 'Cancelled', pin: '1234' });
     expect(emails(ctx.db, 'revoked').map((e) => e.to_user)).toEqual(['u_riya']);
@@ -308,13 +308,13 @@ describe('email notifications', () => {
   it('the SES mailer sends a plain-text email from the configured sender, honouring the redirect address', async () => {
     const ses = mailerFromConfig({ provider: 'ses', from: 'CampusSign <no-reply@college.example>', sesRegion: 'ap-south-1', redirectAll: 'demo-inbox@college.example', publicBaseUrl: '' })!;
     expect(ses.name).toBe('ses');
-    await ses.send({ to: 'riya@campus.example', subject: 'Approved and sealed: Robotics fest', text: 'Hello' });
+    await ses.send({ to: 'riya@campus.example', subject: 'Approved and signed: Robotics fest', text: 'Hello' });
     expect(sesCalls).toHaveLength(1);
     expect(sesCalls[0].cfg).toEqual({ region: 'ap-south-1' });
     expect(sesCalls[0].input).toEqual({
       FromEmailAddress: 'CampusSign <no-reply@college.example>',
       Destination: { ToAddresses: ['demo-inbox@college.example'] },
-      Content: { Simple: { Subject: { Data: 'Approved and sealed: Robotics fest', Charset: 'UTF-8' }, Body: { Text: { Data: 'Hello', Charset: 'UTF-8' } } } },
+      Content: { Simple: { Subject: { Data: 'Approved and signed: Robotics fest', Charset: 'UTF-8' }, Body: { Text: { Data: 'Hello', Charset: 'UTF-8' } } } },
     });
     const direct = mailerFromConfig({ provider: 'ses', from: 'a@b.c', sesRegion: 'ap-south-1', redirectAll: '', publicBaseUrl: '' })!;
     await direct.send({ to: 'riya@campus.example', subject: 's', text: 't' });

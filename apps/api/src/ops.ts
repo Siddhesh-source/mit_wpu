@@ -166,11 +166,12 @@ const ESCALATE_TO: Partial<Record<Role, Role>> = {
 export function runSla(db: DB, nowMs = Date.now(), slaMinutes: number | null = null) {
   const rows = db
     .prepare(
-      `SELECT a.id, a.request_id, a.version, a.role, a.assignee_id, a.opened_at, a.nudged_at, a.escalated_at, r.department_id, s.sla_hours,
-              v.form_json
+      `SELECT a.id, a.request_id, a.version, a.role, a.assignee_id, a.opened_at, a.nudged_at, a.escalated_at, r.department_id,
+              COALESCE(rr.sla_hours, s.sla_hours, 48) AS sla_hours, v.form_json
          FROM approvals a
          JOIN requests r ON r.id = a.request_id
-         JOIN route_steps s ON s.request_type = r.type AND s.role = a.role
+         LEFT JOIN route_steps s ON s.request_type = r.type AND s.role = a.role
+         LEFT JOIN request_routes rr ON rr.request_id = a.request_id AND rr.role = a.role
          JOIN request_versions v ON v.request_id = a.request_id AND v.version = a.version
         WHERE a.decision = 'pending' AND a.opened_at IS NOT NULL AND (a.nudged_at IS NULL OR a.escalated_at IS NULL)`,
     )
@@ -189,7 +190,7 @@ export function runSla(db: DB, nowMs = Date.now(), slaMinutes: number | null = n
     db.transaction(() => {
       if (!a.nudged_at && waited >= slaMs) {
         db.prepare('UPDATE approvals SET nudged_at = ? WHERE id = ?').run(t, a.id);
-        notify(db, a.assignee_id, 'sla_nudge', `Reminder: ${title} is waiting for you`, `This request has waited longer than its ${label} deadline.\n\n${link('/inbox')}`, a.request_id);
+        notify(db, a.assignee_id, 'sla_nudge', `Reminder: ${title} is waiting for you`, `This request has been waiting longer than the usual ${label}. A quick look would help.\n\n${link('/inbox')}`, a.request_id);
         audit(db, a.request_id, null, 'sla_nudge', a.version, { role: a.role, assignee: a.assignee_id });
         nudged++;
       }
@@ -207,7 +208,7 @@ export function runSla(db: DB, nowMs = Date.now(), slaMinutes: number | null = n
         const who = db.prepare('SELECT name FROM users WHERE id = ?').pluck().get(a.assignee_id) as string;
         if (target && target !== a.assignee_id)
           notify(db, target, 'sla_escalated', `Escalated: ${title} is stuck with ${ROLE_LABEL[a.role]}`, `${who} (${ROLE_LABEL[a.role]}) has not acted for over twice the ${label} deadline.\n\n${link(`/requests/${a.request_id}`)}`, a.request_id);
-        notify(db, a.assignee_id, 'sla_escalated', `Escalated: ${title}`, `This request is now overdue and has been escalated${toRole ? ` to the ${ROLE_LABEL[toRole]}` : ''}. Away? Set a delegate in your inbox.\n\n${link('/inbox')}`, a.request_id);
+        notify(db, a.assignee_id, 'sla_escalated', `Escalated: ${title}`, `This request has been waiting a while and has been passed on${toRole ? ` to the ${ROLE_LABEL[toRole]}` : ''}. Away? Set a delegate in your inbox.\n\n${link('/inbox')}`, a.request_id);
         audit(db, a.request_id, null, 'sla_escalated', a.version, { role: a.role, assignee: a.assignee_id, to: toRole ?? null });
         escalated++;
       }

@@ -65,11 +65,11 @@ export default function RequestPage() {
     const original = Object.fromEntries(Object.entries(r.form).map(([k, v]) => [k, String(v)]));
     const changed = Object.keys({ ...original, ...editing }).filter((k) => (original[k] ?? '') !== (editing[k] ?? ''));
     if (newFiles.length) changed.push('attachments');
-    const kept = type.chain.filter((st) => {
+    const kept = r.chain.filter((st) => {
       const prev = r.timeline.find((x) => x.role === st.role);
       return prev && (prev.decision === 'approved' || prev.decision === 'carried') && !st.affectedBy.some((f) => changed.includes(f));
     });
-    const back = type.chain.filter((st) => !kept.includes(st));
+    const back = r.chain.filter((st) => !kept.includes(st));
     const names = (l: typeof kept) => l.map((x) => ROLE_LABEL[x.role]).join(', ');
     return { back: names(back), kept: names(kept) };
   })();
@@ -177,7 +177,7 @@ export default function RequestPage() {
         <p className="mt-4 rounded-2xl bg-warn-bg p-4 text-sm">
           <span className="font-semibold text-warn">Amendment v{r.version} in review</span> · {r.amendment.reason}
           <br />
-          <span className="text-muted">v{r.amendment.fromVersion} stays valid until v{r.version} is sealed. Only the approvers affected by the change sign again.</span>
+          <span className="text-muted">v{r.amendment.fromVersion} stays valid until v{r.version} is signed. Only the approvers affected by the change sign again.</span>
         </p>
       )}
       {amendReturned && (
@@ -242,14 +242,14 @@ export default function RequestPage() {
           ) : (
             r.seal && (
               <button className="link text-base" onClick={getPdf}>
-                {r.status === 'revoked' ? 'Download PDF (revoked, for records)' : 'Download sealed PDF'}
+                {r.status === 'revoked' ? 'Download PDF (revoked, for records)' : 'Download signed PDF'}
               </button>
             )
           )}
           {r.status === 'revoked' ? null : r.seal?.anchor === 'anchored' ? (
             <p className="flex items-center gap-2 text-sm text-ok">
               <span className="grid h-5 w-5 place-items-center rounded-full bg-ok text-white"><Tick className="h-3 w-3" /></span>
-              Sealed on chain · v{r.seal.version}
+              Signed on chain · v{r.seal.version}
               {r.seal.txUrl ? (
                 <a className="link font-mono text-xs" href={r.seal.txUrl} target="_blank" rel="noreferrer">
                   {r.seal.txHash!.slice(0, 10)}…
@@ -259,7 +259,7 @@ export default function RequestPage() {
               )}
             </p>
           ) : (
-            r.seal && <p className="text-sm text-muted">Sealing on chain… the PDF is ready; verification turns on once it lands.</p>
+            r.seal && <p className="text-sm text-muted">Signing on chain… the PDF is ready; verification turns on once it lands.</p>
           )}
         </section>
       )}

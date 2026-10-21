@@ -4,6 +4,7 @@ import path from 'node:path';
 import cors from 'cors';
 import type { DB } from './db.js';
 import { accountRoutes } from './accounts.js';
+import { classroomRoutes } from './classrooms.js';
 import { errorHandler, workflowRoutes } from './routes.js';
 import { rateLimit } from './ratelimit.js';
 import { configureLinks } from './notify.js';
@@ -50,6 +51,7 @@ export function createApp(db: DB, services: Partial<Services> = {}) {
   app.use('/api', accountRoutes(db, { wrap: wrapA, allowPinLogin: svc.allowPinLogin ?? config.allowPinLogin, limit: pinLimit }));
   app.use(['/api/approvals', '/api/requests/:id/revoke', '/api/requests/:id/reopen'], (req, res, next) => (req.method === 'POST' ? pinLimit(req, res, next) : next()));
   app.use('/api', workflowRoutes(db, svc));
+  app.use('/api', classroomRoutes(db, wrapA));
   app.use('/api', (_req, res) => res.status(404).json({ error: 'Not found' }));
 
   // Built web app (npm run build): one port for everything in production.

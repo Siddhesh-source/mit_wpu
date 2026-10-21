@@ -145,7 +145,7 @@ export default function SendDocument() {
           <button className="cta w-full" disabled={busy || !to || !selected.length || !title.trim()}>
             {busy ? 'Sending…' : to ? `Send to ${to.name}` : 'Send'}
           </button>
-          <p className="text-center text-xs text-faint">They sign with their PIN; the signed result is sealed on chain and verifiable.</p>
+          <p className="text-center text-xs text-faint">They sign with their PIN; the signed result is recorded on chain and verifiable.</p>
         </aside>
       </form>
     </Page>

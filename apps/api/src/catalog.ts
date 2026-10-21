@@ -61,6 +61,18 @@ export const CATALOG: {
     steps: [{ stepNo: 1, role: 'recipient', affectedBy: ['title', 'purpose', 'attachments'] }],
   },
   {
+    // Written by the student: their own title and details, and the signers they choose (designations, in order).
+    // The chain is stored per request (request_routes); `steps` here is empty.
+    code: 'custom',
+    name: 'Custom request',
+    fields: [
+      { key: 'title', label: 'What is it for?', type: 'text', required: true },
+      { key: 'date', label: 'Date (if any)', type: 'date', required: false },
+      { key: 'purpose', label: 'Details', type: 'textarea', required: true },
+    ],
+    steps: [],
+  },
+  {
     code: 'no_dues',
     name: 'No-dues clearance',
     fields: [

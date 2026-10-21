@@ -34,7 +34,7 @@ export function seed(db: DB) {
   const passwordHash = bcrypt.hashSync(DEMO_PASSWORD, 8);
   const t = new Date(Date.now() - 86400_000).toISOString(); // demo people joined "yesterday": live sign-ups are newer
   db.transaction(() => {
-    db.exec(`DELETE FROM connections; DELETE FROM comments; DELETE FROM outbox; DELETE FROM delegations; DELETE FROM attachments; DELETE FROM revocations; DELETE FROM seals; DELETE FROM audit_log; DELETE FROM approvals; DELETE FROM request_versions; DELETE FROM requests;
+    db.exec(`DELETE FROM classroom_members; DELETE FROM classrooms; DELETE FROM request_routes; DELETE FROM connections; DELETE FROM comments; DELETE FROM outbox; DELETE FROM delegations; DELETE FROM attachments; DELETE FROM revocations; DELETE FROM seals; DELETE FROM audit_log; DELETE FROM approvals; DELETE FROM request_versions; DELETE FROM requests;
              DELETE FROM route_steps; DELETE FROM request_types;
              DELETE FROM user_roles; DELETE FROM users; DELETE FROM departments;`);
     for (const [id, name] of DEPARTMENTS) db.prepare('INSERT INTO departments (id, name) VALUES (?, ?)').run(id, name);
@@ -48,6 +48,18 @@ export function seed(db: DB) {
     }
     const type = db.prepare('INSERT INTO request_types (code, name, fields_json) VALUES (?, ?, ?)');
     const step = db.prepare('INSERT INTO route_steps (request_type, step_no, role, affected_by_json, sla_hours) VALUES (?, ?, ?, ?, ?)');
+    for (const t of CATALOG) {
+      type.run(t.code, t.name, JSON.stringify(t.fields));
+      for (const s of t.steps) step.run(t.code, s.stepNo, s.role, JSON.stringify(s.affectedBy), s.slaHours ?? 48);
+    }
+  })();
+}
+
+/** Add request types that are new in the catalogue to an existing database, keeping all data. Runs on start. */
+export function syncCatalog(db: DB) {
+  const type = db.prepare('INSERT OR IGNORE INTO request_types (code, name, fields_json) VALUES (?, ?, ?)');
+  const step = db.prepare('INSERT OR IGNORE INTO route_steps (request_type, step_no, role, affected_by_json, sla_hours) VALUES (?, ?, ?, ?, ?)');
+  db.transaction(() => {
     for (const t of CATALOG) {
       type.run(t.code, t.name, JSON.stringify(t.fields));
       for (const s of t.steps) step.run(t.code, s.stepNo, s.role, JSON.stringify(s.affectedBy), s.slaHours ?? 48);

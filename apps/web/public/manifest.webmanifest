@@ -1,7 +1,7 @@
 {
   "name": "CampusSign",
   "short_name": "CampusSign",
-  "description": "Role-routed approvals, sealed on chain. Gate check works offline.",
+  "description": "Role-routed approvals, signed on chain. Gate check works offline.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

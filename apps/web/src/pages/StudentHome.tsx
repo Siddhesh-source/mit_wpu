@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import type { Connection, InboxItem, LibraryDocument, Person, RequestStatus, RequestSummary } from '@plc/shared';
+import type { Classroom, Connection, InboxItem, LibraryDocument, Person, RequestStatus, RequestSummary } from '@plc/shared';
 import { Empty, Page, SectionHead, StatTile, StatusPill, toast } from '../components/ui';
 import { useSession } from '../lib/session';
 import { DocumentLibrary } from '../components/DocumentLibrary';
@@ -17,7 +17,7 @@ const FILTERS: { key: Filter; label: string }[] = [
   { key: 'all', label: 'All' },
   { key: 'active', label: 'In progress' },
   { key: 'action', label: 'Needs action' },
-  { key: 'sealed', label: 'Sealed' },
+  { key: 'sealed', label: 'Signed' },
   { key: 'closed', label: 'Closed' },
 ];
 
@@ -41,6 +41,25 @@ export default function StudentHome() {
     }, 250);
     return () => clearTimeout(t);
   }, [q]);
+
+  const { data: classes, reload: reloadClasses } = useLive<Classroom[]>('/api/classrooms', 30_000);
+  const [code, setCode] = useState('');
+  const [joining, setJoining] = useState(false);
+  async function join(e: FormEvent) {
+    e.preventDefault();
+    setJoining(true);
+    try {
+      const c = await api<Classroom>('/api/classrooms/join', { method: 'POST', json: { code } });
+      toast(`You joined ${c.name}. ${c.teacher.name} is now one of your teachers.`);
+      setCode('');
+      reloadClasses();
+      reloadConns();
+    } catch (err) {
+      toast((err as Error).message);
+    } finally {
+      setJoining(false);
+    }
+  }
 
   const count = (f: Exclude<Filter, 'all'>) => mine?.filter((r) => GROUP[r.status] === f).length ?? 0;
   const needsAction = mine?.filter((r) => r.status === 'returned') ?? [];
@@ -105,7 +124,7 @@ export default function StudentHome() {
           <section className="grid grid-cols-2 gap-3 md:grid-cols-4">
             <StatTile label="In progress" value={mine ? count('active') : '–'} tone="accent" hint="with approvers now" />
             <StatTile label="Needs your action" value={mine ? count('action') : '–'} tone={count('action') ? 'warn' : 'ink'} hint="returned for changes" />
-            <StatTile label="Sealed" value={mine ? count('sealed') : '–'} tone="ok" hint="approved, PDF ready" />
+            <StatTile label="Signed" value={mine ? count('sealed') : '–'} tone="ok" hint="approved, PDF ready" />
             <StatTile label="To sign" value={toSign?.length ?? '–'} tone={toSign?.length ? 'warn' : 'ink'} hint="sent to you" to="/inbox" />
           </section>
 
@@ -191,13 +210,47 @@ export default function StudentHome() {
                               With: {r.withNow.map((w) => (w.role === 'recipient' ? w.name : w.roleLabel)).join(' and ')} (since {ago(r.withNow[0].since)})
                             </p>
                           )}
-                          {r.status === 'sealed' && <p className="mt-2 text-sm font-semibold text-ok">Sealed on chain · open it to download the PDF</p>}
+                          {r.status === 'sealed' && <p className="mt-2 text-sm font-semibold text-ok">Signed on chain · open it to download the PDF</p>}
                         </Link>
                       </li>
                     ))}
                   </ul>
                 )}
               </>
+            )}
+          </section>
+
+          {/* Classes: join with the code a teacher emailed */}
+          <section>
+            <SectionHead title={`My classes${classes?.length ? ` (${classes.length})` : ''}`} />
+            <form onSubmit={join} className="mb-3 flex gap-2">
+              <input
+                className="w-full rounded-xl border border-rule px-4 py-3 font-mono uppercase tracking-widest outline-none placeholder:font-sans placeholder:normal-case placeholder:tracking-normal focus:border-accent"
+                placeholder="Class code from your email"
+                maxLength={6}
+                value={code}
+                onChange={(e) => setCode(e.target.value.toUpperCase())}
+              />
+              <button className="shrink-0 rounded-xl bg-accent px-5 font-semibold text-white disabled:opacity-40" disabled={code.trim().length !== 6 || joining}>
+                Join
+              </button>
+            </form>
+            {classes && classes.length > 0 ? (
+              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                {classes.map((c) => (
+                  <div key={c.id} className="rounded-2xl border border-rule bg-panel p-4">
+                    <p className="truncate font-semibold">{c.name}</p>
+                    <p className="truncate text-xs text-muted">
+                      {c.teacher.name} · {c.joinedCount} student{c.joinedCount === 1 ? '' : 's'}
+                    </p>
+                    <button className="mt-3 text-sm font-semibold text-accent" onClick={() => send(c.teacher.id)}>
+                      Send a document to {c.teacher.name.split(' ').slice(-1)[0]} →
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs text-faint">Your teacher emails a 6-letter code to the address you signed up with ({me?.email}). It only works for your account.</p>
             )}
           </section>
 

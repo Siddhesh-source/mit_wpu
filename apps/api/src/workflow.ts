@@ -1,6 +1,6 @@
 import bcrypt from 'bcryptjs';
 import { randomUUID } from 'node:crypto';
-import { ROLE_LABEL, sha256Hex, canonicalJson, signJson } from '@plc/shared';
+import { APPROVER_ROLES, ROLE_LABEL, sha256Hex, canonicalJson, signJson } from '@plc/shared';
 import type { Decision, FieldDef, RequestComment, RequestDetail, RequestStatus, RequestSummary, Role, TimelineStep } from '@plc/shared';
 import type { DB } from './db.js';
 import { HttpError } from './errors.js';
@@ -60,6 +60,29 @@ export function getType(db: DB, code: string) {
     fields: JSON.parse(t.fields_json) as FieldDef[],
     steps: steps.map((s) => ({ stepNo: s.step_no, role: s.role, affectedBy: JSON.parse(s.affected_by_json) as string[] })),
   };
+}
+
+/** The signer chain of a request: the catalogue chain of its type, or the one the student chose for a custom request. */
+export function stepsOf(db: DB, req: { id: string; type: string }) {
+  const own = db.prepare('SELECT step_no, role, affected_by_json FROM request_routes WHERE request_id = ? ORDER BY step_no').all(req.id) as {
+    step_no: number;
+    role: Role;
+    affected_by_json: string;
+  }[];
+  if (!own.length) return getType(db, req.type).steps;
+  return own.map((s) => ({ stepNo: s.step_no, role: s.role, affectedBy: JSON.parse(s.affected_by_json) as string[] }));
+}
+
+/** Designations a student may pick as signers on a custom request, in order (1–6, no repeats). */
+const MAX_CUSTOM_STEPS = 6;
+function customChain(fields: FieldDef[], chain: unknown) {
+  if (!Array.isArray(chain) || !chain.length) throw new HttpError(400, 'Choose at least one person to sign');
+  if (chain.length > MAX_CUSTOM_STEPS) throw new HttpError(400, `At most ${MAX_CUSTOM_STEPS} signers`);
+  if (chain.some((r) => typeof r !== 'string' || !APPROVER_ROLES.includes(r as Role))) throw new HttpError(400, 'Unknown designation');
+  if (new Set(chain).size !== chain.length) throw new HttpError(400, 'Each designation can sign once');
+  // Any change to the request goes back to every signer.
+  const all = [...fields.map((f) => f.key), 'attachments'];
+  return (chain as Role[]).map((role, i) => ({ stepNo: i + 1, role, affectedBy: all }));
 }
 
 export function listTypes(db: DB) {
@@ -222,9 +245,11 @@ function askToApprove(db: DB, people: string[], requestId: string, version: numb
   );
 }
 
-export function submitRequest(db: DB, studentId: string, typeCode: string, input: unknown, attachmentIds?: unknown, recipientId?: unknown) {
+export function submitRequest(db: DB, studentId: string, typeCode: string, input: unknown, attachmentIds?: unknown, recipientId?: unknown, chain?: unknown) {
   const type = getType(db, typeCode);
   const form = cleanForm(type.fields, input);
+  const custom = type.code === 'custom' ? customChain(type.fields, chain) : null;
+  const steps = custom ?? type.steps;
   const direct = type.steps.some((s) => s.role === 'recipient');
   if (direct) {
     if (typeof recipientId !== 'string' || recipientId === studentId || !db.prepare('SELECT 1 FROM users WHERE id = ?').get(recipientId))
@@ -253,7 +278,11 @@ export function submitRequest(db: DB, studentId: string, typeCode: string, input
     db.prepare('INSERT INTO request_versions (request_id, version, form_json, form_hash, created_at) VALUES (?, 1, ?, ?, ?)').run(
       req.id, JSON.stringify(form), formHash(form, versionAttachments(db, req.id, 1)), t,
     );
-    askToApprove(db, createRound(db, req, type.steps), req.id, 1);
+    if (custom) {
+      const route = db.prepare('INSERT INTO request_routes (request_id, step_no, role, affected_by_json) VALUES (?, ?, ?, ?)');
+      for (const s of custom) route.run(req.id, s.stepNo, s.role, JSON.stringify(s.affectedBy));
+    }
+    askToApprove(db, createRound(db, req, steps), req.id, 1);
     audit(db, req.id, studentId, 'submitted', 1, { type: type.code, attachments: files });
     return req.id;
   })();
@@ -274,11 +303,12 @@ export function resubmitRequest(db: DB, studentId: string, requestId: string, in
     .prepare('SELECT id, role, decision, carried_from FROM approvals WHERE request_id = ? AND round = ?')
     .all(req.id, req.round) as { id: number; role: Role; decision: Decision; carried_from: number | null }[];
   const prevOf = (role: Role) => prev.find((p) => p.role === role);
-  const keep = type.steps.filter((s) => {
+  const steps = stepsOf(db, req);
+  const keep = steps.filter((s) => {
     const p = prevOf(s.role);
     return p && (p.decision === 'approved' || p.decision === 'carried') && !s.affectedBy.some((f) => changed.includes(f));
   });
-  const redo = type.steps.filter((s) => !keep.includes(s));
+  const redo = steps.filter((s) => !keep.includes(s));
   db.transaction(() => {
     const t = now();
     claimAttachments(db, studentId, attachmentIds, req.id, req.current_version);
@@ -366,7 +396,7 @@ export async function decide(db: DB, userId: string, approvalId: number, decisio
 export function amendRequest(db: DB, studentId: string, requestId: string, changes: unknown, reason: unknown, attachmentIds?: unknown) {
   const req = getRow(db, requestId);
   if (req.student_id !== studentId) throw new HttpError(403, 'Not your request');
-  if (req.status !== 'sealed') throw new HttpError(409, req.status === 'amending' ? 'An amendment is already in review' : 'Only a sealed approval can be amended');
+  if (req.status !== 'sealed') throw new HttpError(409, req.status === 'amending' ? 'An amendment is already in review' : 'Only a signed approval can be amended');
   if (typeof reason !== 'string' || !reason.trim()) throw new HttpError(400, 'Say briefly why it changed');
   if (!changes || typeof changes !== 'object') throw new HttpError(400, 'Nothing changed');
   const type = getType(db, req.type);
@@ -379,9 +409,10 @@ export function amendRequest(db: DB, studentId: string, requestId: string, chang
   const changed = type.fields.map((f) => f.key).filter((k) => String(after[k] ?? '') !== String(before[k] ?? ''));
   if (Array.isArray(attachmentIds) && attachmentIds.length) changed.push('attachments');
   if (!changed.length) throw new HttpError(400, 'Nothing changed');
-  const affected = type.steps.filter((s) => s.affectedBy.some((f) => changed.includes(f)));
+  const steps = stepsOf(db, req);
+  const affected = steps.filter((s) => s.affectedBy.some((f) => changed.includes(f)));
   if (!affected.length) throw new HttpError(400, 'This change does not need an amendment');
-  const kept = type.steps.filter((s) => !affected.includes(s));
+  const kept = steps.filter((s) => !affected.includes(s));
 
   const version = req.current_version + 1;
   const round = (db.prepare('SELECT MAX(round) FROM approvals WHERE request_id = ?').pluck().get(req.id) as number) + 1;
@@ -577,6 +608,7 @@ export function getDetail(db: DB, id: string): RequestDetail {
     reopened: reopenInfo(db, r),
     commentCount: db.prepare('SELECT COUNT(*) FROM comments WHERE request_id = ?').pluck().get(r.id) as number,
     amendment,
+    chain: stepsOf(db, r),
   };
 }
 

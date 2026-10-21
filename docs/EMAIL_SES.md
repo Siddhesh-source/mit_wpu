@@ -10,13 +10,14 @@ The app already sends notifications; by default it only **logs** them (console +
 | An amendment needs re-approval | Only the affected approvers | "Amendment to approve:" |
 | Returned / rejected | Student | "Returned for changes:" / "Rejected:" |
 | Amendment returned / rejected | Student (earlier version still valid) | "Amendment returned:" |
-| Sealed on chain (first time only) | Student, with the link to the PDF | "Approved and sealed:" |
+| Signed on chain (first time only) | Student, with the link to the PDF | "Approved and signed:" |
 | Revoked | Student | "Approval revoked:" |
 | Revoked | **Security of that department** (closes the offline gap: "sync the gate list now") | "Gate: pass revoked" |
 | Past the step deadline (SLA) | The approver | "Reminder:" |
 | Past twice the deadline | The approver and the next authority (coordinator → HoD, HoD → Dean, Dean → Admin) | "Escalated:" |
 | Someone sets you as their delegate | The delegate | "You are covering for" |
 | A rejected request is reopened | Student | "Reopened:" |
+| A teacher invites a student to a class | That student's registered address (with the join code) | "Join <class> on CampusSign: code …" |
 | A discussion message | Student → current holders + last returner/rejecter; staff → student | "<name> on <title>" |
 
 ## How it works

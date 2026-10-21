@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { ROLE_LABEL, type Connection, type Delegation, type InboxItem, type StaffDashboard } from '@plc/shared';
+import { ROLE_LABEL, type Classroom, type Connection, type Delegation, type InboxItem, type StaffDashboard } from '@plc/shared';
 import { PersonBlock } from '../components/PersonBlock';
 import { DecisionList } from '../components/Decisions';
 import { Empty, Page, PinPad, SectionHead, Sheet, StatTile, Tick, toast } from '../components/ui';
@@ -114,6 +114,7 @@ export default function Inbox() {
   const { data: dash, reload: reloadDash } = useLive<StaffDashboard>(isStudent ? null : '/api/dashboard?limit=6', 15_000);
   const requests = conns?.filter((c) => c.status === 'pending') ?? [];
   const myStudents = conns?.filter((c) => c.status === 'accepted') ?? [];
+  const { data: classes } = useLive<Classroom[]>(isStudent ? null : '/api/classrooms', 30_000);
   async function answer(c: Connection, how: 'accept' | 'decline') {
     await api(`/api/connections/${c.id}/${how}`, { method: 'POST' }).catch((e) => toast(e.message));
     toast(how === 'accept' ? `${c.person.name} can now send you documents from their dashboard` : 'Declined');
@@ -240,7 +241,7 @@ export default function Inbox() {
             <p className="text-2xl font-bold">{count} waiting for your signature</p>
             <p className="mt-1 text-sm text-muted">
               Oldest first · waiting {ago(waitingSince(items![0]))}
-              {items!.some((i) => stepOf(i)?.overdue) && <span className="font-semibold text-warn"> · some are overdue</span>}
+              {items!.some((i) => stepOf(i)?.overdue) && <span className="font-semibold text-warn"> · reminders sent for some</span>}
             </p>
           </div>
         )}
@@ -283,7 +284,7 @@ export default function Inbox() {
                         {step?.escalated ? (
                           <span className="shrink-0 rounded-full bg-bad-bg px-2 py-0.5 text-[11px] font-semibold text-bad">Escalated</span>
                         ) : (
-                          step?.overdue && <span className="shrink-0 rounded-full bg-warn-bg px-2 py-0.5 text-[11px] font-semibold text-warn">Overdue</span>
+                          step?.overdue && <span className="shrink-0 rounded-full bg-warn-bg px-2 py-0.5 text-[11px] font-semibold text-warn">Reminder sent</span>
                         )}
                       </span>
                       <span className="mt-0.5 block truncate text-xs text-muted">
@@ -333,7 +334,7 @@ export default function Inbox() {
 
           <section className="grid grid-cols-2 gap-3 md:grid-cols-4">
             <StatTile label="Waiting" value={count} tone="accent" hint="for your signature" />
-            <StatTile label="Overdue" value={dash?.overdue ?? 0} tone={dash?.overdue ? 'warn' : 'ink'} hint="past the step deadline" />
+            <StatTile label="Reminders sent" value={dash?.overdue ?? 0} tone={dash?.overdue ? 'warn' : 'ink'} hint="waiting past the usual time" />
             <StatTile label="Signed this week" value={dash?.decided.thisWeek ?? '–'} tone="ok" hint={dash ? `${dash.decided.total} in total · see history` : undefined} to="/history" />
             <StatTile label="Avg response" value={avg == null ? '–' : avg < 1 ? '<1 h' : `${Math.round(avg)} h`} hint="from opened to signed" />
           </section>
@@ -393,24 +394,25 @@ export default function Inbox() {
                 </section>
               )}
 
-              <section>
-                <SectionHead title={`My students${myStudents.length ? ` (${myStudents.length})` : ''}`} />
-                {myStudents.length === 0 ? (
-                  <Empty>Students who add you as their teacher appear here; their documents come to you first.</Empty>
-                ) : (
-                  <ul className="flex flex-col divide-y divide-rule rounded-2xl border border-rule">
-                    {myStudents.slice(0, 8).map((c) => (
-                      <li key={c.id} className="flex items-center gap-3 px-3 py-2.5">
-                        <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-ok text-xs font-semibold text-white">{c.person.initials}</span>
-                        <span className="min-w-0">
-                          <span className="block truncate text-sm font-semibold">{c.person.name}</span>
-                          <span className="block truncate text-xs text-faint">{c.person.title || c.person.department}</span>
-                        </span>
-                      </li>
-                    ))}
-                    {myStudents.length > 8 && <li className="px-3 py-2 text-xs text-faint">and {myStudents.length - 8} more</li>}
-                  </ul>
-                )}
+              <section className="rounded-2xl border border-rule p-4">
+                <SectionHead title="People">
+                  <Link to="/people" className="link">
+                    Open →
+                  </Link>
+                </SectionHead>
+                <div className="grid grid-cols-2 gap-3">
+                  <Link to="/people?tab=students" className="rounded-xl bg-panel p-3 hover:bg-rule">
+                    <p className="text-2xl font-bold tabular-nums">{myStudents.length}</p>
+                    <p className="text-xs text-muted">My students</p>
+                  </Link>
+                  <Link to="/people?tab=classes" className="rounded-xl bg-panel p-3 hover:bg-rule">
+                    <p className="text-2xl font-bold tabular-nums">{classes?.filter((c) => c.code).length ?? '–'}</p>
+                    <p className="text-xs text-muted">Classes</p>
+                  </Link>
+                </div>
+                <Link to="/people?tab=classes" className="mt-3 block text-center text-sm font-semibold text-accent">
+                  + Create a class and invite students
+                </Link>
               </section>
 
               <section className="rounded-2xl border border-rule p-4">
@@ -463,7 +465,7 @@ export default function Inbox() {
             {mine?.escalated ? (
               <span className="rounded-full bg-bad-bg px-2 py-0.5 text-[11px] font-semibold text-bad">Escalated</span>
             ) : (
-              mine?.overdue && <span className="rounded-full bg-warn-bg px-2 py-0.5 text-[11px] font-semibold text-warn">Overdue</span>
+              mine?.overdue && <span className="rounded-full bg-warn-bg px-2 py-0.5 text-[11px] font-semibold text-warn">Reminder sent</span>
             )}
           </div>
           <h1 className="mt-1 text-2xl font-bold">{item.title}</h1>

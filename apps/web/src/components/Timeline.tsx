@@ -42,7 +42,7 @@ export function Timeline({ steps, done }: { steps: TimelineStep[]; done?: false 
                 </p>
                 {(s.overdue || s.escalated) && (
                   <span className={`mt-0.5 inline-block rounded-full px-2 py-0.5 text-[11px] font-semibold ${s.escalated ? 'bg-bad-bg text-bad' : 'bg-warn-bg text-warn'}`}>
-                    {s.escalated ? 'Escalated' : 'Overdue'}
+                    {s.escalated ? 'Escalated' : 'Reminder sent'}
                   </span>
                 )}
                 <p className="text-xs text-faint">{NOTE[s.decision](s)}</p>
@@ -55,7 +55,7 @@ export function Timeline({ steps, done }: { steps: TimelineStep[]; done?: false 
       {done && (
         <li className="relative flex items-center gap-3">
           <span className="grid h-8 w-8 place-items-center rounded-full bg-ok text-white"><Tick className="h-4 w-4" /></span>
-          <p className="font-semibold text-ok">{done === 'sealed' ? 'Approved and sealed' : 'Approved'}</p>
+          <p className="font-semibold text-ok">{done === 'sealed' ? 'Approved and signed' : 'Approved'}</p>
         </li>
       )}
     </ol>
