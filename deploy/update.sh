@@ -4,4 +4,4 @@ set -euo pipefail
 APP=/opt/paperless
 sudo -u paperless bash -c "cd $APP && git pull --ff-only && npm ci --no-audit --no-fund && npm run build"
 systemctl restart paperless
-echo "Updated to $(git -C $APP log --oneline -1)"
+echo "Updated to $(sudo -u paperless git -C $APP log --oneline -1)"
