@@ -150,14 +150,15 @@ Created entirely with the AWS CLI; the instance installs itself on first boot (u
 | Instance | `i-0f226b2f18ae18e70`, t4g.micro (Arm, 1 GB + 2 GB swap), Ubuntu 24.04, CPU credits **standard**, IMDSv2 only |
 | Disk | 12 GB gp3, deleted with the instance |
 | Elastic IP | 13.205.194.159 (`eipalloc-0ab7268f5d10f2afa`) |
-| Security group | `sg-0049400ba7c62bb38` (`paperless-sg`): 80/443 public, 22 from the admin IP only |
+| Security group | `sg-0049400ba7c62bb38` (`paperless-sg`): 80, 443 and 22 open to all addresses (SSH accepts keys only: no passwords, no root password login) |
 | SSH key pair | `paperless-key` (private key `~/.ssh/paperless-key` on the admin machine) |
 | IAM | role + instance profile `paperless-ec2`, inline policy `ses-send` (`ses:SendEmail`, `ses:SendRawEmail` only) |
 | SES | identity `csiddhesh3011@gmail.com` (sandbox; `EMAIL_REDIRECT_ALL` sends every notification there) |
 | Chain | `CHAIN_MODE=local` (Hardhat on the instance) |
 
-SSH: `ssh -i ~/.ssh/paperless-key ubuntu@13.205.194.159`. If your IP changes, update the port-22 rule:
-`aws ec2 authorize-security-group-ingress --group-id sg-0049400ba7c62bb38 --protocol tcp --port 22 --cidr <your-ip>/32`.
+SSH: `ssh -i ~/.ssh/paperless-key ubuntu@13.205.194.159` from any network.
+
+To limit SSH to one address again: `aws ec2 revoke-security-group-ingress --group-id sg-0049400ba7c62bb38 --protocol tcp --port 22 --cidr 0.0.0.0/0` (and the same with `--ip-permissions` for `::/0`), then authorize `<your-ip>/32`.
 
 Cost (from Free plan credits, Mumbai prices): instance ~$6/month, public IPv4 ~$3.6/month, disk ~$1/month, SES $0.10 per 1,000 emails. Nothing else is billed: no load balancer, NAT, RDS, snapshots or CloudWatch extras. Standard CPU credits mean bursts are throttled, never charged.
 
